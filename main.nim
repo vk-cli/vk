@@ -43,13 +43,13 @@ type
     text, link          : string
     callback            : proc(ListEl: var ListElement): void
   Colors  = enum
-    Black = 30,
+    Gray = 30,
     Red,
     Green,
     Yellow,
     Blue,
-    Magenta,
-    Cyan,
+    Pink,
+    Mint,
     White
   Window  = object
     x, y, key, offset   : int
@@ -81,8 +81,8 @@ var
     )
 
 const
-  play  = "►"
-  pause = "▍▍"
+  play  = "▶ "
+  pause = "▮▮"
 
 proc AlignBodyText() = 
   for i, e in win.body:
@@ -94,17 +94,19 @@ proc AlignBodyText() =
         win.body[i].text = win.body[i].text & spaces(align - runeLen(e.text))
 
 proc changeState(ListEl: var ListElement) =
-  ListEl.text[1..3] = pause
-  ListEl.text.delete(40,40)
+  if play in ListEl.text:
+    ListEl.text[1..4] = pause
+  else:
+    ListEl.text[1..6] = play
 
 proc GetMusic(): seq[ListElement] = 
   var music = newSeq[ListElement](0)
   for e in 1..60:
     var track: string
     if e == 7:
-      track = " ► Artist - Track " & $e
+      track = " ▶  Artist - Track " & $e
     else:
-      track = "   Artist - Track " & $e
+      track = "    Artist - Track " & $e
     if e == 7:
       music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", changeState))
     else:
@@ -169,7 +171,7 @@ proc OpenSettings(ListEl: var ListElement) =
 
 proc ChangeColor(ListEl: var ListElement) = 
   if int(win.color) < 37: inc win.color
-  else: win.color = Black
+  else: win.color = Gray
   ListEl.SetText("Цвет = " & $win.color)
 
 proc clear() = discard execCmd("clear")
