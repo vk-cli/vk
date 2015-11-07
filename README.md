@@ -1,5 +1,5 @@
 # vk
 A console client for vk.com written in Nim
 
-# Demonstration
-[![demo](https://asciinema.org/a/0wud2yec6qdlzyfuwqgbdocae.png)](https://asciinema.org/a/0wud2yec6qdlzyfuwqgbdocae?autoplay=1)
+# Workflow
+[![demo](https://asciinema.org/a/5r2wxf1a8mzlj5jmfx8fejcba.png)](https://asciinema.org/a/5r2wxf1a8mzlj5jmfx8fejcba?autoplay=1)
