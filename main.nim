@@ -42,7 +42,7 @@ type
   ListElement = object
     text, link          : string
     callback            : proc(ListEl: var ListElement): void
-  Colors = enum
+  Colors  = enum
     Black = 30,
     Red,
     Green,
@@ -51,17 +51,18 @@ type
     Magenta,
     Cyan,
     White
-  Window = object
+  Window  = object
     x, y, key, offset   : int
     active, last_active : int
-    section             : int
+    section, start      : int
     color               : Colors
     title               : string
-    menu, body          : seq[ListElement]
+    menu, body, buffer  : seq[ListElement]
 
 proc nop(ListEl: var ListElement) = discard
 proc OpenSettings(ListEl: var ListElement)
 proc ChangeColor(ListEl: var ListElement)
+proc OpenFriends(ListEl: var ListElement)
 
 proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void): ListElement = 
   return ListElement(text: txt, link: lnk, callback: clback)
@@ -70,7 +71,7 @@ var
   win = Window(
     color:    Blue,
     title:    "Влад Балашенко", 
-    menu:     @[spawnLE("Друзья", "link", nop),
+    menu:     @[spawnLE("Друзья", "link", OpenFriends),
                 spawnLE("Сообщения", "link", nop),
                 spawnLE("Музыка", "link", nop),
                 spawnLE("Настройки", "link", OpenSettings)],
@@ -85,6 +86,22 @@ proc AlignBodyText() =
     for i, e in win.body:
       if runeLen(e.text) + win.offset < win.x:
         win.body[i].text = win.body[i].text & spaces(align - runeLen(e.text))
+
+proc GetFriends(): seq[ListElement] = 
+  var friends = newSeq[ListElement](0)
+  for e in 1..35:
+    friends.add(spawnLE("Friend " & $e, "link", nop))
+  return friends
+
+proc OpenFriends(ListEl: var ListElement) = 
+  win.buffer = GetFriends()
+  if win.buffer.len+2 < win.y:
+    win.body = win.buffer
+    win.buffer = newSeq[ListElement](0)
+  else:
+    win.start = 0
+    win.body = win.buffer[0..win.y-4]
+  AlignBodyText()
 
 proc SetText(ListEl: var ListElement, s: string) = 
   ListEl.text = s
@@ -151,11 +168,19 @@ proc Controller() =
         win.body[win.active].callback(win.body[win.active])
     of kg_up:
       if win.active > 0: dec win.active
+      elif win.buffer.len != 0 and win.start != 0:
+        dec win.start
+        win.body = win.buffer[win.start..win.start+win.y-4]
+        AlignBodyText()
     of kg_down:
       if win.section == LEFT: 
         if win.active < win.menu.len-1: inc win.active
-      else: 
+      else:
         if win.active < win.body.len-1: inc win.active
+        elif win.buffer.len != 0 and win.start+win.y-3 != win.buffer.len:
+          inc win.start
+          win.body = win.buffer[win.start..win.start+win.y-4]
+          AlignBodyText()
     else: discard
 
 proc DrawMenu() = 
@@ -182,7 +207,7 @@ proc main() =
     DrawBody()
     Controller()
 
-when isMainModule:
+when isMainModule: 
   main()
   discard execCmd("tput cnorm")
-  clear()
+  clear() 
