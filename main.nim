@@ -63,6 +63,7 @@ proc nop(ListEl: var ListElement) = discard
 proc OpenSettings(ListEl: var ListElement)
 proc ChangeColor(ListEl: var ListElement)
 proc OpenFriends(ListEl: var ListElement)
+proc OpenDialogs(ListEl: var ListElement)
 
 proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void): ListElement = 
   return ListElement(text: txt, link: lnk, callback: clback)
@@ -72,7 +73,7 @@ var
     color:    Blue,
     title:    "Влад Балашенко", 
     menu:     @[spawnLE("Друзья", "link", OpenFriends),
-                spawnLE("Сообщения", "link", nop),
+                spawnLE("Сообщения", "link", OpenDialogs),
                 spawnLE("Музыка", "link", nop),
                 spawnLE("Настройки", "link", OpenSettings)],
     body:     @[spawnLE("Test1", "link", nop),
@@ -87,9 +88,28 @@ proc AlignBodyText() =
       if runeLen(e.text) + win.offset < win.x:
         win.body[i].text = win.body[i].text & spaces(align - runeLen(e.text))
 
+proc GetDialogs(): seq[ListElement] = 
+  var chats = newSeq[ListElement](0)
+  for e in 1..60:
+    if e in [1,3,4]:
+      chats.add(spawnLE("+ Chat " & $e, "link", nop))
+    else:
+      chats.add(spawnLE("  Chat " & $e, "link", nop))
+  return chats
+
+proc OpenDialogs(ListEl: var ListElement) = 
+  win.buffer = GetDialogs()
+  if win.buffer.len+2 < win.y:
+    win.body = win.buffer
+    win.buffer = newSeq[ListElement](0)
+  else:
+    win.start = 0
+    win.body = win.buffer[0..win.y-4]
+  AlignBodyText()
+
 proc GetFriends(): seq[ListElement] = 
   var friends = newSeq[ListElement](0)
-  for e in 1..35:
+  for e in 1..60:
     friends.add(spawnLE("Friend " & $e, "link", nop))
   return friends
 
