@@ -65,6 +65,7 @@ proc ChangeColor(ListEl: var ListElement)
 proc OpenFriends(ListEl: var ListElement)
 proc OpenDialogs(ListEl: var ListElement)
 proc OpenMusic(ListEl: var ListElement)
+proc changeState(ListEl: var ListElement)
 
 proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void): ListElement = 
   return ListElement(text: txt, link: lnk, callback: clback)
@@ -79,6 +80,10 @@ var
                 spawnLE("Настройки", "link", OpenSettings)],
     )
 
+const
+  play  = "►"
+  pause = "▍▍"
+
 proc AlignBodyText() = 
   for i, e in win.body:
     if runeLen(e.text) + win.offset > win.x:
@@ -88,11 +93,22 @@ proc AlignBodyText() =
       if runeLen(e.text) + win.offset < win.x:
         win.body[i].text = win.body[i].text & spaces(align - runeLen(e.text))
 
+proc changeState(ListEl: var ListElement) =
+  ListEl.text[1..3] = pause
+  ListEl.text.delete(40,40)
+
 proc GetMusic(): seq[ListElement] = 
   var music = newSeq[ListElement](0)
   for e in 1..60:
-    let track = "Artist - Track " & $e
-    music.add(spawnLE(track & spaces(win.x-win.offset-track.len-6) & "13:37", "link", nop))
+    var track: string
+    if e == 7:
+      track = " ► Artist - Track " & $e
+    else:
+      track = "   Artist - Track " & $e
+    if e == 7:
+      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", changeState))
+    else:
+      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", nop))
   return music
 
 proc OpenMusic(ListEl: var ListElement) = 
