@@ -64,6 +64,7 @@ proc OpenSettings(ListEl: var ListElement)
 proc ChangeColor(ListEl: var ListElement)
 proc OpenFriends(ListEl: var ListElement)
 proc OpenDialogs(ListEl: var ListElement)
+proc OpenMusic(ListEl: var ListElement)
 
 proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void): ListElement = 
   return ListElement(text: txt, link: lnk, callback: clback)
@@ -74,10 +75,9 @@ var
     title:    "Влад Балашенко", 
     menu:     @[spawnLE("Друзья", "link", OpenFriends),
                 spawnLE("Сообщения", "link", OpenDialogs),
-                spawnLE("Музыка", "link", nop),
+                spawnLE("Музыка", "link", OpenMusic),
                 spawnLE("Настройки", "link", OpenSettings)],
-    body:     @[spawnLE("Test1", "link", nop),
-                spawnLE("Test2", "link", nop)])
+    )
 
 proc AlignBodyText() = 
   for i, e in win.body:
@@ -88,13 +88,30 @@ proc AlignBodyText() =
       if runeLen(e.text) + win.offset < win.x:
         win.body[i].text = win.body[i].text & spaces(align - runeLen(e.text))
 
+proc GetMusic(): seq[ListElement] = 
+  var music = newSeq[ListElement](0)
+  for e in 1..60:
+    let track = "Artist - Track " & $e
+    music.add(spawnLE(track & spaces(win.x-win.offset-track.len-6) & "13:37", "link", nop))
+  return music
+
+proc OpenMusic(ListEl: var ListElement) = 
+  win.buffer = GetMusic()
+  if win.buffer.len+2 < win.y:
+    win.body = win.buffer
+    win.buffer = newSeq[ListElement](0)
+  else:
+    win.start = 0
+    win.body = win.buffer[0..win.y-4]
+  AlignBodyText()
+
 proc GetDialogs(): seq[ListElement] = 
   var chats = newSeq[ListElement](0)
   for e in 1..60:
     if e in [1,3,4]:
-      chats.add(spawnLE("+ Chat " & $e, "link", nop))
+      chats.add(spawnLE("[+] Chat " & $e, "link", nop))
     else:
-      chats.add(spawnLE("  Chat " & $e, "link", nop))
+      chats.add(spawnLE("    Chat " & $e, "link", nop))
   return chats
 
 proc OpenDialogs(ListEl: var ListElement) = 
@@ -178,6 +195,7 @@ proc Controller() =
       if win.section == RIGHT:
         win.active = win.last_active
         win.section = LEFT
+        win.body = newSeq[ListElement](0)
     of kg_right:
       if win.section == LEFT:
         win.menu[win.active].callback(win.menu[win.active])
