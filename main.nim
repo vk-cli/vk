@@ -43,12 +43,15 @@ const
   pause = "▮▮"
 
 type 
+  Message     = object
+    name, text          : string
+    color               : Colors
   ListElement = object
     text, link          : string
     callback            : proc(ListEl: var ListElement): void
     getter              : proc: seq[ListElement] 
-  Colors  = enum
-    Gray = 30,
+  Colors      = enum
+    Gray      = 30,
     Red,
     Green,
     Yellow,
@@ -56,23 +59,26 @@ type
     Pink,
     Mint,
     White
-  Window  = object
+  Window      = object
     x, y, key, offset   : int
     active, last_active : int
     section, start      : int
     color               : Colors
     title               : string
     menu, body, buffer  : seq[ListElement]
+    dialog              : seq[Message]
+    maxname             : int
 
 proc nop(ListEl: var ListElement) = discard
-proc nopgen(): seq[ListElement] = discard
+proc nopget(): seq[ListElement] = discard
+proc open(ListEl: var ListElement)
+proc chat(ListEl: var ListElement)
 
 proc ChangeColor(ListEl: var ListElement)
 proc ChangeState(ListEl: var ListElement)
-proc open(ListEl: var ListElement)
+proc GetFriends(): seq[ListElement]
 proc GetDialogs(): seq[ListElement]
 proc GetMusic(): seq[ListElement]
-proc GetFriends(): seq[ListElement]
 proc GenerateSettings(): seq[ListElement]
 
 proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void, gett: proc: seq[ListElement]): ListElement = 
@@ -97,6 +103,23 @@ proc AlignBodyText() =
       if runeLen(e.text) + win.offset < win.x:
         win.body[i].text = win.body[i].text & spaces(align - runeLen(e.text))
 
+proc chat(ListEl: var ListElement) = 
+  win.body = newSeq[ListElement](0)
+  win.buffer = newSeq[ListElement](0)
+  win.dialog = @[Message(name: "Unrelated Substance-Of-Melancholy", text: "kurwabot, behold!", color: Green),
+                 Message(name: "", text: "and u all wil fall!", color: Green),
+                 Message(name: "Konstantin Lariontyev", text: "я не шарю, курвабот топ в нынешнем состоянии", color: Mint),
+                 Message(name: "Unrelated Substance-Of-Melancholy", text: "пиздос, ну", color: Green),
+                 Message(name: "", text: "| Unrelated Substance-Of-Melancholy", color: Green),
+                 Message(name: "", text: "| гони эскейпы, димка", color: Green),
+                 Message(name: "Dmitry Nikolaev", text: "мне впадлу", color: Yellow),
+                 Message(name: "Shin Bernadotte", text: "я лолка", color: Red),
+                 Message(name: "Vlad Balashenko", text: "http://cs628823.vk.me/v628823535/32c51/Gyv-Xs7WTZk.jpg", color: Blue),
+  ]
+  for e in win.dialog:
+    if win.maxname < runeLen(e.name): win.maxname = runeLen(e.name)
+
+
 proc open(ListEl: var ListElement) = 
   win.buffer = ListEl.getter()
   if win.buffer.len+2 < win.y:
@@ -113,6 +136,21 @@ proc ChangeState(ListEl: var ListElement) =
   else:
     ListEl.text[1..6] = play
 
+proc GetFriends(): seq[ListElement] = 
+  var friends = newSeq[ListElement](0)
+  for e in 1..60:
+    friends.add(spawnLE("Friend " & $e, "link", nop, nopget))
+  return friends
+
+proc GetDialogs(): seq[ListElement] = 
+  var chats = newSeq[ListElement](0)
+  for e in 1..60:
+    if e in [1,3,4]:
+      chats.add(spawnLE("[+] Chat " & $e, "link", chat, nopget))
+    else:
+      chats.add(spawnLE("    Chat " & $e, "link", nop, nopget))
+  return chats
+
 proc GetMusic(): seq[ListElement] = 
   var music = newSeq[ListElement](0)
   for e in 1..60:
@@ -122,32 +160,17 @@ proc GetMusic(): seq[ListElement] =
     else:
       track = "    Artist - Track " & $e
     if e == 7:
-      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", ChangeState, nopgen))
+      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", ChangeState, nopget))
     else:
-      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", nop, nopgen))
+      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", nop, nopget))
   return music
 
-proc GetDialogs(): seq[ListElement] = 
-  var chats = newSeq[ListElement](0)
-  for e in 1..60:
-    if e in [1,3,4]:
-      chats.add(spawnLE("[+] Chat " & $e, "link", nop, nopgen))
-    else:
-      chats.add(spawnLE("    Chat " & $e, "link", nop, nopgen))
-  return chats
-
-proc GetFriends(): seq[ListElement] = 
-  var friends = newSeq[ListElement](0)
-  for e in 1..60:
-    friends.add(spawnLE("Friend " & $e, "link", nop, nopgen))
-  return friends
+proc GenerateSettings(): seq[ListElement] = 
+  return @[spawnLE("Цвет = " & $win.color, "link", ChangeColor, nopget)]
 
 proc SetText(ListEl: var ListElement, s: string) = 
   ListEl.text = s
   AlignBodyText()
-
-proc GenerateSettings(): seq[ListElement] = 
-  return @[spawnLE("Цвет = " & $win.color, "link", ChangeColor, nopgen)]
 
 proc ChangeColor(ListEl: var ListElement) = 
   if int(win.color) < 37: inc win.color
@@ -229,10 +252,28 @@ proc DrawMenu() =
       else: regular(e.text)
 
 proc DrawBody() = 
-  for i, e in win.body:
-    setCursorPos(win.offset+2, 3+i)
-    if i == win.active and win.section == RIGHT: selected(e.text)
-    else: regular(e.text)
+  if win.body.len != 0:
+    for i, e in win.body:
+      setCursorPos(win.offset+2, 3+i)
+      if i == win.active and win.section == RIGHT: selected(e.text)
+      else: regular(e.text)
+  elif win.dialog.len != 0:
+    for i, e in win.dialog:
+      setCursorPos(win.offset+2, 3+i)
+      var 
+        temp, sep: string
+      if runeLen(e.name) < win.maxname:
+        temp = spaces(win.maxname-runeLen(e.name)) & e.name
+      else:
+        temp = e.name
+      if runeLen(e.name) != 0:
+        sep = ": "
+      else:
+        sep = "  "
+      setForegroundColor(ForegroundColor(e.color))
+      stdout.write temp
+      setForegroundColor(ForegroundColor(White))
+      echo sep & e.text
 
 proc main() = 
   init()
