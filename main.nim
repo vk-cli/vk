@@ -106,19 +106,30 @@ proc AlignBodyText() =
 proc chat(ListEl: var ListElement) = 
   win.body = newSeq[ListElement](0)
   win.buffer = newSeq[ListElement](0)
-  win.dialog = @[Message(name: "Unrelated Substance-Of-Melancholy", text: "kurwabot, behold!", color: Green),
-                 Message(name: "", text: "and u all wil fall!", color: Green),
-                 Message(name: "Konstantin Lariontyev", text: "я не шарю, курвабот топ в нынешнем состоянии", color: Mint),
-                 Message(name: "Unrelated Substance-Of-Melancholy", text: "пиздос, ну", color: Green),
-                 Message(name: "", text: "| Unrelated Substance-Of-Melancholy", color: Green),
-                 Message(name: "", text: "| гони эскейпы, димка", color: Green),
-                 Message(name: "Dmitry Nikolaev", text: "мне впадлу", color: Yellow),
-                 Message(name: "Shin Bernadotte", text: "я лолка", color: Red),
-                 Message(name: "Vlad Balashenko", text: "http://cs628823.vk.me/v628823535/32c51/Gyv-Xs7WTZk.jpg", color: Blue),
+  win.dialog = @[Message(name: "Unrelated Substance-Of-Melancholy", text: "kurwabot, behold!"),
+                 Message(name: "", text: "and u all wil fall!"),
+                 Message(name: "Konstantin Lariontyev", text: "я не шарю, курвабот топ в нынешнем состоянии"),
+                 Message(name: "Unrelated Substance-Of-Melancholy", text: "пиздос, ну"),
+                 Message(name: "", text: "| Unrelated Substance-Of-Melancholy"),
+                 Message(name: "", text: "| гони эскейпы, димка"),
+                 Message(name: "Dmitry Nikolaev", text: "мне впадлу"),
+                 Message(name: "Shin Bernadotte", text: "я лолка"),
+                 Message(name: "Vlad Balashenko", text: "http://cs628823.vk.me/v628823535/32c51/Gyv-Xs7WTZk.jpg"),
+                 Message(name: "Yulia Bunas", text: "Я няша :D"),
+                 Message(name: "Petr Freys", text: "тест"),
+                 Message(name: "Gigabayt Tysyachadvadtsatchetverty", text: "тест"),
+                 Message(name: "Iv So", text: "тест"),
+                 Message(name: "Alexander Sorokin", text: "тест"),
+                 Message(name: "Alexander Nevazhno", text: "тест"),
+                 Message(name: "Alexey Ermolaev", text: "тест"),
+                 Message(name: "Daniil Verbitsky", text: "тест"),
+                 Message(name: "Linus Torvalds", text: "тест"),
+                 Message(name: "Pavel Sushenov", text: "тест"),
+                 Message(name: "Sergey Melnikov", text: "тест"),
+                 Message(name: "You", text: "тест"),
   ]
   for e in win.dialog:
     if win.maxname < runeLen(e.name): win.maxname = runeLen(e.name)
-
 
 proc open(ListEl: var ListElement) = 
   win.buffer = ListEl.getter()
@@ -217,6 +228,9 @@ proc Controller() =
         win.active = win.last_active
         win.section = LEFT
         win.body = newSeq[ListElement](0)
+        win.dialog = newSeq[Message](0)
+      else:
+        win.dialog = newSeq[Message](0)
     of kg_right:
       if win.section == LEFT:
         win.menu[win.active].callback(win.menu[win.active])
@@ -260,8 +274,11 @@ proc DrawBody() =
   elif win.dialog.len != 0:
     for i, e in win.dialog:
       setCursorPos(win.offset+2, 3+i)
+
       var 
         temp, sep: string
+        sum = 0
+
       if runeLen(e.name) < win.maxname:
         temp = spaces(win.maxname-runeLen(e.name)) & e.name
       else:
@@ -270,7 +287,11 @@ proc DrawBody() =
         sep = ": "
       else:
         sep = "  "
-      setForegroundColor(ForegroundColor(e.color))
+
+      for c in e.name:
+        sum += c.int
+
+      setForegroundColor(ForegroundColor(Colors(31+sum mod 6)))
       stdout.write temp
       setForegroundColor(ForegroundColor(White))
       echo sep & e.text
