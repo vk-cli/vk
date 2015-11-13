@@ -126,10 +126,10 @@ proc chat(ListEl: var ListElement) =
                  Message(name: "Linus Torvalds", text: "тест"),
                  Message(name: "Pavel Sushenov", text: "тест"),
                  Message(name: "Sergey Melnikov", text: "тест"),
-                 Message(name: "You", text: "тест"),
   ]
-  for e in win.dialog:
-    if win.maxname < runeLen(e.name): win.maxname = runeLen(e.name)
+  win.maxname = win.x div 4 + 1
+  # for e in win.dialog:
+    # if win.maxname < runeLen(e.name): win.maxname = runeLen(e.name)
 
 proc open(ListEl: var ListElement) = 
   win.buffer = ListEl.getter()
@@ -150,16 +150,19 @@ proc ChangeState(ListEl: var ListElement) =
 proc GetFriends(): seq[ListElement] = 
   var friends = newSeq[ListElement](0)
   for e in 1..60:
-    friends.add(spawnLE("Friend " & $e, "link", nop, nopget))
+    if e mod 3 == 0:
+      friends.add(spawnLE("⚫ Friend " & $e, "link", nop, nopget))
+    else:
+      friends.add(spawnLE("  Friend " & $e, "link", nop, nopget))
   return friends
 
 proc GetDialogs(): seq[ListElement] = 
   var chats = newSeq[ListElement](0)
   for e in 1..60:
     if e in [1,3,4]:
-      chats.add(spawnLE("[+] Chat " & $e, "link", chat, nopget))
+      chats.add(spawnLE("⚫ Chat " & $e, "link", chat, nopget))
     else:
-      chats.add(spawnLE("    Chat " & $e, "link", nop, nopget))
+      chats.add(spawnLE("  Chat " & $e, "link", nop, nopget))
   return chats
 
 proc GetMusic(): seq[ListElement] = 
@@ -265,44 +268,51 @@ proc DrawMenu() =
       if i == win.last_active: selected(e.text)
       else: regular(e.text)
 
+proc DrawDialog() = 
+  for i, e in win.dialog:
+
+    var 
+      temp, sep: string
+      sum = 0
+
+    setCursorPos(0, 3+i)
+
+    if runeLen(e.name) < win.maxname:
+      temp = spaces(win.maxname-runeLen(e.name)) & e.name
+    else:
+      temp = e.name[0..win.maxname-4] & "..."
+    if runeLen(e.name) != 0:
+      sep = ": "
+    else:
+      sep = "  "
+
+    for c in e.name:
+      sum += c.int
+
+    # one char padding
+    temp = " " & temp
+
+    setForegroundColor(ForegroundColor(Colors(31+sum mod 6)))
+    stdout.write temp
+    setForegroundColor(ForegroundColor(White))
+    echo sep & e.text
+
 proc DrawBody() = 
-  if win.body.len != 0:
-    for i, e in win.body:
-      setCursorPos(win.offset+2, 3+i)
-      if i == win.active and win.section == RIGHT: selected(e.text)
-      else: regular(e.text)
-  elif win.dialog.len != 0:
-    for i, e in win.dialog:
-      setCursorPos(win.offset+2, 3+i)
-
-      var 
-        temp, sep: string
-        sum = 0
-
-      if runeLen(e.name) < win.maxname:
-        temp = spaces(win.maxname-runeLen(e.name)) & e.name
-      else:
-        temp = e.name
-      if runeLen(e.name) != 0:
-        sep = ": "
-      else:
-        sep = "  "
-
-      for c in e.name:
-        sum += c.int
-
-      setForegroundColor(ForegroundColor(Colors(31+sum mod 6)))
-      stdout.write temp
-      setForegroundColor(ForegroundColor(White))
-      echo sep & e.text
-
+  for i, e in win.body:
+    setCursorPos(win.offset+2, 3+i)
+    if i == win.active and win.section == RIGHT: selected(e.text)
+    else: regular(e.text)
+  
 proc main() = 
   init()
   while win.key notin kg_esc:
     clear()
     Statusbar()
-    DrawMenu()
-    DrawBody()
+    if win.dialog.len == 0:
+      DrawMenu()
+      DrawBody()
+    else:
+      DrawDialog()
     Controller()
 
 when isMainModule: 
