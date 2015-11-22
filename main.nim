@@ -1,4 +1,4 @@
-import osproc, os, terminal, strutils, unicode
+import osproc, os, terminal, strutils, unicode, vkapi
 from ncurses import initscr, getmaxyx, endwin, curs_set
 
 const 
@@ -316,20 +316,14 @@ proc cli() =
     Controller()
 
 proc login() = 
-  setCursorPos(win.x div 2 - 13, win.y div 2)
-  stdout.write "Enter login: "
-  let login = stdin.readLine()
-  setCursorPos(win.x div 2 - 16, win.y div 2 + 1)
-  stdout.write "Enter password: "
-  let pass = stdin.readLine()
+  clear()
+  stdout.write "i need an url with access token: "
+  win.title = GetToken()
 
-  if login != pass:
-    discard execCmd("tput cnorm")
-    quit("login != password", QuitSuccess)
 
 when isMainModule:
-  init()
   login()
+  init()
   cli()
   discard execCmd("tput cnorm")
   clear() 
