@@ -194,6 +194,7 @@ proc ChangeColor(ListEl: var ListElement) =
 proc clear() = discard execCmd("clear")
 
 proc init() = 
+  clear()
   getmaxyx(initscr(), win.y, win.x)
   endwin()
   discard execCmd("tput civis")
@@ -303,8 +304,7 @@ proc DrawBody() =
     if i == win.active and win.section == RIGHT: selected(e.text)
     else: regular(e.text)
   
-proc main() = 
-  init()
+proc cli() = 
   while win.key notin kg_esc:
     clear()
     Statusbar()
@@ -315,7 +315,21 @@ proc main() =
       DrawDialog()
     Controller()
 
-when isMainModule: 
-  main()
+proc login() = 
+  setCursorPos(win.x div 2 - 13, win.y div 2)
+  stdout.write "Enter login: "
+  let login = stdin.readLine()
+  setCursorPos(win.x div 2 - 16, win.y div 2 + 1)
+  stdout.write "Enter password: "
+  let pass = stdin.readLine()
+
+  if login != pass:
+    discard execCmd("tput cnorm")
+    quit("login != password", QuitSuccess)
+
+when isMainModule:
+  init()
+  login()
+  cli()
   discard execCmd("tput cnorm")
   clear() 
