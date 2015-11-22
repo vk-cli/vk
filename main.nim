@@ -1,4 +1,4 @@
-import osproc, os, terminal, strutils, unicode, vkapi
+import osproc, os, terminal, strutils, unicode, vkapi, storage
 from ncurses import initscr, getmaxyx, endwin, curs_set
 
 const 
@@ -87,12 +87,12 @@ proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void,
 var 
   win = Window(
     color:    Blue,
-    title:    "Влад Балашенко", 
     menu:     @[spawnLE("Друзья", "link", open, GetFriends),
                 spawnLE("Сообщения", "link", open, GetDialogs),
                 spawnLE("Музыка", "link", open, GetMusic),
                 spawnLE("Настройки", "link", open, GenerateSettings)],
     )
+  box = Storage()
 
 proc AlignBodyText() = 
   for i, e in win.body:
@@ -318,11 +318,14 @@ proc cli() =
 proc login() = 
   clear()
   stdout.write "Вставьте сюда access token: "
-  win.title = VKinit()
+  vkinit()
+  win.title = vktitle()
 
 when isMainModule:
+  box = load()
   login()
   init()
   cli()
   discard execCmd("tput cnorm")
+  save()
   clear() 

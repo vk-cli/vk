@@ -6,7 +6,7 @@ type
     userid          : int
 
 var
-  api = API()
+  api* = API()
 
 let
   vkmethod   = "https://api.vk.com/method/"
@@ -23,14 +23,16 @@ proc request(methodname: string, vkparams: Table): string =
   url &= "v=" & apiversion & "&access_token=" & api.token
   return getContent(url)
 
-proc VKinit*(): string =
+proc vkinit*() =
   GetToken()
-  var
-    response = request("users.get", {"name_case":"Nom"}.toTable)
-    json: JsonNode
+  let response = request("users.get", {"name_case":"Nom"}.toTable)
   if "error" in response:
     quit("Неверный access token", QuitSuccess)
-  else:
-    json = parseJson(response)
-  api.userid = json["response"].elems[0]["id"].num.int 
+
+proc vktitle*(): string = 
+  let response = request("users.get", {"name_case":"Nom"}.toTable)
+  if "error" in response:
+    quit("Не могу получить юзернэйм", QuitSuccess)
+  let json = parseJson(response)
+  api.userid = json["response"].elems[0]["id"].num.int
   return json["response"].elems[0]["first_name"].str & " " & json["response"].elems[0]["last_name"].str
