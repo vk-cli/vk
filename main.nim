@@ -317,9 +317,8 @@ proc cli() =
 
 proc login() = 
   clear()
-  stdout.write "i need an url with access token: "
-  win.title = GetToken()
-
+  stdout.write "Вставьте сюда access token: "
+  win.title = VKinit()
 
 when isMainModule:
   login()
