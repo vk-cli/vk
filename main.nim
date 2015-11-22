@@ -1,4 +1,4 @@
-import osproc, os, terminal, strutils, unicode, vkapi, storage
+import osproc, os, terminal, strutils, unicode, vkapi, cfg
 from ncurses import initscr, getmaxyx, endwin, curs_set
 
 const 
@@ -92,7 +92,6 @@ var
                 spawnLE("Музыка", "link", open, GetMusic),
                 spawnLE("Настройки", "link", open, GenerateSettings)],
     )
-  box = Storage()
 
 proc AlignBodyText() = 
   for i, e in win.body:
@@ -316,16 +315,16 @@ proc cli() =
     Controller()
 
 proc login() = 
-  clear()
   stdout.write "Вставьте сюда access token: "
   vkinit()
   win.title = vktitle()
 
 when isMainModule:
-  box = load()
+  clear()
+  load()
   login()
   init()
   cli()
   discard execCmd("tput cnorm")
-  save()
+  save(GetToken(), win.color.int)
   clear() 
