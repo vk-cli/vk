@@ -315,7 +315,6 @@ proc cli() =
     Controller()
 
 proc login() = 
-  stdout.write "Вставьте сюда access token: "
   vkinit()
   win.title = vktitle()
 

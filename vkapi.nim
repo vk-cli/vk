@@ -14,6 +14,11 @@ let
 
 proc SetToken*(tk: string = "") = 
   if tk.len == 0:
+    try:
+      discard getContent("http://google.com")
+    except:
+      quit("Проверьте интернет соединение", QuitSuccess)
+    stdout.write "Вставьте сюда access token: "
     discard execCmd("xdg-open \"http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token\" >> /dev/null")
     api.token = stdin.readLine()
   else: api.token = tk
@@ -25,7 +30,10 @@ proc request(methodname: string, vkparams: Table): string =
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
   url &= "v=" & apiversion & "&access_token=" & api.token
-  return getContent(url)
+  try:
+    return getContent(url)
+  except:
+    quit("Проверьте интернет соединение", QuitSuccess)
 
 proc vkinit*() = 
   SetToken()
