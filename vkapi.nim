@@ -6,7 +6,7 @@ type
     userid          : int
 
 var
-  api* = API()
+  api = API()
 
 let
   vkmethod   = "https://api.vk.com/method/"
@@ -36,7 +36,7 @@ proc request(methodname: string, vkparams: Table): string =
     quit("Проверьте интернет соединение", QuitSuccess)
 
 proc vkinit*() = 
-  SetToken()
+  SetToken(api.token)
   let response = request("users.get", {"name_case":"Nom"}.toTable)
   if "error" in response: quit("Неверный access token", QuitSuccess)
 

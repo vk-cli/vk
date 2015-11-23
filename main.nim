@@ -1,5 +1,6 @@
-import osproc, os, terminal, strutils, unicode, vkapi, cfg
+import osproc, os, terminal, strutils, unicode, tables
 from ncurses import initscr, getmaxyx, endwin, curs_set
+import vkapi, cfg
 
 const 
   # keys
@@ -314,16 +315,25 @@ proc cli() =
       DrawDialog()
     Controller()
 
-proc login() = 
+proc pushTo(config: var Table) = 
+  config["token"] = GetToken()
+  config["color"] = $win.color.int
+
+proc popFrom(config: Table) = 
+  if config.len != 0:
+    echo "Загрузка..."
+    SetToken(config["token"])
+    win.color = Colors(parseInt(config["color"]))
+
+when isMainModule: 
+  clear()
+  var config = load()
+  popFrom(config)
   vkinit()
   win.title = vktitle()
-
-when isMainModule:
-  clear()
-  load()
-  login()
   init()
   cli()
   discard execCmd("tput cnorm")
-  save(GetToken(), win.color.int)
+  pushTo(config)
+  save(config)
   clear() 

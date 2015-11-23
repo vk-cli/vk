@@ -1,27 +1,29 @@
-import os, parsecfg, strutils, streams
+import os, parsecfg, strutils, streams, tables
 
 let
-  config = getHomeDir() & ".vkrc"
+  ConfigPath = getHomeDir() & ".vkrc"
 
-proc save*(token: string, color: int) =
-  open(config, fmWrite).close()
-  var f = open(config, fmWrite)
+proc save*(config: Table) =
+  open(ConfigPath, fmWrite).close()
+  var f = open(ConfigPath, fmWrite)
   defer: close(f)
-  f.writeLine("token = " & token)
-  f.writeLine("color = " & $color)
+  for key, value in config.pairs:
+    f.writeLine(key & " = " & value)
 
-proc load*() = 
-  if fileExists(config):
+proc load*(): Table[string, string] = 
+  var box = initTable[string, string]()
+  if fileExists(ConfigPath):
     var
-      f = newFileStream(config, fmRead)
+      f = newFileStream(ConfigPath, fmRead)
       p: CfgParser
-    open(p, f, config)
+    open(p, f, ConfigPath)
     while true:
       var e = next(p)
       case e.kind
-      of cfgEof: break
+      of cfgKeyValuePair: box[e.key] = e.value
       of cfgSectionStart: discard
-      of cfgKeyValuePair: echo(e.key & " = " & e.value)
       of cfgOption: discard
       of cfgError: discard
+      of cfgEof: break
     close(p)
+  return box
