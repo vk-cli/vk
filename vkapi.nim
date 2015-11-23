@@ -15,7 +15,7 @@ let
 proc SetToken*(tk: string = "") = 
   if tk.len == 0:
     try:
-      discard getContent("http://google.com")
+      discard getContent("http://vk.com")
     except:
       quit("Проверьте интернет соединение", QuitSuccess)
     stdout.write "Вставьте сюда access token: "
