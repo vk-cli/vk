@@ -10,7 +10,7 @@ var
 
 #===== api mechanics =====
 
-let
+let 
   vkmethod   = "https://api.vk.com/method/"
   apiversion = "5.40"
 
@@ -49,7 +49,7 @@ proc vktitle*(): string =
   api.userid = json["response"].elems[0]["id"].num.int
   return json["response"].elems[0]["first_name"].str & " " & json["response"].elems[0]["last_name"].str 
 
-  #===== longpoll =====
+#===== longpoll =====
 
 type longpollInfo = object
   key, server: string
@@ -61,7 +61,6 @@ type longpollResp = object
 var
   longpollThread: Thread[longpollInfo]
   threadLock: Lock
-
 
 proc longpollParseResp(json: string): longpollResp =
   var
@@ -75,9 +74,6 @@ proc longpollParseResp(json: string): longpollResp =
     if hasKey(o, "updates"):
       discard #TODO parse updates
   return longpollResp(ts: ts, failed: fail)
-
-
-
 
 proc longpollAsync(info: longpollInfo) = 
   var currTs = info.ts
