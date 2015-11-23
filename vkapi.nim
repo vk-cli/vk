@@ -1,18 +1,29 @@
 import osproc, strutils, json, httpclient, cgi, tables, locks
 
-type
+type 
   API = object
-    token, username : string
-    userid          : int
+    token, username: string
+    userid: int
+  longpollInfo = object
+    key, server: string
+    ts: int
+  longpollResp = object
+    failed, ts: int
+  vkfriend = object
+    first_name, last_name: string
+    id: int
+    online: bool
 
-var
+var 
   api = API()
-
-#===== api mechanics =====
+  longpollThread: Thread[longpollInfo]
+  threadLock: Lock
 
 let 
   vkmethod   = "https://api.vk.com/method/"
   apiversion = "5.40"
+
+#===== api mechanics =====
 
 proc SetToken*(tk: string = "") = 
   if tk.len == 0:
@@ -51,17 +62,6 @@ proc vktitle*(): string =
 
 #===== longpoll =====
 
-type longpollInfo = object
-  key, server: string
-  ts: int
-
-type longpollResp = object
-  failed, ts: int
-
-var
-  longpollThread: Thread[longpollInfo]
-  threadLock: Lock
-
 proc longpollParseResp(json: string): longpollResp =
   var
     o = parseJson(json)
@@ -83,8 +83,3 @@ proc longpollAsync(info: longpollInfo) =
       resp = get(lpUri)
 
 #===== api methods wrappers =====
-
-type vkfriend = object
-  first_name, last_name, status: string
-  id: int
-  online: bool
