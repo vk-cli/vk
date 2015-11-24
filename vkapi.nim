@@ -75,3 +75,16 @@ proc vktitle*(): string =
 
 #===== api methods wrappers =====
 
+proc friendsGet(user_id: int, order = "hints", name_case = "nom"): seq[vkfriend] = 
+  let
+    o = trequest("friends.get", {"user_id":($user_id), "order":order, "name_case":name_case}.toTable)
+    items = getElems(o["items"])
+  var friends: seq[vkfriend] = @[]
+  for i in items:
+    friends.add( vkfriend(
+      first_name: i["first_name"].str,
+      last_name: i["last_name"].str,
+      id: i["id"].num.int32,
+      online: i["online"].bval
+      ))
+  return friends
