@@ -1,20 +1,18 @@
-import osproc, strutils, json, httpclient, cgi, tables, locks, macros, asyncdispatch, asynchttpserver, strtabs
+import osproc, strutils, json, httpclient, cgi, tables
+import locks, macros, asyncdispatch, asynchttpserver, strtabs
 
 type
   API = object
     token, username: string
     userid: int
+
   longpollInfo = object
     key, server: string
     ts: int
   longpollResp = object
     failed, ts: int
-  vkfriend = object
-    first_name, last_name: string
-    id: int
-    online: bool
 
-var
+var 
   api = API()
   longpollThread: Thread[int]
   threadLock: Lock
@@ -22,7 +20,6 @@ var
 let 
   vkmethod   = "https://api.vk.com/method/"
   apiversion = "5.40"
-  dummyint   = 1337
 
 #===== api mechanics =====
 
@@ -39,8 +36,6 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-
-
 proc request(methodname: string, vkparams: Table): string = 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
@@ -51,40 +46,35 @@ proc request(methodname: string, vkparams: Table): string =
   except:
     quit("Проверьте интернет соединение", QuitSuccess)
 
-proc trequest(methodname: string, vkparams: Table, dontTouchResponse = false): JsonNode =
-  let obj = parseJson(request(methodname, vkparams))
-  if dontTouchResponse:
-    return obj
-  else:
-    return obj["response"].elems[0]
-
 proc vkinit*() = 
   SetToken(api.token)
   let response = request("users.get", {"name_case":"Nom"}.toTable)
   if "error" in response: quit("Неверный access token", QuitSuccess)
 
-proc vktitle*(): string = 
-  let response = request("users.get", {"name_case":"Nom"}.toTable)
-  if "error" in response: quit("Не могу получить юзернэйм", QuitSuccess)
+proc parse(response: string): JsonNode = 
   let json = parseJson(response)
-  api.userid = json["response"].elems[0]["id"].num.int
-  return json["response"].elems[0]["first_name"].str & " " & json["response"].elems[0]["last_name"].str 
-
-#===== longpoll =====
-
+  return json["response"]
 
 #===== api methods wrappers =====
 
-proc friendsGet(user_id: int, order = "hints", name_case = "nom"): seq[vkfriend] = 
+proc vktitle*(): string = 
+  let 
+    response = request("users.get", {"name_case":"Nom"}.toTable)
+    json = parse(response)[0]
+  if "error" in response: quit("Не могу получить юзернэйм", QuitSuccess)
+  api.userid = json["id"].num.int
+  return json["first_name"].str & " " & json["last_name"].str 
+
+proc vkfriends*(): seq[tuple[string:string]] = 
   let
-    o = trequest("friends.get", {"user_id":($user_id), "order":order, "name_case":name_case}.toTable)
-    items = getElems(o["items"])
-  var friends: seq[vkfriend] = @[]
-  for i in items:
-    friends.add( vkfriend(
-      first_name: i["first_name"].str,
-      last_name: i["last_name"].str,
-      id: i["id"].num.int32,
-      online: i["online"].bval
-      ))
+    response = request("friends.get", {"user_id": $api.user_id, "order": "hints", "fields": "first_name, last_name"}.toTable)
+    json = parse(response).getFields[1][1]
+  if "error" in response: quit("Не могу загрузить друзей", QuitSuccess)
+  var
+    friends = newSeq[tuple[string:string]](0)
+    status = "  "
+  for fr in json:
+    if fr["online"].num == 1: status = "⚫ "
+    let fullname = status & fr["first_name"].str & " " & fr["last_name"].str
+    friends.add(tuple[fullname: fr["id"].str])
   return friends

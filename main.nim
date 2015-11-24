@@ -70,8 +70,8 @@ type
     dialog              : seq[Message]
     maxname             : int
 
-proc nop(ListEl: var ListElement) = discard
-proc nopget(): seq[ListElement] = discard
+proc nop*(ListEl: var ListElement) = discard
+proc nopget*(): seq[ListElement] = discard
 proc open(ListEl: var ListElement)
 proc chat(ListEl: var ListElement)
 
@@ -82,7 +82,7 @@ proc GetDialogs(): seq[ListElement]
 proc GetMusic(): seq[ListElement]
 proc GenerateSettings(): seq[ListElement]
 
-proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void, gett: proc: seq[ListElement]): ListElement = 
+proc spawnLE*(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void, gett: proc: seq[ListElement]): ListElement = 
   return ListElement(text: txt, link: lnk, callback: clback, getter: gett)
 
 var 
@@ -148,12 +148,10 @@ proc ChangeState(ListEl: var ListElement) =
     ListEl.text[1..6] = play
 
 proc GetFriends(): seq[ListElement] = 
-  var friends = newSeq[ListElement](0)
-  for e in 1..60:
-    if e mod 3 == 0:
-      friends.add(spawnLE("⚫ Friend " & $e, "link", nop, nopget))
-    else:
-      friends.add(spawnLE("  Friend " & $e, "link", nop, nopget))
+  let friendlist = vkfriends()
+  var friends: seq[ListElement] = @[]
+  for fr in friendlist:
+    friends.add(spawnLE(fr.name, fr.id, nop, nopget))
   return friends
 
 proc GetDialogs(): seq[ListElement] = 
@@ -331,6 +329,7 @@ when isMainModule:
   popFrom(config)
   vkinit()
   win.title = vktitle()
+  vkfriends()
   init()
   cli()
   discard execCmd("tput cnorm")
