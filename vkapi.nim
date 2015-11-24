@@ -51,7 +51,7 @@ proc request(methodname: string, vkparams: Table): string {.thread.} =
     url &= key & "=" & encodeUrl(value) & "&"
   url &= "v=" & apiversion & "&access_token=" & api.token
   try:
-    return asyncGet(url).body
+    return getContent(url)
   except:
     quit("Проверьте интернет соединение", QuitSuccess)
 
@@ -76,63 +76,6 @@ proc vktitle*(): string =
 
 #===== longpoll =====
 
-proc parseLongpollUpdates(arr: seq[JsonNode]) = 
-  discard #todo parse updates
-
-
-proc longpollParseResp(json: string): longpollResp {.thread.} =
-  var
-    o = parseJson(json)
-    fail = -1
-    ts = -1
-  if hasKey(o, "failed"): 
-    fail = getNum(o["failed"]).int32
-  else:
-    if hasKey(o, "updates"):
-      acquire(threadLock)
-      echo(json)
-      parseLongpollUpdates(getElems(o["updates"]))
-      release(threadLock)
-  if hasKey(o, "ts"):
-    ts = getNum(o["ts"]).int32
-  return longpollResp(ts: ts, failed: fail)
-
-proc longpollRoutine(info: longpollInfo) {.thread.} = 
-  var currTs = info.ts
-  while true:
-    let
-      lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
-      resp = asyncGet(lpUri)
-      #todo check server response code\status
-      lpresp = longpollParseResp(resp.body)
-    if lpresp.failed != -1:
-      if lpresp.failed != 1:
-        break #get new server
-    currTs = lpresp.ts
-
-proc getLongpollInfo(): longpollInfo {.thread.} = 
-  let o = trequest("messages,getLongPollServer", {"use_ssl":"1", "need_pts":"0"}.toTable)
-  return longpollInfo(
-    key: getStr(o["key"]),
-    server: getStr(o["server"]),
-    ts: getNum(o["ts"]).int32
-  )
-
-proc longpollAsync(dummy: int) {.thread.} =
-  while true:
-    longpollRoutine(getLongpollInfo())
-
-
-proc startLongpoll() = 
-  initLock(threadLock)
-  createThread(longpollThread, longpollAsync, dummyint)
-  joinThread(longpollThread)
 
 #===== api methods wrappers =====
 
-#TESTS
-let tok = readLine(stdin)
-SetToken(tok)
-startLongpoll()
-while true:
-  discard
