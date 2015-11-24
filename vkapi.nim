@@ -41,7 +41,7 @@ proc GetToken*(): string = return api.token
 
 
 
-proc request(methodname: string, vkparams: Table): string {.thread.} = 
+proc request(methodname: string, vkparams: Table): string = 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
@@ -51,7 +51,7 @@ proc request(methodname: string, vkparams: Table): string {.thread.} =
   except:
     quit("Проверьте интернет соединение", QuitSuccess)
 
-proc trequest(methodname: string, vkparams: Table, dontTouchResponse = false): JsonNode {.thread.} =
+proc trequest(methodname: string, vkparams: Table, dontTouchResponse = false): JsonNode =
   let obj = parseJson(request(methodname, vkparams))
   if dontTouchResponse:
     return obj
