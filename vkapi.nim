@@ -1,6 +1,6 @@
-import osproc, strutils, json, httpclient, cgi, tables, locks
+import osproc, strutils, json, httpclient, cgi, tables, locks, macros, asyncdispatch, asynchttpserver, strtabs
 
-type 
+type
   API = object
     token, username: string
     userid: int
@@ -14,14 +14,15 @@ type
     id: int
     online: bool
 
-var 
+var
   api = API()
-  longpollThread: Thread[longpollInfo]
+  longpollThread: Thread[int]
   threadLock: Lock
 
 let 
   vkmethod   = "https://api.vk.com/method/"
   apiversion = "5.40"
+  dummyint   = 1337
 
 #===== api mechanics =====
 
@@ -38,15 +39,28 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table): string = 
+proc asyncGet(url: string): Response {.async.} =
+  let
+    client = newAsyncHttpClient()
+    resp = await client.request(url)
+  return resp
+
+proc request(methodname: string, vkparams: Table): string {.thread.} = 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
   url &= "v=" & apiversion & "&access_token=" & api.token
   try:
-    return getContent(url)
+    return asyncGet(url).body
   except:
     quit("Проверьте интернет соединение", QuitSuccess)
+
+proc trequest(methodname: string, vkparams: Table, dontTouchResponse = false): JsonNode {.thread.} =
+  let obj = parseJson(request(methodname, vkparams))
+  if dontTouchResponse:
+    return obj
+  else:
+    return obj["response"].elems[0]
 
 proc vkinit*() = 
   SetToken(api.token)
@@ -62,7 +76,11 @@ proc vktitle*(): string =
 
 #===== longpoll =====
 
-proc longpollParseResp(json: string): longpollResp =
+proc parseLongpollUpdates(arr: seq[JsonNode]) = 
+  discard #todo parse updates
+
+
+proc longpollParseResp(json: string): longpollResp {.thread.} =
   var
     o = parseJson(json)
     fail = -1
@@ -70,16 +88,51 @@ proc longpollParseResp(json: string): longpollResp =
   if hasKey(o, "failed"): 
     fail = getNum(o["failed"]).int32
   else:
-    ts = getNum(o["ts"]).int32
     if hasKey(o, "updates"):
-      discard #TODO parse updates
+      acquire(threadLock)
+      echo(json)
+      parseLongpollUpdates(getElems(o["updates"]))
+      release(threadLock)
+  if hasKey(o, "ts"):
+    ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
 
-proc longpollAsync(info: longpollInfo) = 
+proc longpollRoutine(info: longpollInfo) {.thread.} = 
   var currTs = info.ts
   while true:
     let
       lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
-      resp = get(lpUri)
+      resp = asyncGet(lpUri)
+      #todo check server response code\status
+      lpresp = longpollParseResp(resp.body)
+    if lpresp.failed != -1:
+      if lpresp.failed != 1:
+        break #get new server
+    currTs = lpresp.ts
+
+proc getLongpollInfo(): longpollInfo {.thread.} = 
+  let o = trequest("messages,getLongPollServer", {"use_ssl":"1", "need_pts":"0"}.toTable)
+  return longpollInfo(
+    key: getStr(o["key"]),
+    server: getStr(o["server"]),
+    ts: getNum(o["ts"]).int32
+  )
+
+proc longpollAsync(dummy: int) {.thread.} =
+  while true:
+    longpollRoutine(getLongpollInfo())
+
+
+proc startLongpoll() = 
+  initLock(threadLock)
+  createThread(longpollThread, longpollAsync, dummyint)
+  joinThread(longpollThread)
 
 #===== api methods wrappers =====
+
+#TESTS
+let tok = readLine(stdin)
+SetToken(tok)
+startLongpoll()
+while true:
+  discard
