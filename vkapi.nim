@@ -39,11 +39,7 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-proc asyncGet(url: string): Response {.async.} =
-  let
-    client = newAsyncHttpClient()
-    resp = await client.request(url)
-  return resp
+
 
 proc request(methodname: string, vkparams: Table): string {.thread.} = 
   var url = vkmethod & methodname & "?"
