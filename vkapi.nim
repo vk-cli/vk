@@ -96,6 +96,13 @@ proc vkinit*() =
 
 #===== api methods wrappers =====
 
+proc vkcounter*(): int =
+  let rawjson = request("account.getCounters", {"filter": "messages"}.toTable, "Не могу загрузить счетчик сообщений")
+  if rawjson.hasKey("messages"):
+    return rawjson.getFields[0][1].num.int
+  else:
+    return 0
+
 proc vkusername*(id: int = 0): string = 
   if nameCache.hasKey(id): 
     let cached = nameCache[id]
@@ -146,7 +153,6 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         fromid = att["from"].num.int32
       let name = vkusername(fromid)
       #addMessage(name, text)
-
 
 proc longpollParseResp(json: string): longpollResp  =
   var

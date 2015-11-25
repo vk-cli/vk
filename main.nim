@@ -68,7 +68,7 @@ type
     title               : string
     menu, body, buffer  : seq[ListElement]
     dialog              : seq[Message]
-    maxname             : int
+    maxname, counter    : int
 
 proc nop(ListEl: var ListElement) = discard
 proc nopget(): seq[ListElement] = discard
@@ -219,7 +219,7 @@ proc regular(text: string) =
   resetAttributes()
 
 proc Statusbar() = 
-  selected(" 3 ✉ " & win.title[5..win.title.len] & "\n")
+  selected(" " & $win.counter & " ✉ " & win.title[5..win.title.len] & "\n")
 
 proc Controller() = 
   win.key = getch().ord
@@ -300,7 +300,7 @@ proc DrawBody() =
     setCursorPos(win.offset+2, 3+i)
     if i == win.active and win.section == RIGHT: selected(e.text)
     else: regular(e.text)
-  
+
 proc cli() = 
   while win.key notin kg_esc:
     clear()
@@ -328,6 +328,7 @@ when isMainModule:
   popFrom(config)
   vkinit()
   win.title = vkusername()
+  win.counter = vkcounter()
   init()
   cli()
   discard execCmd("tput cnorm")
