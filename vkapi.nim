@@ -1,9 +1,11 @@
 import osproc, strutils, json, httpclient, cgi, tables
-import locks, macros, asyncdispatch, asynchttpserver, strtabs
+import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times
 
 const 
   quitOnApiError  = true
   quitOnHttpError = true
+  conferenceIdStart = 2000000000
+  longpollRestartSleep = 2000
 
 type 
   API = object
@@ -18,8 +20,9 @@ type
 
 var 
   api = API()
-  longpollThread: Thread[int]
   threadLock: Lock
+  longpollAllowed = false
+  longpollChatid = 0
 
 let 
   vkmethod   = "https://api.vk.com/method/"
@@ -109,3 +112,76 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
   return friends 
 
 # proc vkmusic(): seq[tuple[track: string, duration: int, link: string]] = 
+
+#===== longpoll =====
+
+proc parseLongpollUpdates(arr: seq[JsonNode]) = 
+  if longpollChatid < 1: return
+  for u in arr:
+    let q = u.getElems()
+    if q[0].num == 4: #message update
+      let
+        msgid = q[1].num.int32
+        chatid = q[3].num.int32
+        time = q[4].num.int32
+        text = q[6].str
+        att = q[7]
+      if chatid != longpollChatid: return
+      var fromid = chatid
+      if fromid >= conferenceIdStart:
+        fromid = att["from"].num.int32
+      let name = vkusername(fromid)
+      #addMessage(name, text)
+
+
+proc longpollParseResp(json: string): longpollResp  =
+  var
+    o = parseJson(json)
+    fail = -1
+    ts = -1
+  if hasKey(o, "failed"): 
+    fail = getNum(o["failed"]).int32
+  else:
+    if hasKey(o, "updates"):
+      acquire(threadLock)
+      echo(json)
+      parseLongpollUpdates(getElems(o["updates"]))
+      release(threadLock)
+  if hasKey(o, "ts"):
+    ts = getNum(o["ts"]).int32
+  return longpollResp(ts: ts, failed: fail)
+
+proc longpollRoutine(info: longpollInfo) = 
+  var currTs = info.ts
+  while true:
+    let
+      lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
+      resp = get(lpUri)
+      #todo check server response code\status
+      lpresp = longpollParseResp(resp.body)
+    if lpresp.failed != -1:
+      if lpresp.failed != 1:
+        break #get new server
+    currTs = lpresp.ts
+
+proc getLongpollInfo(): longpollInfo = 
+  let o = request("messages.getLongPollServer", {"use_ssl":"1", "need_pts":"0"}.toTable, "unable to get Longpoll server")
+  return longpollInfo(
+    key: getStr(o["key"]),
+    server: getStr(o["server"]),
+    ts: getNum(o["ts"]).int32
+  )
+
+proc longpollAsync*() {.thread,gcsafe.} =
+  while true:
+    if longpollAllowed: longpollRoutine(getLongpollInfo())
+    sleep(longpollRestartSleep)
+
+proc startLongpoll*() = 
+  initLock(threadLock)
+  longpollAllowed = true
+
+proc setLongpollChat*(chatid: int, conference = false) = 
+  var cid = chatid
+  if conference: cid += conferenceIdStart
+  longpollChatid = chatid
