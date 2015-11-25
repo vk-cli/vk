@@ -65,16 +65,16 @@ proc vktitle*(): string =
   api.userid = json["id"].num.int
   return json["first_name"].str & " " & json["last_name"].str 
 
-proc vkfriends*(): seq[tuple[string:string]] = 
+proc vkfriends*(): seq[tuple[fullname: string, id: string]] = 
   let
-    response = request("friends.get", {"user_id": $api.user_id, "order": "hints", "fields": "first_name, last_name"}.toTable)
+    response = request("friends.get", {"user_id": $api.user_id, "order": "hints", "fields": "first_name"}.toTable)
     json = parse(response).getFields[1][1]
   if "error" in response: quit("Не могу загрузить друзей", QuitSuccess)
   var
-    friends = newSeq[tuple[string:string]](0)
+    friends = newSeq[tuple[fullname: string, id: string]](0)
     status = "  "
   for fr in json:
-    if fr["online"].num == 1: status = "⚫ "
+    if fr["online"].bval: status = "⚫ "
     let fullname = status & fr["first_name"].str & " " & fr["last_name"].str
-    friends.add(tuple[fullname: fr["id"].str])
+    friends.add((fullname, fr["id"].str))
   return friends
