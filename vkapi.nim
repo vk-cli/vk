@@ -139,6 +139,28 @@ proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
     music.add((trackname, trackduration, url))
   return music
 
+proc vkdialogs*(): seq[tuple[dialog: string, id: int]] = 
+  let
+    json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs")
+    count = json["count"].num.int32
+    items = newSeq[tuple[dialog: string, id: int]](0)
+  if count > 0:
+    let rawitems = json["items"].getElems()
+    for d in rawitems:
+      let m = d["message"]
+      var
+        st = ""
+        dlgid = 0
+      if not m["read_state"].bval: st &= "+ "
+      if m.hasKey("chat_id"):
+        dlgid = conferenceIdStart + m["chat_id"].num.int32
+        st &= m["title"].str
+      else:
+        dlgid = m["user_id"].num.int32
+        st &= vkusername(dlgid)
+      items.add((st, dlgid))
+  return items
+
 #===== longpoll =====
 
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
