@@ -18,16 +18,12 @@ type
   longpollResp = object
     failed, ts: int
 
-  nameCacheItem = object
-    name: string
-    color: int
-
 var 
   api = API()
   threadLock: Lock
   longpollAllowed = false
   longpollChatid = 0
-  nameCache = initTable[int, nameCacheItem]()
+  nameCache = initTable[int, string]()
 
 let 
   vkmethod   = "https://api.vk.com/method/"
@@ -105,8 +101,7 @@ proc vkcounter*(): int =
 
 proc vkusername*(id: int = 0): string = 
   if nameCache.hasKey(id): 
-    let cached = nameCache[id]
-    return cached.name
+    return nameCache[id]
 
   var rawjson: JsonNode
   if id == 0: rawjson = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
@@ -115,9 +110,8 @@ proc vkusername*(id: int = 0): string =
     json = rawjson[0]
     name = json["first_name"].str & " " & json["last_name"].str
     id = json["id"].num.int
-    color = 1
   if id == 0: api.userid = id
-  nameCache.add(id, nameCacheItem(name: name, color: color))
+  nameCache.add(id, name)
   return name
 
 proc vkfriends*(): seq[tuple[name: string, id: int]] = 
