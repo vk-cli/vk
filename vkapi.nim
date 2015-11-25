@@ -89,18 +89,12 @@ proc vkinit*() =
 #===== api methods wrappers =====
 
 proc vkusername*(id: int = 0): string = 
-  if id == 0:
-    let
-      rawjson = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
-      json    = rawjson[0]
-    api.userid = json["id"].num.int
-    return json["first_name"].str & " " & json["last_name"].str
-  else:
-    let
-      rawjson = request("users.get", {"user_ids": $id, "name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
-      json    = rawjson[0]
-    api.userid = json["id"].num.int
-    return json["first_name"].str & " " & json["last_name"].str
+  var rawjson: JsonNode
+  if id == 0: rawjson = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
+  else: rawjson = request("users.get", {"user_ids": $id, "name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
+  let json = rawjson[0]
+  api.userid = json["id"].num.int
+  return json["first_name"].str & " " & json["last_name"].str
 
 proc vkfriends*(): seq[tuple[name: string, id: int]] = 
   let
