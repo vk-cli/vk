@@ -28,7 +28,7 @@ let
 #===== api mechanics =====
 
 proc checkError(json: JsonNode): string =
-  if "error" in json: 
+  if json.hasKey("error"): 
     let errobj = json["error"]
     if errobj.hasKey("error_text"): return errobj["error_text"].str
     if errobj.hasKey("error_msg"): return errobj["error_msg"].str
