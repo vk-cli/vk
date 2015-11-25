@@ -80,8 +80,7 @@ proc vkinit*() =
     response = request("users.get", {"name_case":"Nom"}.toTable)
     json = parse(response)
   if handleError(json) == false: 
-    echo("Неверный access token", QuitSuccess)
-    return
+    quit("Неверный access token", QuitSuccess)
 
 #===== api methods wrappers =====
 
@@ -90,8 +89,7 @@ proc vktitle*(): string =
     response = request("users.get", {"name_case":"Nom"}.toTable)
     json = parse(response)[0]
   if handleError(json) == false:
-    echo("Не могу получить юзернэйм", QuitSuccess)
-    return
+    quit("Не могу получить юзернэйм", QuitSuccess)
   api.userid = json["id"].num.int
   return json["first_name"].str & " " & json["last_name"].str 
 
@@ -100,8 +98,7 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     response = request("friends.get", {"user_id": $api.user_id, "order": "hints", "fields": "first_name"}.toTable)
     rawjson     = parse(response)
   if handleError(rawjson) == false:
-    echo("Не могу загрузить друзей", QuitSuccess)
-    return
+    quit("Не могу загрузить друзей", QuitSuccess)
   let json = rawjson.getFields[1][1]
   var friends = newSeq[tuple[name: string, id: int]](0)
   for fr in json:
