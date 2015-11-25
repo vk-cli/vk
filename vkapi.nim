@@ -118,7 +118,18 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
-# proc vkmusic(): seq[tuple[track: string, duration: int, link: string]] = 
+proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
+  let
+    rawjson = request("audio.get", {"user_id": $api.user_id, "need_user": "0"}.toTable, "Не могу загрузить музыку")
+    json    = rawjson.getFields[1][1]
+  var music = newSeq[tuple[track: string, duration: int, link: string]](0)
+  for track in json:
+    let
+      trackname     = track["artist"].str & " - " & track["title"].str
+      trackduration = track["duration"].num.int
+      url           = track["url"].str
+    music.add((trackname, trackduration, url))
+  return music
 
 #===== longpoll =====
 

@@ -162,18 +162,23 @@ proc GetDialogs(): seq[ListElement] =
       chats.add(spawnLE("  Chat " & $e, "link", nop, nopget))
   return chats
 
+proc DurationToStr(n: int): string = 
+  var sec = $(n mod 60)
+  if sec.len == 1: sec = "0" & sec
+  return $(n div 60) & ":" & $sec
+
 proc GetMusic(): seq[ListElement] = 
   var music = newSeq[ListElement](0)
-  for e in 1..60:
-    var track: string
-    if e == 7:
-      track = " ▶  Artist - Track " & $e
+  for mus in vkmusic():
+    var
+      name: string
+      durationText = DurationToStr(mus.duration)
+      sp = win.x-win.offset-runeLen(mus.track)-9
+    if sp < 0:
+      name = "   " & mus.track
     else:
-      track = "    Artist - Track " & $e
-    if e == 7:
-      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", ChangeState, nopget))
-    else:
-      music.add(spawnLE(track & spaces(win.x-win.offset-runeLen(track)-7) & "13:37", "link", nop, nopget))
+      name = "   " & mus.track & spaces(sp) & durationText
+    music.add(spawnLE(name, mus.link, nop, nopget))
   return music
 
 proc GenerateSettings(): seq[ListElement] = 
