@@ -23,6 +23,7 @@ var
   threadLock: Lock
   longpollAllowed = false
   longpollChatid = 0
+  nameCache = initTable[int, string]()
 
 let 
   vkmethod   = "https://api.vk.com/method/"
@@ -99,16 +100,23 @@ proc vkcounter*(): int =
     return 0
 
 proc vkusername*(id: int = 0): string = 
+  if nameCache.hasKey(id): 
+    return nameCache[id]
+
   var rawjson: JsonNode
   if id == 0: rawjson = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
   else: rawjson = request("users.get", {"user_ids": $id, "name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
-  let json = rawjson[0]
-  api.userid = json["id"].num.int
-  return json["first_name"].str & " " & json["last_name"].str
+  let
+    json = rawjson[0]
+    name = json["first_name"].str & " " & json["last_name"].str
+    id = json["id"].num.int
+  if id == 0: api.userid = id
+  nameCache.add(id, name)
+  return name
 
 proc vkfriends*(): seq[tuple[name: string, id: int]] = 
   let
-    rawjson = request("friends.get", {"user_id": $api.user_id, "order": "hints", "fields": "first_name"}.toTable, "Не могу загрузить друзей")
+    rawjson = request("friends.get", {"user_id": $api.userid, "order": "hints", "fields": "first_name"}.toTable, "Не могу загрузить друзей")
     json    = rawjson.getFields[1][1]
   var friends = newSeq[tuple[name: string, id: int]](0)
   for fr in json:
