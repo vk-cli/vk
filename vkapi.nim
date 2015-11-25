@@ -2,7 +2,7 @@ import osproc, strutils, json, httpclient, cgi, tables
 import locks, macros, asyncdispatch, asynchttpserver, strtabs
 
 const
-  quitOnApiError = false
+  quitOnApiError = true
   quitOnHttpError = true
 
 type
