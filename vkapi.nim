@@ -103,10 +103,10 @@ proc vkcounter*(): int =
   else:
     return 0
 
-proc vkusername*(id: int = 0): tuple[name: string, color: int] = 
+proc vkusername*(id: int = 0): string = 
   if nameCache.hasKey(id): 
     let cached = nameCache[id]
-    return (cached.name, cached.color)
+    return cached.name
 
   var rawjson: JsonNode
   if id == 0: rawjson = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
@@ -118,7 +118,7 @@ proc vkusername*(id: int = 0): tuple[name: string, color: int] =
     color = 1
   if id == 0: api.userid = id
   nameCache.add(id, nameCacheItem(name: name, color: color))
-  return (name, color)
+  return name
 
 proc vkfriends*(): seq[tuple[name: string, id: int]] = 
   let
@@ -151,8 +151,8 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
       var fromid = chatid
       if fromid >= conferenceIdStart:
         fromid = att["from"].num.int32
-      let user = vkusername(fromid)
-      #addMessage(user.name, user.color, text)
+      let name = vkusername(fromid)
+      #addMessage(name, text)
 
 proc longpollParseResp(json: string): longpollResp  =
   var
