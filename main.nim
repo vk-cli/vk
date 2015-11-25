@@ -327,7 +327,7 @@ when isMainModule:
   var config = load()
   popFrom(config)
   vkinit()
-  win.title = vktitle()
+  win.title = vkusername()
   init()
   cli()
   discard execCmd("tput cnorm")

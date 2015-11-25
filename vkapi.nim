@@ -1,11 +1,11 @@
 import osproc, strutils, json, httpclient, cgi, tables
 import locks, macros, asyncdispatch, asynchttpserver, strtabs
 
-const
-  quitOnApiError = false
+const 
+  quitOnApiError  = true
   quitOnHttpError = true
 
-type
+type 
   API = object
     token, username: string
     userid: int
@@ -64,42 +64,48 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table): string = 
+proc request(methodname: string, vkparams: Table, error_msg: string): JsonNode = 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
   url &= "v=" & apiversion & "&access_token=" & api.token
+  var response: string
   try:
-    return getContent(url)
+    response = getContent(url)
   except:
     handleHttpError(getCurrentExceptionMsg())
+  let 
+    rawjson = parse(response)
+  if not handleError(rawjson):
+    echo(error_msg, QuitSuccess)
+    return
+  else:
+    return rawjson
 
 proc vkinit*() = 
   SetToken(api.token)
-  let
-    response = request("users.get", {"name_case":"Nom"}.toTable)
-    json = parse(response)
-  if handleError(json) == false: 
-    quit("Неверный access token", QuitSuccess)
+  discard request("users.get", {"name_case":"Nom"}.toTable, "Неверный access token")
 
 #===== api methods wrappers =====
 
-proc vktitle*(): string = 
-  let 
-    response = request("users.get", {"name_case":"Nom"}.toTable)
-    json = parse(response)[0]
-  if handleError(json) == false:
-    quit("Не могу получить юзернэйм", QuitSuccess)
-  api.userid = json["id"].num.int
-  return json["first_name"].str & " " & json["last_name"].str 
+proc vkusername*(id: int = 0): string = 
+  if id == 0:
+    let
+      rawjson = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
+      json    = rawjson[0]
+    api.userid = json["id"].num.int
+    return json["first_name"].str & " " & json["last_name"].str
+  else:
+    let
+      rawjson = request("users.get", {"user_ids": $id, "name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
+      json    = rawjson[0]
+    api.userid = json["id"].num.int
+    return json["first_name"].str & " " & json["last_name"].str
 
 proc vkfriends*(): seq[tuple[name: string, id: int]] = 
   let
-    response = request("friends.get", {"user_id": $api.user_id, "order": "hints", "fields": "first_name"}.toTable)
-    rawjson     = parse(response)
-  if handleError(rawjson) == false:
-    quit("Не могу загрузить друзей", QuitSuccess)
-  let json = rawjson.getFields[1][1]
+    rawjson = request("friends.get", {"user_id": $api.user_id, "order": "hints", "fields": "first_name"}.toTable, "Не могу загрузить друзей")
+    json    = rawjson.getFields[1][1]
   var friends = newSeq[tuple[name: string, id: int]](0)
   for fr in json:
     var status = "  "
@@ -107,3 +113,5 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     let name = status & fr["first_name"].str & " " & fr["last_name"].str
     friends.add((name, fr["id"].num.int))
   return friends 
+
+# proc vkmusic(): seq[tuple[track: string, duration: int, link: string]] = 
