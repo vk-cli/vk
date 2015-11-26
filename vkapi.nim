@@ -51,10 +51,6 @@ proc handleHttpError(emsg: string) =
   echo("Http error: " & emsg)
   if quitOnHttpError: quit("Проверьте интернет соединение", QuitSuccess)
 
-proc parse(response: string): JsonNode = 
-  let json = parseJson(response)
-  return json["response"]
-
 proc SetToken*(tk: string = "") = 
   if tk.len == 0:
     try:
@@ -68,7 +64,7 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table, error_msg: string): JsonNode = 
+proc request(methodname: string, vkparams: Table, error_msg: string, returnPure = false): JsonNode = 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
@@ -78,13 +74,13 @@ proc request(methodname: string, vkparams: Table, error_msg: string): JsonNode =
     response = getContent(url)
   except:
     handleHttpError(getCurrentExceptionMsg())
-  let 
-    rawjson = parse(response)
-  if not handleError(rawjson):
+  let pjson = parseJson(response)
+  if returnPure: return pjson
+  if not handleError(pjson):
     echo(error_msg, QuitSuccess)
     return
   else:
-    return rawjson
+    return pjson["response"]
 
 proc vkinit*() = 
   SetToken(api.token)
