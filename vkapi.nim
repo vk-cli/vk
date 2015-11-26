@@ -68,10 +68,14 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table, error_msg: string): JsonNode = 
+proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1): JsonNode= 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
+
+  if offset > -1 and count > -1: 
+    url &= "offset=" & $offset & "&" & "count=" & $count & "&"
+
   url &= "v=" & apiversion & "&access_token=" & api.token
   var response: string
   try:
@@ -85,6 +89,12 @@ proc request(methodname: string, vkparams: Table, error_msg: string): JsonNode =
     return
   else:
     return rawjson
+
+proc getNextOffset(offset: int, argcount: int, count: int): int = 
+  if offset+argcount < count:
+    return offset+argcount
+  else:
+    return 0
 
 proc vkinit*() = 
   SetToken(api.token)
@@ -139,12 +149,13 @@ proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
     music.add((trackname, trackduration, url))
   return music
 
-proc vkdialogs*(): seq[tuple[dialog: string, id: int]] = 
+proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string, id: int]], next_offset: int] = 
   let
-    json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs")
-    count = json["count"].num.int32
+    json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs", offset, count)
+    allcount = json["count"].num.int32
+    noffset = getNextOffset(offset, count, allcount)
   var items = newSeq[tuple[dialog: string, id: int]](0)
-  if count > 0:
+  if allcount > 0:
     let rawitems = json["items"].getElems()
     for d in rawitems:
       let m = d["message"]
@@ -159,7 +170,7 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
         dlgid = m["user_id"].num.int32
         st &= vkusername(dlgid)
       items.add((st, dlgid))
-  return items
+  return (items, noffset)
 
 #===== longpoll =====
 
