@@ -143,7 +143,7 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
   let
     json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs")
     count = json["count"].num.int32
-    items = newSeq[tuple[dialog: string, id: int]](0)
+  var items = newSeq[tuple[dialog: string, id: int]](0)
   if count > 0:
     let rawitems = json["items"].getElems()
     for d in rawitems:
@@ -151,7 +151,7 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
       var
         st = ""
         dlgid = 0
-      if not m["read_state"].bval: st &= "+ "
+      if not m["read_state"].bval: st &= "⚫ "
       if m.hasKey("chat_id"):
         dlgid = conferenceIdStart + m["chat_id"].num.int32
         st &= m["title"].str
