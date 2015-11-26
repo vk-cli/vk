@@ -185,8 +185,8 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
 
     let unames = vkusernames(uids)
     for p in preitems:
-      var dst = ""
-      if p.unread: dst &= "⚫ "
+      var dst = "  "
+      if p.unread: dst = "⚫ "
       if p.getname:
         if not unames.hasKey(p.id):
           dst &= "unable to get name: id " & $p.id
