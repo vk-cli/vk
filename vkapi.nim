@@ -151,7 +151,7 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
       var
         st = ""
         dlgid = 0
-      if not m["read_state"].bval: st &= "⚫ "
+      if d.hasKey("unread") and d["unread"].bval: st &= "⚫ "
       if m.hasKey("chat_id"):
         dlgid = conferenceIdStart + m["chat_id"].num.int32
         st &= m["title"].str
