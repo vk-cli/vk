@@ -155,11 +155,8 @@ proc GetFriends(): seq[ListElement] =
 
 proc GetDialogs(): seq[ListElement] = 
   var chats = newSeq[ListElement](0)
-  for e in 1..60:
-    if e in [1,3,4]:
-      chats.add(spawnLE("⚫ Chat " & $e, "link", chat, nopget))
-    else:
-      chats.add(spawnLE("  Chat " & $e, "link", nop, nopget))
+  for msg in vkdialogs():
+    chats.add(spawnLE(msg.dialog, $msg.id, nop, nopget))
   return chats
 
 proc DurationToStr(n: int): string = 
