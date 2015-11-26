@@ -1,4 +1,4 @@
-import osproc, strutils, json, httpclient, cgi, tables
+import osproc, strutils, json, httpclient, cgi, tables, sequtils
 import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times
 
 const 
@@ -95,20 +95,39 @@ proc vkcounter*(): int =
   else:
     return 0
 
-proc vkusername*(id: int = 0): string = 
-  if nameCache.hasKey(id): 
-    return nameCache[id]
+proc vkusernames*(ids: seq[int]): Table[int, string] = 
+  var
+    rtnames = initTable[int, string]()
+    fids = newSeq[int](0)
 
-  var rawjson: JsonNode
-  if id == 0: rawjson = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
-  else: rawjson = request("users.get", {"user_ids": $id, "name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
+  for w in ids:
+    if nameCache.hasKey(w): 
+      rtnames[w] = nameCache[w]
+    else:
+      fids.add(w)
+
   let
-    json = rawjson[0]
-    name = json["first_name"].str & " " & json["last_name"].str
-    id = json["id"].num.int
-  if id == 0: api.userid = id
-  nameCache.add(id, name)
-  return name
+    jids = map(fids, proc(x: int): string = return $x)
+    sids = join(jids, ",")
+
+  let rawjson = request("users.get", {"user_ids": sids, "name_case":"Nom"}.toTable, "Не могу получить юзернэйм")
+  let jelems = rawjson.getElems()
+  for j in jelems:
+    let
+      name = j["first_name"].str & " " & j["last_name"].str
+      id = j["id"].num.int32
+    rtnames[id] = name
+    nameCache.add(id, name)
+  return rtnames
+
+proc vkusername*(id: int = 0): string = 
+  if id == 0: 
+    let j = request("users.get", {"name_case":"Nom"}.toTable, "Не могу получить юзернэйм").elems[0]
+    api.userid = j["id"].num.int
+    return j["first_name"].str & " " & j["last_name"].str
+  else:
+    return vkusernames(@[id])[id]
+
 
 proc vkfriends*(): seq[tuple[name: string, id: int]] = 
   let
@@ -139,7 +158,10 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
   let
     json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs")
     count = json["count"].num.int32
-  var items = newSeq[tuple[dialog: string, id: int]](0)
+  var
+    uids = newSeq[int](0)
+    preitems = newSeq[tuple[title: string, unread: bool, getname: bool, id: int]](0)
+    items = newSeq[tuple[dialog: string, id: int]](0)
   if count > 0:
     let rawitems = json["items"].getElems()
     for d in rawitems:
@@ -147,14 +169,33 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
       var
         st = ""
         dlgid = 0
-      if d.hasKey("unread") and d["unread"].bval: st &= "⚫ "
+        unreadf = false
+        getname = false
+      if d.hasKey("unread"): 
+        if d["unread"].num.int32 > 0: unreadf = true
       if m.hasKey("chat_id"):
         dlgid = conferenceIdStart + m["chat_id"].num.int32
-        st &= m["title"].str
+        st = m["title"].str
       else:
         dlgid = m["user_id"].num.int32
-        st &= vkusername(dlgid)
-      items.add((st, dlgid))
+        st = ""
+        getname = true
+        uids.add(dlgid)
+      preitems.add((st, unreadf, getname, dlgid))
+
+    let unames = vkusernames(uids)
+    for p in preitems:
+      var dst = ""
+      if p.unread: dst &= "⚫ "
+      if p.getname:
+        if not unames.hasKey(p.id):
+          dst &= "unable to get name: id " & $p.id
+        else:
+          dst &= unames[p.id]
+      else:
+        dst &= p.title
+      items.add((dst, p.id))
+
   return items
 
 #===== longpoll =====
