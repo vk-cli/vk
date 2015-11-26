@@ -136,7 +136,7 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
   var friends = newSeq[tuple[name: string, id: int]](0)
   for fr in json:
     var status = "  "
-    if fr["online"].bval: status = "⚫ "
+    if fr["online"].num == 1: status = "⚫ "
     let name = status & fr["first_name"].str & " " & fr["last_name"].str
     friends.add((name, fr["id"].num.int))
   return friends 
