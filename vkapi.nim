@@ -90,6 +90,7 @@ proc vkinit*() =
 
 proc vkcounter*(): int =
   let rawjson = request("account.getCounters", {"filter": "messages"}.toTable, "Не могу загрузить счетчик сообщений")
+  if rawjson.kind != JObject: return 0
   if rawjson.hasKey("messages"):
     return rawjson.getFields[0][1].num.int
   else:
