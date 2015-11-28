@@ -10,3 +10,9 @@ A console client for vk.com written in Nim
 
 # Workflow
 [![demo](https://asciinema.org/a/9xk3udeee2xf7m31ngpwxzc57.png)](https://asciinema.org/a/9xk3udeee2xf7m31ngpwxzc57?autoplay=1)
+
+# Compilation
+
+debug:
+>nim c -d:ssl --threads:on -r --verbosity:0 -d:debug --opt:speed --threadAnalysis:off main.nim 
+
