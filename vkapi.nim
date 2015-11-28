@@ -18,6 +18,10 @@ type
   longpollResp = object
     failed, ts: int
 
+  vkmessage = object
+    msgid, fromid: int
+    msg: string
+
 var 
   api = API()
   threadLock: Lock
@@ -64,11 +68,7 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-<<<<<<< HEAD
-proc request(methodname: string, vkparams: Table, error_msg: string, returnPure = false): JsonNode = 
-=======
 proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1): JsonNode= 
->>>>>>> vkapi-test2
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
@@ -156,6 +156,18 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
+proc vkhistory*(userid: int, offset = 0, count = 200): vkmessage = 
+  let
+    json = request("messages.getHistory", {"count":($count)}.toTable, "Unable to get dialogs")
+  var
+    uids = newSeq[int](0)
+    preitems = newSeq[tuple[title: string, unread: bool, getname: bool, id: int]](0)
+    items = newSeq[tuple[dialog: string, id: int]](0)
+    allcount = json["count"].num.int32
+    noffset = getNextOffset(offset, count, allcount)
+  if allcount > 0:
+
+
 proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
   let
     rawjson = request("audio.get", {"user_id": $api.user_id, "need_user": "0"}.toTable, "Не могу загрузить музыку")
@@ -171,21 +183,14 @@ proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
 
 proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string, id: int]], next_offset: int] = 
   let
-<<<<<<< HEAD
-    json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs")
-    count = json["count"].num.int32
+    json = request("messages.getDialogs", {"count":($count)}.toTable, "Unable to get dialogs")
   var
     uids = newSeq[int](0)
     preitems = newSeq[tuple[title: string, unread: bool, getname: bool, id: int]](0)
     items = newSeq[tuple[dialog: string, id: int]](0)
-  if count > 0:
-=======
-    json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs", offset, count)
     allcount = json["count"].num.int32
     noffset = getNextOffset(offset, count, allcount)
-  var items = newSeq[tuple[dialog: string, id: int]](0)
   if allcount > 0:
->>>>>>> vkapi-test2
     let rawitems = json["items"].getElems()
     for d in rawitems:
       let m = d["message"]
@@ -201,7 +206,6 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
         st = m["title"].str
       else:
         dlgid = m["user_id"].num.int32
-<<<<<<< HEAD
         st = ""
         getname = true
         uids.add(dlgid)
@@ -220,12 +224,7 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
         dst &= p.title
       items.add((dst, p.id))
 
-  return items
-=======
-        st &= vkusername(dlgid)
-      items.add((st, dlgid))
   return (items, noffset)
->>>>>>> vkapi-test2
 
 #===== longpoll =====
 
