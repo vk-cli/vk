@@ -1,5 +1,5 @@
 import osproc, strutils, json, httpclient, cgi, tables, sequtils
-import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times
+import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, algorithm
 
 const 
   quitOnApiError  = true
@@ -19,8 +19,8 @@ type
     failed, ts: int
 
   vkmessage = object
-    msgid, fromid: int
-    msg: string
+    msgid, fromid, chatid: int
+    msg, name: string
 
 var 
   api = API()
@@ -68,7 +68,7 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1): JsonNode= 
+proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1, returnPure = false): JsonNode= 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
@@ -156,16 +156,38 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
-proc vkhistory*(userid: int, offset = 0, count = 200): vkmessage = 
+proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessage], next_offset: int] = 
   let
-    json = request("messages.getHistory", {"count":($count)}.toTable, "Unable to get dialogs")
+    json = request("messages.getHistory", {"user_id":($userid), "rev":"0"}.toTable, "Unable to get msghistory", offset, count)
   var
     uids = newSeq[int](0)
-    preitems = newSeq[tuple[title: string, unread: bool, getname: bool, id: int]](0)
-    items = newSeq[tuple[dialog: string, id: int]](0)
+    items = newSeq[vkmessage](0)
+    hitems = newSeq[tuple[msgid: int, fromid: int, body: string]](0)
     allcount = json["count"].num.int32
     noffset = getNextOffset(offset, count, allcount)
   if allcount > 0:
+    let ritems = json["items"]
+    for r in ritems:
+      var
+        qmsgid = r["id"].num.int
+        qfromid = r["from_id"].num.int
+        qbody = r["body"].str
+      hitems.add((qmsgid, qfromid, qbody)) 
+      uids.add(qfromid)
+    let names = vkusernames(uids)
+    for p in hitems:
+      let fid = p.fromid
+      items.add(vkmessage(
+        msgid: p.msgid, fromid: fid, msg: p.body,
+        chatid: userid,
+        name: names[fid]
+        ))
+  return (items.reversed(), noffset)
+
+proc testsss*() = 
+  for h in vkhistory(2000000008, 0, 20).items:
+    echo(h.name & " " & h.msg)
+  quit("huj", QuitSuccess)
 
 
 proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
@@ -183,10 +205,10 @@ proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
 
 proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string, id: int]], next_offset: int] = 
   let
-    json = request("messages.getDialogs", {"count":($count)}.toTable, "Unable to get dialogs")
+    json = request("messages.getDialogs", initTable[string, string](), "Unable to get dialogs", offset, count)
   var
-    uids = newSeq[int](0)
     preitems = newSeq[tuple[title: string, unread: bool, getname: bool, id: int]](0)
+    uids = newSeq[int](0)
     items = newSeq[tuple[dialog: string, id: int]](0)
     allcount = json["count"].num.int32
     noffset = getNextOffset(offset, count, allcount)

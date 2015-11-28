@@ -155,7 +155,7 @@ proc GetFriends(): seq[ListElement] =
 
 proc GetDialogs(): seq[ListElement] = 
   var chats = newSeq[ListElement](0)
-  for msg in vkdialogs():
+  for msg in vkdialogs().items:
     chats.add(spawnLE(msg.dialog, $msg.id, nop, nopget))
   return chats
 
@@ -331,6 +331,7 @@ when isMainModule:
   vkinit()
   win.title = vkusername()
   win.counter = vkcounter()
+  testsss()
   init()
   cli()
   discard execCmd("tput cnorm")
