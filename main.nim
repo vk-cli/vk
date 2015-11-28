@@ -328,6 +328,9 @@ proc updCounter() =
   win.counter = vkcounter()
   #Statusbar()
 
+proc newMessage(m: vkmessage) = 
+  discard #todo implement longpoll
+
 #export updCounter
 
 proc entryPoint() = 
@@ -349,5 +352,5 @@ proc entryPoint() =
 
 when isMainModule: 
   spawn entryPoint()
-  spawn longpollAsync(updCounter)
+  spawn longpollAsync(updCounter, newMessage)
   sync()

@@ -18,7 +18,7 @@ type
   longpollResp = object
     failed, ts: int
 
-  vkmessage = object
+  vkmessage* = object
     msgid, fromid, chatid: int
     msg, name: string
 
@@ -250,7 +250,7 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
 
 #===== longpoll =====
 
-proc parseLongpollUpdates(arr: seq[JsonNode]) = 
+proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(m: vkmessage)) = 
   if longpollChatid < 1: return
   for u in arr:
     let q = u.getElems()
@@ -266,10 +266,13 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
       if fromid >= conferenceIdStart:
         fromid = att["from"].num.int32
       let name = vkusername(fromid)
-      #addMessage(name, text)
+      longmsg(vkmessage(
+        msgid: msgid, chatid: chatid, fromid: fromid,
+        msg: text, name: name
+        ))
       #echo(name &" "& text)
 
-proc longpollParseResp(json: string, updc: proc()): longpollResp  =
+proc longpollParseResp(json: string, updc: proc(), longmsg: proc(m: vkmessage)): longpollResp  =
   var
     o = parseJson(json)
     fail = -1
@@ -281,20 +284,20 @@ proc longpollParseResp(json: string, updc: proc()): longpollResp  =
       acquire(threadLock)
       #echo(json)
       updc()
-      parseLongpollUpdates(getElems(o["updates"]))
+      parseLongpollUpdates(getElems(o["updates"]), longmsg)
       release(threadLock)
   if hasKey(o, "ts"):
     ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
 
-proc longpollRoutine(info: longpollInfo, updc: proc()) = 
+proc longpollRoutine(info: longpollInfo, updc: proc(), longmsg: proc(m: vkmessage)) = 
   var currTs = info.ts
   while true:
     let
       lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
       resp = get(lpUri)
       #todo check server response code\status
-      lpresp = longpollParseResp(resp.body, updc)
+      lpresp = longpollParseResp(resp.body, updc, longmsg)
     if lpresp.failed != -1:
       if lpresp.failed != 1:
         break #get new server
@@ -308,9 +311,9 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updc: proc()) {.thread,gcsafe.} =
+proc longpollAsync*(updc: proc(), longmsg: proc(m: vkmessage)) {.thread,gcsafe.} =
   while true:
-    if longpollAllowed: longpollRoutine(getLongpollInfo(), updc)
+    if longpollAllowed: longpollRoutine(getLongpollInfo(), updc, longmsg)
     sleep(longpollRestartSleep)
 
 proc startLongpoll*() = 
