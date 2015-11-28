@@ -1,4 +1,4 @@
-import osproc, strutils, json, httpclient, cgi, tables, sequtils
+import osproc, strutils, json, httpclient, cgi, tables, sequtils, main
 import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, algorithm
 
 const 
@@ -267,9 +267,9 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         fromid = att["from"].num.int32
       let name = vkusername(fromid)
       #addMessage(name, text)
-      echo(name &" "& text)
+      #echo(name &" "& text)
 
-proc longpollParseResp(json: string): longpollResp  =
+proc longpollParseResp(json: string, updc: proc()): longpollResp  =
   var
     o = parseJson(json)
     fail = -1
@@ -279,21 +279,22 @@ proc longpollParseResp(json: string): longpollResp  =
   else:
     if hasKey(o, "updates"):
       acquire(threadLock)
-      echo(json)
+      #echo(json)
+      updc()
       parseLongpollUpdates(getElems(o["updates"]))
       release(threadLock)
   if hasKey(o, "ts"):
     ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
 
-proc longpollRoutine(info: longpollInfo) = 
+proc longpollRoutine(info: longpollInfo, updc: proc()) = 
   var currTs = info.ts
   while true:
     let
       lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
       resp = get(lpUri)
       #todo check server response code\status
-      lpresp = longpollParseResp(resp.body)
+      lpresp = longpollParseResp(resp.body, updc)
     if lpresp.failed != -1:
       if lpresp.failed != 1:
         break #get new server
@@ -307,9 +308,9 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*() {.thread,gcsafe.} =
+proc longpollAsync*(updc: proc()) {.thread,gcsafe.} =
   while true:
-    if longpollAllowed: longpollRoutine(getLongpollInfo())
+    if longpollAllowed: longpollRoutine(getLongpollInfo(), updc)
     sleep(longpollRestartSleep)
 
 proc startLongpoll*() = 

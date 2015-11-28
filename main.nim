@@ -324,25 +324,30 @@ proc popFrom(config: Table) =
     SetToken(config["token"])
     win.color = Colors(parseInt(config["color"]))
 
-proc entryPoint() = 
-  when isMainModule: 
-    clear()
-    var config = load()
-    popFrom(config)
-    vkinit()
-    win.title = vkusername()
-    win.counter = vkcounter()
-    #testsss()
-    setLongpollChat(8, true)
-    startLongpoll()
-    while true: discard
-    init()
-    cli()
-    discard execCmd("tput cnorm")
-    pushTo(config)
-    save(config)
-    clear() 
+proc updCounter() = 
+  win.counter = vkcounter()
+  #Statusbar()
 
-spawn entryPoint()
-spawn longpollAsync()
-sync()
+#export updCounter
+
+proc entryPoint() = 
+  clear()
+  var config = load()
+  popFrom(config)
+  vkinit()
+  win.title = vkusername()
+  win.counter = vkcounter()
+  #testsss()
+  #setLongpollChat(8, true)
+  startLongpoll()
+  init()
+  cli()
+  discard execCmd("tput cnorm")
+  pushTo(config)
+  save(config)
+  clear() 
+
+when isMainModule: 
+  spawn entryPoint()
+  spawn longpollAsync(updCounter)
+  sync()
