@@ -267,6 +267,7 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         fromid = att["from"].num.int32
       let name = vkusername(fromid)
       #addMessage(name, text)
+      echo(name &" "& text)
 
 proc longpollParseResp(json: string): longpollResp  =
   var

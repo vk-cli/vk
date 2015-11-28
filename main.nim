@@ -1,4 +1,4 @@
-import osproc, os, terminal, strutils, unicode, tables
+import osproc, os, terminal, strutils, unicode, tables, threadpool
 from ncurses import initscr, getmaxyx, endwin, curs_set
 import vkapi, cfg
 
@@ -324,17 +324,25 @@ proc popFrom(config: Table) =
     SetToken(config["token"])
     win.color = Colors(parseInt(config["color"]))
 
-when isMainModule: 
-  clear()
-  var config = load()
-  popFrom(config)
-  vkinit()
-  win.title = vkusername()
-  win.counter = vkcounter()
-  testsss()
-  init()
-  cli()
-  discard execCmd("tput cnorm")
-  pushTo(config)
-  save(config)
-  clear() 
+proc entryPoint() = 
+  when isMainModule: 
+    clear()
+    var config = load()
+    popFrom(config)
+    vkinit()
+    win.title = vkusername()
+    win.counter = vkcounter()
+    #testsss()
+    setLongpollChat(8, true)
+    startLongpoll()
+    while true: discard
+    init()
+    cli()
+    discard execCmd("tput cnorm")
+    pushTo(config)
+    save(config)
+    clear() 
+
+spawn entryPoint()
+spawn longpollAsync()
+sync()
