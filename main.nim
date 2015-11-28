@@ -326,7 +326,7 @@ proc popFrom(config: Table) =
 
 proc updCounter() = 
   win.counter = vkcounter()
-  #Statusbar()
+  #todo redraw statusbar
 
 proc newMessage(m: vkmessage) = 
   discard #todo implement longpoll
