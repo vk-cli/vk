@@ -184,7 +184,14 @@ proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessag
         ))
   return (items.reversed(), noffset)
 
+proc vksend(peerid: int, msg: string): bool = 
+  if msg.len == 0: return false
+  let resp = request("messages.send", {"peer_id":($peerid), "message":msg}.toTable, "Unable to send message")
+  if resp.kind != JInt: return false
+  return true
+
 proc testsss*() = 
+  discard vksend(2000000008, "huj")
   for h in vkhistory(2000000008, 0, 20).items:
     echo(h.name & " " & h.msg)
   quit("huj", QuitSuccess)
