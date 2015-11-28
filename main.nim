@@ -349,6 +349,7 @@ proc entryPoint() =
   pushTo(config)
   save(config)
   clear() 
+  quit(QuitSuccess)
 
 when isMainModule: 
   spawn entryPoint()
