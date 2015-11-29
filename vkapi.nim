@@ -164,8 +164,8 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
-proc cropMsg(msg: string): seq[string] = 
-  if msg.len <= winx: return @[msg]
+proc cropMsg(msg: string, wmod: int = 0): seq[string] = 
+  if msg.len <= winx: return msg.splitLines()
   let lf = "\n".toRunes()[0]
   var
     tx = msg.toRunes()
@@ -175,7 +175,7 @@ proc cropMsg(msg: string): seq[string] =
     if tx[n+1] == lf: 
       cc = 0
       continue
-    if cc == winx:
+    if cc == (winx+wmod):
       cc = 0
       tx.insert("\n".toRunes(), n)
     else:
@@ -191,7 +191,7 @@ proc getFwdMessages(fm: seq[tuple[name: string, text: string]], p: vkmessage): s
     ta = newSeq[string](0)
   for f in fm:
     ta.add(fwdprefix & fwdname & f.name)
-    for l in cropMsg(f.text):
+    for l in cropMsg(f.text, -2):
       ta.add(fwdprefix & l)
 
   for t in ta:
