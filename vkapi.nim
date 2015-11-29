@@ -1,5 +1,6 @@
-import osproc, strutils, json, httpclient, cgi, tables, sequtils
-import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times
+import osproc, strutils, json, httpclient, cgi, tables, sequtils, re
+import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
+from future import `=>`
 
 const 
   quitOnApiError  = true
@@ -17,6 +18,16 @@ type
     ts: int
   longpollResp = object
     failed, ts: int
+
+  vkmessage* = object
+    msgid, fromid, chatid: int
+    msg, name: string
+    fwd: bool
+  vkpremsg = object
+    msgid, fromid: int
+    body: string
+    fwd: seq[tuple[uid: int, txt: string]]
+
 
 var 
   api = API()
@@ -64,10 +75,14 @@ proc SetToken*(tk: string = "") =
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table, error_msg: string, returnPure = false): JsonNode = 
+proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1, returnPure = false): JsonNode= 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
+
+  if offset > -1 and count > -1: 
+    url &= "offset=" & $offset & "&" & "count=" & $count & "&"
+
   url &= "v=" & apiversion & "&access_token=" & api.token
   var response: string
   try:
@@ -81,6 +96,12 @@ proc request(methodname: string, vkparams: Table, error_msg: string, returnPure 
     return
   else:
     return pjson["response"]
+
+proc getNextOffset(offset: int, argcount: int, count: int): int = 
+  if offset+argcount < count:
+    return offset+argcount
+  else:
+    return 0
 
 proc vkinit*() = 
   SetToken(api.token)
@@ -142,6 +163,118 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
+proc cropMsg(msg: string, maxw = 30): seq[string] = 
+  if msg.len <= maxw: return @[msg]
+  let lf = "\n".toRunes()[0]
+  var
+    tx = msg.toRunes()
+    cc = 0
+  for n in low(tx)..high(tx):
+    if n+1 == high(tx): break
+    if tx[n+1] == lf: 
+      cc = 0
+      continue
+    if cc == maxw:
+      cc = 0
+      tx.insert("\n".toRunes(), n)
+    else:
+      inc(cc)
+  return ($tx).splitLines()
+
+proc getFwdMessages(fm: seq[tuple[name: string, text: string]], p: vkmessage, maxw = 30): seq[vkmessage] = 
+  let
+    fwdprefix = "| "
+    fwdname = "➥ "
+  var
+    fs = newSeq[vkmessage](0) 
+    ta = newSeq[string](0)
+  for f in fm:
+    ta.add(fwdprefix & fwdname & f.name)
+    for l in cropMsg(f.text):
+      ta.add(fwdprefix & l)
+
+  for t in ta:
+    fs.add(vkmessage(
+      chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
+      name: "", fwd: true,
+      msg: t
+      ))
+  return fs
+
+proc getMessages(p: vkpremsg, userid: int, names: Table[int, string]): seq[vkmessage] = 
+  var qitems = newSeq[vkmessage](0)
+  let 
+    fid = p.fromid
+    cmsg = cropMsg(p.body)
+    tmsg = vkmessage(
+      msgid: p.msgid, fromid: fid, 
+      msg: cmsg[0],
+      chatid: userid,
+      name: names[fid],
+      fwd: false
+      )
+  qitems.add(tmsg)
+  for ml in 1..high(cmsg):
+    qitems.add(vkmessage(
+      msgid: p.msgid, fromid: fid, 
+      msg: cmsg[ml],
+      chatid: userid,
+      name: "",
+      fwd: false
+      ))
+
+  if p.fwd.len > 0:
+    var mfwds = newSeq[tuple[name: string, text: string]](0)
+    for fm in p.fwd:
+      mfwds.add((names[fm.uid], fm.txt))
+    for fs in getFwdMessages(mfwds, tmsg):
+      qitems.add(fs)
+  return qitems
+
+proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessage], next_offset: int] = 
+  let
+    json = request("messages.getHistory", {"user_id":($userid), "rev":"0"}.toTable, "Unable to get msghistory", offset, count)
+  var
+    uids = newSeq[int](0)
+    items = newSeq[vkmessage](0)
+    hitems = newSeq[vkpremsg](0)
+    allcount = json["count"].num.int32
+    noffset = getNextOffset(offset, count, allcount)
+  if allcount > 0:
+    let ritems = json["items"]
+    for r in ritems:
+      var
+        qmsgid = r["id"].num.int
+        qfromid = r["from_id"].num.int
+        qbody = r["body"].str
+        qfwd = newSeq[tuple[uid: int, txt: string]](0)
+
+      if r.hasKey("fwd_messages"):
+        for fm in r["fwd_messages"]:
+          let fuid = fm["user_id"].num.int
+          qfwd.add((fuid, fm["body"].str))
+          if not uids.contains(fuid): uids.add(fuid)
+
+      hitems.add(vkpremsg(msgid: qmsgid, fromid: qfromid, body: qbody, fwd: qfwd)) 
+      if not uids.contains(qfromid): uids.add(qfromid)
+    let names = vkusernames(uids)
+    for p in hitems:
+      items.insert(getMessages(p, userid, names), 0)
+  return (items, noffset)
+
+proc vksend(peerid: int, msg: string): bool = 
+  if msg.len == 0: return false
+  let resp = request("messages.send", {"peer_id":($peerid), "message":msg}.toTable, "Unable to send message")
+  if resp.kind != JInt: return false
+  return true
+
+proc testsss*() = 
+  #discard vksend(2000000008, "huj")115292057
+  for h in vkhistory(115292057, 0, 4).items:
+    echo(h.name & " " & h.msg)
+  quit("huj", QuitSuccess)
+
+
 proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
   let
     rawjson = request("audio.get", {"user_id": $api.user_id, "need_user": "0"}.toTable, "Не могу загрузить музыку")
@@ -155,15 +288,16 @@ proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
     music.add((trackname, trackduration, url))
   return music
 
-proc vkdialogs*(): seq[tuple[dialog: string, id: int]] = 
+proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string, id: int]], next_offset: int] = 
   let
-    json = request("messages.getDialogs", {"count":"200"}.toTable, "Unable to get dialogs")
-    count = json["count"].num.int32
+    json = request("messages.getDialogs", initTable[string, string](), "Unable to get dialogs", offset, count)
   var
-    uids = newSeq[int](0)
     preitems = newSeq[tuple[title: string, unread: bool, getname: bool, id: int]](0)
+    uids = newSeq[int](0)
     items = newSeq[tuple[dialog: string, id: int]](0)
-  if count > 0:
+    allcount = json["count"].num.int32
+    noffset = getNextOffset(offset, count, allcount)
+  if allcount > 0:
     let rawitems = json["items"].getElems()
     for d in rawitems:
       let m = d["message"]
@@ -197,29 +331,69 @@ proc vkdialogs*(): seq[tuple[dialog: string, id: int]] =
         dst &= p.title
       items.add((dst, p.id))
 
-  return items
+  return (items, noffset)
+
+proc vkmsgbyid(ids: seq[int]): seq[vkmessage] = 
+  let
+    i = ids.map(q => $q).join(",")
+    j = request("messages.getById", {"message_ids": i}.toTable, "unable to get messages")
+    items = j["items"].getElems()
+    names = vkusernames(items.map(q => q["user_id"].num.int))
+  var r = newSeq[vkmessage](0)
+  for q in items:
+    let fid = q["user_id"].num.int
+    r.add(vkmessage(
+      msgid: q["id"].num.int,
+      fromid: fid, chatid: -1,
+      msg: q["body"].str,
+      name: names[fid]
+    ))
+  return r
 
 #===== longpoll =====
 
-proc parseLongpollUpdates(arr: seq[JsonNode]) = 
+proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(name: string, msg: string)) = 
   if longpollChatid < 1: return
   for u in arr:
     let q = u.getElems()
     if q[0].num == 4: #message update
       let
-        msgid = q[1].num.int32
-        chatid = q[3].num.int32
-        time = q[4].num.int32
+        msgid = q[1].num.int
+        chatid = q[3].num.int
+        time = q[4].num.int
         text = q[6].str
         att = q[7]
       if chatid != longpollChatid: return
-      var fromid = chatid
+      #echo(att.pretty())
+      var
+        fromid = chatid
+        lfwd = newSeq[int](0)
+        qfwd = newSeq[tuple[uid: int, txt: string]](0)
+        vfwd = newseq[vkmessage](0)
       if fromid >= conferenceIdStart:
-        fromid = att["from"].num.int32
-      let name = vkusername(fromid)
-      #addMessage(name, text)
+        fromid = att["from"].str.parseInt()
 
-proc longpollParseResp(json: string): longpollResp  =
+      if att.hasKey("fwd"):
+        let
+          fwd = att["fwd"].str.split(",")
+        for ff in fwd:
+          let
+            b = ff.findBounds(re(r"\d+_"))
+            lst = b.last+1
+          if b.first == 0:
+            lfwd.add(parseInt(ff[lst..high(ff)]))
+        if lfwd.len > 0:
+          vfwd = vkmsgbyid(lfwd)
+          qfwd = vfwd.map(f => (f.fromid, f.msg))
+
+      var name = initTable[int, string]() 
+      for f in vfwd: name[f.fromid] = f.name
+      name[fromid] = vkusername(fromid)
+      let pre = vkpremsg(msgid: msgid, fromid: fromid, body: text, fwd: qfwd)
+      for sm in getMessages(pre, chatid, name):
+        longmsg(sm.name, sm.msg)
+
+proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, msg: string)): longpollResp  =
   var
     o = parseJson(json)
     fail = -1
@@ -229,21 +403,22 @@ proc longpollParseResp(json: string): longpollResp  =
   else:
     if hasKey(o, "updates"):
       acquire(threadLock)
-      echo(json)
-      parseLongpollUpdates(getElems(o["updates"]))
+      #echo(json)
+      updc()
+      parseLongpollUpdates(getElems(o["updates"]), longmsg)
       release(threadLock)
   if hasKey(o, "ts"):
     ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
 
-proc longpollRoutine(info: longpollInfo) = 
+proc longpollRoutine(info: longpollInfo, updc: proc(), longmsg: proc(name: string, msg: string)) = 
   var currTs = info.ts
   while true:
     let
       lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
       resp = get(lpUri)
       #todo check server response code\status
-      lpresp = longpollParseResp(resp.body)
+      lpresp = longpollParseResp(resp.body, updc, longmsg)
     if lpresp.failed != -1:
       if lpresp.failed != 1:
         break #get new server
@@ -257,9 +432,9 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*() {.thread,gcsafe.} =
+proc longpollAsync*(updc: proc(), longmsg: proc(name: string, msg: string)) {.thread,gcsafe.} =
   while true:
-    if longpollAllowed: longpollRoutine(getLongpollInfo())
+    if longpollAllowed: longpollRoutine(getLongpollInfo(), updc, longmsg)
     sleep(longpollRestartSleep)
 
 proc startLongpoll*() = 
@@ -269,4 +444,4 @@ proc startLongpoll*() =
 proc setLongpollChat*(chatid: int, conference = false) = 
   var cid = chatid
   if conference: cid += conferenceIdStart
-  longpollChatid = chatid
+  longpollChatid = cid
