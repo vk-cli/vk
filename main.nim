@@ -106,28 +106,12 @@ proc AlignBodyText() =
 proc chat(ListEl: var ListElement) = 
   win.body = newSeq[ListElement](0)
   win.buffer = newSeq[ListElement](0)
-  win.dialog = @[Message(name: "Unrelated Substance-Of-Melancholy", text: "kurwabot, behold!"),
-                 Message(name: "", text: "and u all wil fall!"),
-                 Message(name: "Konstantin Lariontyev", text: "я не шарю, курвабот топ в нынешнем состоянии"),
-                 Message(name: "Unrelated Substance-Of-Melancholy", text: "пиздос, ну"),
-                 Message(name: "", text: "| Unrelated Substance-Of-Melancholy"),
-                 Message(name: "", text: "| гони эскейпы, димка"),
-                 Message(name: "Dmitry Nikolaev", text: "мне впадлу"),
-                 Message(name: "Shin Bernadotte", text: "я лолка"),
-                 Message(name: "Vlad Balashenko", text: "http://cs628823.vk.me/v628823535/32c51/Gyv-Xs7WTZk.jpg"),
-                 Message(name: "Yulia Bunas", text: "Я няша :D"),
-                 Message(name: "Petr Freys", text: "тест"),
-                 Message(name: "Gigabayt Tysyachadvadtsatchetverty", text: "тест"),
-                 Message(name: "Iv So", text: "тест"),
-                 Message(name: "Alexander Sorokin", text: "тест"),
-                 Message(name: "Alexander Nevazhno", text: "тест"),
-                 Message(name: "Alexey Ermolaev", text: "тест"),
-                 Message(name: "Daniil Verbitsky", text: "тест"),
-                 Message(name: "Linus Torvalds", text: "тест"),
-                 Message(name: "Pavel Sushenov", text: "тест"),
-                 Message(name: "Sergey Melnikov", text: "тест"),
-  ]
-  win.maxname = win.x div 4 + 1
+  let test = vkhistory(ListEl.link.parseInt)
+  echo test
+  discard stdin.readLine()
+  # win.dialog = @[
+  #   Message(name: "Unrelated Substance-Of-Melancholy", text: "kurwabot, behold!")
+  # ]
   # for e in win.dialog:
     # if win.maxname < runeLen(e.name): win.maxname = runeLen(e.name)
 
@@ -156,7 +140,7 @@ proc GetFriends(): seq[ListElement] =
 proc GetDialogs(): seq[ListElement] = 
   var chats = newSeq[ListElement](0)
   for msg in vkdialogs().items:
-    chats.add(spawnLE(msg.dialog, $msg.id, nop, nopget))
+    chats.add(spawnLE(msg.dialog, $msg.id, chat, nopget))
   return chats
 
 proc DurationToStr(n: int): string = 
@@ -202,6 +186,7 @@ proc init() =
     title = spaces(length) & win.title & spaces(length)
   if runeLen(title) > win.x: title = title[0..^2]
   win.title = title
+  win.maxname = win.x div 4 + 1
   for e in win.menu:
     if win.offset < runeLen(e.text): win.offset = runeLen(e.text)
   win.offset += 5
@@ -332,8 +317,6 @@ proc newMessage(name: string, msg: string) =
   echo(name & " : " & msg)
   #discard #todo implement longpoll
 
-#export updCounter
-
 proc entryPoint() = 
   clear()
   var config = load()
@@ -341,9 +324,6 @@ proc entryPoint() =
   vkinit()
   win.title = vkusername()
   win.counter = vkcounter()
-  #testsss()
-  #setLongpollChat(8, true)
-  #startLongpoll()
   init()
   cli()
   discard execCmd("tput cnorm")

@@ -28,7 +28,6 @@ type
     body: string
     fwd: seq[tuple[uid: int, txt: string]]
 
-
 var 
   api = API()
   threadLock: Lock
@@ -150,7 +149,6 @@ proc vkusername*(id: int = 0): string =
   else:
     return vkusernames(@[id])[id]
 
-
 proc vkfriends*(): seq[tuple[name: string, id: int]] = 
   let
     rawjson = request("friends.get", {"user_id": $api.userid, "order": "hints", "fields": "first_name"}.toTable, "Не могу загрузить друзей")
@@ -267,13 +265,6 @@ proc vksend(peerid: int, msg: string): bool =
   let resp = request("messages.send", {"peer_id":($peerid), "message":msg}.toTable, "Unable to send message")
   if resp.kind != JInt: return false
   return true
-
-proc testsss*() = 
-  #discard vksend(2000000008, "huj")115292057
-  for h in vkhistory(115292057, 0, 4).items:
-    echo(h.name & " " & h.msg)
-  quit("huj", QuitSuccess)
-
 
 proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
   let
