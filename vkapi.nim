@@ -1,5 +1,6 @@
-import osproc, strutils, json, httpclient, cgi, tables, sequtils, main
+import osproc, strutils, json, httpclient, cgi, tables, sequtils, re
 import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
+from future import `=>`
 
 const 
   quitOnApiError  = true
@@ -163,6 +164,7 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
   return friends 
 
 proc cropMsg(msg: string, maxw = 30): seq[string] = 
+  if msg.len <= maxw: return @[msg]
   let lf = "\n".toRunes()[0]
   var
     tx = msg.toRunes()
@@ -331,31 +333,67 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
 
   return (items, noffset)
 
+proc vkmsgbyid(ids: seq[int]): seq[vkmessage] = 
+  let
+    i = ids.map(q => $q).join(",")
+    j = request("messages.getById", {"message_ids": i}.toTable, "unable to get messages")
+    items = j["items"].getElems()
+    names = vkusernames(items.map(q => q["user_id"].num.int))
+  var r = newSeq[vkmessage](0)
+  for q in items:
+    let fid = q["user_id"].num.int
+    r.add(vkmessage(
+      msgid: q["id"].num.int,
+      fromid: fid, chatid: -1,
+      msg: q["body"].str,
+      name: names[fid]
+    ))
+  return r
+
 #===== longpoll =====
 
-proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(m: vkmessage)) = 
+proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(name: string, msg: string)) = 
   if longpollChatid < 1: return
   for u in arr:
     let q = u.getElems()
     if q[0].num == 4: #message update
       let
-        msgid = q[1].num.int32
-        chatid = q[3].num.int32
-        time = q[4].num.int32
+        msgid = q[1].num.int
+        chatid = q[3].num.int
+        time = q[4].num.int
         text = q[6].str
         att = q[7]
       if chatid != longpollChatid: return
-      var fromid = chatid
+      #echo(att.pretty())
+      var
+        fromid = chatid
+        lfwd = newSeq[int](0)
+        qfwd = newSeq[tuple[uid: int, txt: string]](0)
+        vfwd = newseq[vkmessage](0)
       if fromid >= conferenceIdStart:
-        fromid = att["from"].num.int32
-      let name = vkusername(fromid)
-      longmsg(vkmessage(
-        msgid: msgid, chatid: chatid, fromid: fromid,
-        msg: text, name: name
-        ))
-      #echo(name &" "& text)
+        fromid = att["from"].str.parseInt()
 
-proc longpollParseResp(json: string, updc: proc(), longmsg: proc(m: vkmessage)): longpollResp  =
+      if att.hasKey("fwd"):
+        let
+          fwd = att["fwd"].str.split(",")
+        for ff in fwd:
+          let
+            b = ff.findBounds(re(r"\d+_"))
+            lst = b.last+1
+          if b.first == 0:
+            lfwd.add(parseInt(ff[lst..high(ff)]))
+        if lfwd.len > 0:
+          vfwd = vkmsgbyid(lfwd)
+          qfwd = vfwd.map(f => (f.fromid, f.msg))
+
+      var name = initTable[int, string]() 
+      for f in vfwd: name[f.fromid] = f.name
+      name[fromid] = vkusername(fromid)
+      let pre = vkpremsg(msgid: msgid, fromid: fromid, body: text, fwd: qfwd)
+      for sm in getMessages(pre, chatid, name):
+        longmsg(sm.name, sm.msg)
+
+proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, msg: string)): longpollResp  =
   var
     o = parseJson(json)
     fail = -1
@@ -365,7 +403,7 @@ proc longpollParseResp(json: string, updc: proc(), longmsg: proc(m: vkmessage)):
   else:
     if hasKey(o, "updates"):
       acquire(threadLock)
-      #echo(json)
+      echo(json)
       updc()
       parseLongpollUpdates(getElems(o["updates"]), longmsg)
       release(threadLock)
@@ -373,7 +411,7 @@ proc longpollParseResp(json: string, updc: proc(), longmsg: proc(m: vkmessage)):
     ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
 
-proc longpollRoutine(info: longpollInfo, updc: proc(), longmsg: proc(m: vkmessage)) = 
+proc longpollRoutine(info: longpollInfo, updc: proc(), longmsg: proc(name: string, msg: string)) = 
   var currTs = info.ts
   while true:
     let
@@ -394,7 +432,7 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updc: proc(), longmsg: proc(m: vkmessage)) {.thread,gcsafe.} =
+proc longpollAsync*(updc: proc(), longmsg: proc(name: string, msg: string)) {.thread,gcsafe.} =
   while true:
     if longpollAllowed: longpollRoutine(getLongpollInfo(), updc, longmsg)
     sleep(longpollRestartSleep)
@@ -406,4 +444,4 @@ proc startLongpoll*() =
 proc setLongpollChat*(chatid: int, conference = false) = 
   var cid = chatid
   if conference: cid += conferenceIdStart
-  longpollChatid = chatid
+  longpollChatid = cid

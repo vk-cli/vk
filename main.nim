@@ -328,8 +328,9 @@ proc updCounter() =
   win.counter = vkcounter()
   #todo redraw statusbar
 
-proc newMessage(m: vkmessage) = 
-  discard #todo implement longpoll
+proc newMessage(name: string, msg: string) = 
+  echo(name & " : " & msg)
+  #discard #todo implement longpoll
 
 #export updCounter
 
@@ -340,9 +341,11 @@ proc entryPoint() =
   vkinit()
   win.title = vkusername()
   win.counter = vkcounter()
-  testsss()
-  #setLongpollChat(8, true)
+  #testsss()
+  setLongpollChat(8, true)
   startLongpoll()
+  longpollAsync(updCounter, newMessage)
+  while true: discard
   init()
   cli()
   discard execCmd("tput cnorm")
@@ -352,6 +355,7 @@ proc entryPoint() =
   quit(QuitSuccess)
 
 when isMainModule: 
+  entryPoint()
   spawn entryPoint()
   spawn longpollAsync(updCounter, newMessage)
   sync()
