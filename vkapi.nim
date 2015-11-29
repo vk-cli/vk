@@ -403,7 +403,7 @@ proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, m
   else:
     if hasKey(o, "updates"):
       acquire(threadLock)
-      echo(json)
+      #echo(json)
       updc()
       parseLongpollUpdates(getElems(o["updates"]), longmsg)
       release(threadLock)
