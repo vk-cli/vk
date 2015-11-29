@@ -342,10 +342,8 @@ proc entryPoint() =
   win.title = vkusername()
   win.counter = vkcounter()
   #testsss()
-  setLongpollChat(8, true)
-  startLongpoll()
-  longpollAsync(updCounter, newMessage)
-  while true: discard
+  #setLongpollChat(8, true)
+  #startLongpoll()
   init()
   cli()
   discard execCmd("tput cnorm")
@@ -355,7 +353,6 @@ proc entryPoint() =
   quit(QuitSuccess)
 
 when isMainModule: 
-  entryPoint()
-  spawn entryPoint()
   spawn longpollAsync(updCounter, newMessage)
+  spawn entryPoint()
   sync()
