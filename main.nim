@@ -1,4 +1,4 @@
-import osproc, os, terminal, strutils, unicode, tables
+import osproc, os, terminal, strutils, unicode, tables, threadpool
 from ncurses import initscr, getmaxyx, endwin, curs_set
 import vkapi, cfg
 
@@ -155,7 +155,7 @@ proc GetFriends(): seq[ListElement] =
 
 proc GetDialogs(): seq[ListElement] = 
   var chats = newSeq[ListElement](0)
-  for msg in vkdialogs():
+  for msg in vkdialogs().items:
     chats.add(spawnLE(msg.dialog, $msg.id, nop, nopget))
   return chats
 
@@ -324,16 +324,38 @@ proc popFrom(config: Table) =
     SetToken(config["token"])
     win.color = Colors(parseInt(config["color"]))
 
-when isMainModule: 
+proc updCounter() = 
+  win.counter = vkcounter()
+  #todo redraw statusbar
+
+proc newMessage(name: string, msg: string) = 
+  echo(name & " : " & msg)
+  #discard #todo implement longpoll
+
+#export updCounter
+
+proc entryPoint() = 
   clear()
   var config = load()
   popFrom(config)
   vkinit()
   win.title = vkusername()
   win.counter = vkcounter()
+  #testsss()
+  setLongpollChat(8, true)
+  startLongpoll()
+  longpollAsync(updCounter, newMessage)
+  while true: discard
   init()
   cli()
   discard execCmd("tput cnorm")
   pushTo(config)
   save(config)
   clear() 
+  quit(QuitSuccess)
+
+when isMainModule: 
+  entryPoint()
+  spawn entryPoint()
+  spawn longpollAsync(updCounter, newMessage)
+  sync()
