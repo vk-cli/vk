@@ -20,9 +20,9 @@ type
     failed, ts: int
 
   vkmessage* = object
-    msgid, fromid, chatid: int
-    msg, name: string
-    fwd: bool
+    msgid*, fromid*, chatid*: int
+    msg*, name*: string
+    fwd*: bool
   vkpremsg = object
     msgid, fromid: int
     body: string
