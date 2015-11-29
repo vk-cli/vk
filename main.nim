@@ -340,7 +340,7 @@ proc entryPoint() =
   vkinit()
   win.title = vkusername()
   win.counter = vkcounter()
-  #testsss()
+  testsss()
   #setLongpollChat(8, true)
   startLongpoll()
   init()

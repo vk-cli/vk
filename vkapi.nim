@@ -1,5 +1,5 @@
 import osproc, strutils, json, httpclient, cgi, tables, sequtils, main
-import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, algorithm
+import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
 
 const 
   quitOnApiError  = true
@@ -21,6 +21,12 @@ type
   vkmessage* = object
     msgid, fromid, chatid: int
     msg, name: string
+    fwd: bool
+  vkpremsg = object
+    msgid, fromid: int
+    body: string
+    fwd: seq[tuple[uid: int, txt: string]]
+
 
 var 
   api = API()
@@ -156,13 +162,80 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
+proc cropMsg(msg: string, maxw = 30): seq[string] = 
+  let lf = "\n".toRunes()[0]
+  var
+    tx = msg.toRunes()
+    cc = 0
+  for n in low(tx)..high(tx):
+    if n+1 == high(tx): break
+    if tx[n+1] == lf: 
+      cc = 0
+      continue
+    if cc == maxw:
+      cc = 0
+      tx.insert("\n".toRunes(), n)
+    else:
+      inc(cc)
+  return ($tx).splitLines()
+
+proc getFwdMessages(fm: seq[tuple[name: string, text: string]], p: vkmessage, maxw = 30): seq[vkmessage] = 
+  let
+    fwdprefix = "| "
+    fwdname = "➥ "
+  var
+    fs = newSeq[vkmessage](0) 
+    ta = newSeq[string](0)
+  for f in fm:
+    ta.add(fwdprefix & fwdname & f.name)
+    for l in cropMsg(f.text):
+      ta.add(fwdprefix & l)
+
+  for t in ta:
+    fs.add(vkmessage(
+      chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
+      name: "", fwd: true,
+      msg: t
+      ))
+  return fs
+
+proc getMessages(p: vkpremsg, userid: int, names: Table[int, string]): seq[vkmessage] = 
+  var qitems = newSeq[vkmessage](0)
+  let 
+    fid = p.fromid
+    cmsg = cropMsg(p.body)
+    tmsg = vkmessage(
+      msgid: p.msgid, fromid: fid, 
+      msg: cmsg[0],
+      chatid: userid,
+      name: names[fid],
+      fwd: false
+      )
+  qitems.add(tmsg)
+  for ml in 1..high(cmsg):
+    qitems.add(vkmessage(
+      msgid: p.msgid, fromid: fid, 
+      msg: cmsg[ml],
+      chatid: userid,
+      name: "",
+      fwd: false
+      ))
+
+  if p.fwd.len > 0:
+    var mfwds = newSeq[tuple[name: string, text: string]](0)
+    for fm in p.fwd:
+      mfwds.add((names[fm.uid], fm.txt))
+    for fs in getFwdMessages(mfwds, tmsg):
+      qitems.add(fs)
+  return qitems
+
 proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessage], next_offset: int] = 
   let
     json = request("messages.getHistory", {"user_id":($userid), "rev":"0"}.toTable, "Unable to get msghistory", offset, count)
   var
     uids = newSeq[int](0)
     items = newSeq[vkmessage](0)
-    hitems = newSeq[tuple[msgid: int, fromid: int, body: string]](0)
+    hitems = newSeq[vkpremsg](0)
     allcount = json["count"].num.int32
     noffset = getNextOffset(offset, count, allcount)
   if allcount > 0:
@@ -172,17 +245,20 @@ proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessag
         qmsgid = r["id"].num.int
         qfromid = r["from_id"].num.int
         qbody = r["body"].str
-      hitems.add((qmsgid, qfromid, qbody)) 
-      uids.add(qfromid)
+        qfwd = newSeq[tuple[uid: int, txt: string]](0)
+
+      if r.hasKey("fwd_messages"):
+        for fm in r["fwd_messages"]:
+          let fuid = fm["user_id"].num.int
+          qfwd.add((fuid, fm["body"].str))
+          if not uids.contains(fuid): uids.add(fuid)
+
+      hitems.add(vkpremsg(msgid: qmsgid, fromid: qfromid, body: qbody, fwd: qfwd)) 
+      if not uids.contains(qfromid): uids.add(qfromid)
     let names = vkusernames(uids)
     for p in hitems:
-      let fid = p.fromid
-      items.add(vkmessage(
-        msgid: p.msgid, fromid: fid, msg: p.body,
-        chatid: userid,
-        name: names[fid]
-        ))
-  return (items.reversed(), noffset)
+      items.insert(getMessages(p, userid, names), 0)
+  return (items, noffset)
 
 proc vksend(peerid: int, msg: string): bool = 
   if msg.len == 0: return false
@@ -191,8 +267,8 @@ proc vksend(peerid: int, msg: string): bool =
   return true
 
 proc testsss*() = 
-  discard vksend(2000000008, "huj")
-  for h in vkhistory(2000000008, 0, 20).items:
+  #discard vksend(2000000008, "huj")115292057
+  for h in vkhistory(115292057, 0, 4).items:
     echo(h.name & " " & h.msg)
   quit("huj", QuitSuccess)
 
