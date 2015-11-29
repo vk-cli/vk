@@ -137,7 +137,7 @@ proc ChangeState(ListEl: var ListElement) =
 proc GetFriends(): seq[ListElement] = 
   var friends = newSeq[ListElement](0)
   for fr in vkfriends():
-    friends.add(spawnLE(fr.name, $fr.id, nop, nopget))
+    friends.add(spawnLE(fr.name, $fr.id, chat, nopget))
   return friends
 
 proc GetDialogs(): seq[ListElement] = 
