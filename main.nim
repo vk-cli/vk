@@ -106,12 +106,17 @@ proc AlignBodyText() =
 proc chat(ListEl: var ListElement) = 
   win.body = newSeq[ListElement](0)
   win.buffer = newSeq[ListElement](0)
+  win.dialog = newSeq[Message](0)
+  var
+    senderName = ""
+    lastName   = "nil suka"
   for message in vkhistory(ListEl.link.parseInt, count = win.y).items:
-    echo message.name & ": " & message.msg
-    win.dialog.add(Message(name: message.name, text: message.msg))
-  discard stdin.readLine()
-  # for e in win.dialog:
-    # if win.maxname < runeLen(e.name): win.maxname = runeLen(e.name)
+    senderName = message.name
+    if senderName != lastName:
+      lastName = senderName
+      win.dialog.add(Message(name: senderName, text: message.msg))
+    else:
+      win.dialog.add(Message(name: "", text: message.msg))
 
 proc open(ListEl: var ListElement) = 
   win.buffer = ListEl.getter()
@@ -190,7 +195,7 @@ proc init() =
   win.offset += 5
   for i, e in win.menu:
     win.menu[i].text = win.menu[i].text & spaces(win.offset - runeLen(e.text))
-  SetWinx(win.x)
+  SetWinx(win.x-win.maxname-4)
 
 proc selected(text: string) = 
   setStyle({styleReverse, styleBright})
