@@ -34,6 +34,7 @@ var
   longpollAllowed = false
   longpollChatid = 0
   nameCache = initTable[int, string]()
+  winx: int
 
 let 
   vkmethod   = "https://api.vk.com/method/"
@@ -71,6 +72,8 @@ proc SetToken*(tk: string = "") =
     discard execCmd("xdg-open \"http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token\" >> /dev/null")
     api.token = stdin.readLine()
   else: api.token = tk
+
+proc SetWinx*(maxWidth: int) = winx = maxWidth
 
 proc GetToken*(): string = return api.token
 
@@ -161,8 +164,8 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
-proc cropMsg(msg: string, maxw = 30): seq[string] = 
-  if msg.len <= maxw: return @[msg]
+proc cropMsg(msg: string): seq[string] = 
+  if msg.len <= winx: return @[msg]
   let lf = "\n".toRunes()[0]
   var
     tx = msg.toRunes()
@@ -172,14 +175,14 @@ proc cropMsg(msg: string, maxw = 30): seq[string] =
     if tx[n+1] == lf: 
       cc = 0
       continue
-    if cc == maxw:
+    if cc == winx:
       cc = 0
       tx.insert("\n".toRunes(), n)
     else:
       inc(cc)
   return ($tx).splitLines()
 
-proc getFwdMessages(fm: seq[tuple[name: string, text: string]], p: vkmessage, maxw = 30): seq[vkmessage] = 
+proc getFwdMessages(fm: seq[tuple[name: string, text: string]], p: vkmessage): seq[vkmessage] = 
   let
     fwdprefix = "| "
     fwdname = "➥ "
