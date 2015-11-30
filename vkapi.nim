@@ -11,7 +11,7 @@ const
   apiversion = "5.40"
   fwdprefix = "| "
   fwdname = "➥ "
-  wmodstep = -2
+  wmodstep = -3
 
 type 
   API = object
@@ -165,7 +165,9 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
 
 proc cropMsg(msg: string, wmod: int = 0): seq[string] = 
   if msg.len <= winx: return msg.splitLines()
-  let lf = "\n".toRunes()[0]
+  let
+    lf = "\n".toRunes()[0]
+    spc = " ".toRunes()[0]
   var
     tx = msg.toRunes()
     cc = 0
@@ -176,13 +178,25 @@ proc cropMsg(msg: string, wmod: int = 0): seq[string] =
       continue
     if cc == (winx+wmod):
       cc = 0
-      tx.insert("\n".toRunes(), n)
+      if tx[n] == spc:
+        tx[n] = lf
+      else:
+        var rc = 0
+        while true:
+          let rr = n-rc
+          inc rc
+          if rr < 1:
+            tx.insert(lf, n)
+            break
+          elif tx[rr] == spc:
+            tx[rr] = lf
+            break
     else:
       inc(cc)
   return ($tx).splitLines()
 
 proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage]
-proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = -2): seq[vkmessage]
+proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): seq[vkmessage]
 
 proc uidsInit() = nameUids = newSeq[int](0)
 proc parseUidsForNames(items: seq[JsonNode], idname = "user_id") = 
@@ -200,7 +214,7 @@ proc resolveNames(rm: var seq[vkmessage]) =
       rm[n].msg = q.msg & names[q.fwduid]
 
 
-proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = -2): seq[vkmessage] = 
+proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): seq[vkmessage] = 
   var
     fs = newSeq[vkmessage](0) 
     lastuid   = -2
