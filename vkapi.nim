@@ -11,7 +11,7 @@ const
   apiversion = "5.40"
   fwdprefix = "| "
   fwdname = "➥ "
-  wmodstep = -3
+  wmodstep = -5
 
 type 
   API = object
@@ -172,8 +172,7 @@ proc cropMsg(msg: string, wmod: int = 0): seq[string] =
     tx = msg.toRunes()
     cc = 0
   for n in low(tx)..high(tx):
-    if n+1 == high(tx): break
-    if tx[n+1] == lf: 
+    if tx[n] == lf: 
       cc = 0
       continue
     if cc == (winx+wmod):
