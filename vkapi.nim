@@ -7,6 +7,10 @@ const
   quitOnHttpError = true
   conferenceIdStart = 2000000000
   longpollRestartSleep = 2000
+  vkmethod   = "https://api.vk.com/method/"
+  apiversion = "5.40"
+  fwdprefix = "| "
+  fwdname = "➥ "
 
 type 
   API = object
@@ -35,10 +39,6 @@ var
   longpollChatid = 0
   nameCache = initTable[int, string]()
   winx: int
-
-let 
-  vkmethod   = "https://api.vk.com/method/"
-  apiversion = "5.40"
 
 #===== api mechanics =====
 
@@ -183,17 +183,18 @@ proc cropMsg(msg: string, wmod: int = 0): seq[string] =
   return ($tx).splitLines()
 
 proc getFwdMessages(fm: seq[tuple[name: string, text: string]], p: vkmessage): seq[vkmessage] = 
-  let
-    fwdprefix = "| "
-    fwdname = "➥ "
   var
     fs = newSeq[vkmessage](0) 
     ta = newSeq[string](0)
+    senderName = ""
+    lastName   = "nil"
   for f in fm:
-    ta.add(fwdprefix & fwdname & f.name)
+    senderName = f.name
+    if senderName != lastName:
+      lastName = senderName
+      ta.add(fwdprefix & fwdname & f.name)
     for l in cropMsg(f.text, -2):
       ta.add(fwdprefix & l)
-
   for t in ta:
     fs.add(vkmessage(
       chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,

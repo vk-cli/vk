@@ -109,7 +109,7 @@ proc chat(ListEl: var ListElement) =
   win.dialog = newSeq[Message](0)
   var
     senderName = ""
-    lastName   = "nil suka"
+    lastName   = "nil"
   for message in vkhistory(ListEl.link.parseInt, count = win.y).items:
     senderName = message.name
     if senderName != lastName:
@@ -337,6 +337,7 @@ proc entryPoint() =
   quit(QuitSuccess)
 
 when isMainModule: 
-  spawn longpollAsync(updCounter, newMessage)
-  spawn entryPoint()
-  sync()
+  # spawn longpollAsync(updCounter, newMessage)
+  # spawn entryPoint()
+  entryPoint()
+  # sync()
