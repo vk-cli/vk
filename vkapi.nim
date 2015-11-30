@@ -11,6 +11,7 @@ const
   apiversion = "5.40"
   fwdprefix = "| "
   fwdname = "➥ "
+  wmodstep = -2
 
 type 
   API = object
@@ -26,11 +27,8 @@ type
   vkmessage* = object
     msgid*, fromid*, chatid*: int
     msg*, name*: string
-    fwd*: bool
-  vkpremsg = object
-    msgid, fromid: int
-    body: string
-    fwd: seq[tuple[uid: int, txt: string]]
+    fwdm*, findname*: bool
+    fwduid*: int
 
 var 
   api = API()
@@ -38,6 +36,7 @@ var
   longpollAllowed = false
   longpollChatid = 0
   nameCache = initTable[int, string]()
+  nameUids: seq[int]
   winx: int
 
 #===== api mechanics =====
@@ -182,86 +181,105 @@ proc cropMsg(msg: string, wmod: int = 0): seq[string] =
       inc(cc)
   return ($tx).splitLines()
 
-proc getFwdMessages(fm: seq[tuple[name: string, text: string]], p: vkmessage): seq[vkmessage] = 
+proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage]
+proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = -2): seq[vkmessage]
+
+proc uidsInit() = nameUids = newSeq[int](0)
+proc parseUidsForNames(items: seq[JsonNode], idname = "user_id") = 
+  for t in items:
+    let u = t[idname].num.int
+    if not nameUids.contains(u): nameUids.add(u)
+
+proc resolveNames(rm: var seq[vkmessage]) = 
+  let names = vkusernames(nameUids)
+  for n in low(rm)..high(rm):
+    let q = rm[n]
+    if q.findname and not q.fwdm:
+      rm[n].name = names[q.fromid]
+    elif q.findname and q.fwdm and q.fwduid > 0:
+      rm[n].msg = q.msg & names[q.fwduid]
+
+
+proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = -2): seq[vkmessage] = 
   var
     fs = newSeq[vkmessage](0) 
-    ta = newSeq[string](0)
-    senderName = ""
-    lastName   = "nil"
-  for f in fm:
-    senderName = f.name
-    if senderName != lastName:
-      lastName = senderName
-      ta.add(fwdprefix & fwdname & f.name)
-    for l in cropMsg(f.text, -2):
-      ta.add(fwdprefix & l)
-  for t in ta:
-    fs.add(vkmessage(
-      chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
-      name: "", fwd: true,
-      msg: t
-      ))
+    lastuid   = -2
+  parseUidsForNames(fwdmsg, "user_id")
+  for f in fwdmsg:
+    var
+      wfid = f["user_id"].num.int
+      wmsg = cropMsg(f["body"].str, lastwmod)
+    if wfid != lastuid:
+      lastuid = wfid
+      fs.add(vkmessage(
+          chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
+          name: "", fwdm: true, findname: true,
+          fwduid: wfid,
+          msg: fwdprefix & fwdname
+        ))
+
+    for l in wmsg:
+      fs.add(vkmessage(
+          chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
+          name: "", fwdm: true, findname: false,
+          fwduid: wfid,
+          msg: fwdprefix & l
+        ))
+
+    if f.hasKey("fwd_messages"):
+      for cl in getFwdMessages(f["fwd_messages"].getElems(), p, (lastwmod+wmodstep)):
+        var cm = cl
+        cm.msg = fwdprefix & cm.msg
+        fs.add(cm)
+      
   return fs
 
-proc getMessages(p: vkpremsg, userid: int, names: Table[int, string]): seq[vkmessage] = 
-  var qitems = newSeq[vkmessage](0)
-  let 
-    fid = p.fromid
-    cmsg = cropMsg(p.body)
-    tmsg = vkmessage(
-      msgid: p.msgid, fromid: fid, 
-      msg: cmsg[0],
-      chatid: userid,
-      name: names[fid],
-      fwd: false
-      )
-  qitems.add(tmsg)
-  for ml in 1..high(cmsg):
-    qitems.add(vkmessage(
-      msgid: p.msgid, fromid: fid, 
-      msg: cmsg[ml],
-      chatid: userid,
-      name: "",
-      fwd: false
-      ))
 
-  if p.fwd.len > 0:
-    var mfwds = newSeq[tuple[name: string, text: string]](0)
-    for fm in p.fwd:
-      mfwds.add((names[fm.uid], fm.txt))
-    for fs in getFwdMessages(mfwds, tmsg):
-      qitems.add(fs)
+proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage] = 
+  var
+    qitems = newSeq[vkmessage](0)
+  parseUidsForNames(items, "from_id")
+  for m in items:
+    var
+      mitems = newSeq[vkmessage](0)
+      mfwd = newSeq[vkmessage](0)
+      mlines = cropMsg(m["body"].str)
+      mid = m["id"].num.int
+      mfrom = m["from_id"].num.int
+
+    let qmm = vkmessage(
+        msgid: mid, fromid: mfrom, chatid: dialogid,
+        name: "", msg: mlines[0],
+        fwdm: false, findname: true
+      )
+
+    if m.hasKey("fwd_messages"):
+      mfwd = getFwdMessages(m["fwd_messages"].getElems(), qmm)
+
+    mitems.add(qmm)
+    if mlines.len > 1: 
+      for fml in 1..mlines.high():
+        mitems.add(vkmessage(
+            msgid: mid, fromid: mfrom, chatid: dialogid,
+            name: "", msg: mlines[fml],
+            fwdm: false, findname: false
+          ))
+    for ffm in mfwd:
+      mitems.add(ffm)
+    qitems.insert(mitems, 0)
+  qitems.resolveNames()
   return qitems
 
 proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessage], next_offset: int] = 
   let
     json = request("messages.getHistory", {"user_id":($userid), "rev":"0"}.toTable, "Unable to get msghistory", offset, count)
   var
-    uids = newSeq[int](0)
-    items = newSeq[vkmessage](0)
-    hitems = newSeq[vkpremsg](0)
     allcount = json["count"].num.int32
     noffset = getNextOffset(offset, count, allcount)
+    items: seq[vkmessage]
   if allcount > 0:
-    let ritems = json["items"]
-    for r in ritems:
-      var
-        qmsgid = r["id"].num.int
-        qfromid = r["from_id"].num.int
-        qbody = r["body"].str
-        qfwd = newSeq[tuple[uid: int, txt: string]](0)
-
-      if r.hasKey("fwd_messages"):
-        for fm in r["fwd_messages"]:
-          let fuid = fm["user_id"].num.int
-          qfwd.add((fuid, fm["body"].str))
-          if not uids.contains(fuid): uids.add(fuid)
-
-      hitems.add(vkpremsg(msgid: qmsgid, fromid: qfromid, body: qbody, fwd: qfwd)) 
-      if not uids.contains(qfromid): uids.add(qfromid)
-    let names = vkusernames(uids)
-    for p in hitems:
-      items.insert(getMessages(p, userid, names), 0)
+    uidsInit()
+    items = getMessages(json["items"].getElems(), userid)
   return (items, noffset)
 
 proc vksend(peerid: int, msg: string): bool = 
@@ -384,9 +402,9 @@ proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(name: string, msg: s
       var name = initTable[int, string]() 
       for f in vfwd: name[f.fromid] = f.name
       name[fromid] = vkusername(fromid)
-      let pre = vkpremsg(msgid: msgid, fromid: fromid, body: text, fwd: qfwd)
-      for sm in getMessages(pre, chatid, name):
-        longmsg(sm.name, sm.msg)
+      #let pre = vkpremsg(msgid: msgid, fromid: fromid, body: text, fwd: qfwd)
+      #for sm in getMessages(pre, chatid, name):
+      #  longmsg(sm.name, sm.msg)
 
 proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, msg: string)): longpollResp  =
   var
