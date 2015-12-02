@@ -69,6 +69,7 @@ type
     menu, body, buffer  : seq[ListElement]
     dialog              : seq[Message]
     maxname, counter    : int
+    dialogsOpened       : bool
 
 proc nop(ListEl: var ListElement) = discard
 proc nopget(): seq[ListElement] = discard
@@ -96,7 +97,7 @@ var
 
 proc AlignBodyText() = 
   for i, e in win.body:
-    if runeLen(e.text) + win.offset > win.x:
+    if runeLen(e.text) + win.offset+1 > win.x:
       win.body[i].text = e.text[0..win.x-win.offset-6] & "..."
     var align = runeLen(win.title) - win.offset - 1 
     for i, e in win.body:
@@ -104,6 +105,7 @@ proc AlignBodyText() =
         win.body[i].text = win.body[i].text & spaces(align - runeLen(e.text))
 
 proc chat(ListEl: var ListElement) = 
+  win.dialogsOpened = true
   win.body = newSeq[ListElement](0)
   win.buffer = newSeq[ListElement](0)
   win.dialog = newSeq[Message](0)
@@ -217,18 +219,22 @@ proc Controller() =
   case win.key:
     of kg_left:
       if win.section == RIGHT:
-        win.active = win.last_active
-        win.section = LEFT
-        win.body = newSeq[ListElement](0)
-        win.dialog = newSeq[Message](0)
+        win.active  = win.last_active
+        win.dialog  = newSeq[Message](0)
+        if win.dialogsOpened:
+          win.menu[win.active].callback(win.menu[win.active])
+          win.dialogsOpened = false
+        else:
+          win.section = LEFT
+          win.body    = newSeq[ListElement](0)
       else:
         win.dialog = newSeq[Message](0)
     of kg_right:
       if win.section == LEFT:
         win.menu[win.active].callback(win.menu[win.active])
         win.last_active = win.active
-        win.active = 0
-        win.section = RIGHT
+        win.active      = 0
+        win.section     = RIGHT
       else:
         win.body[win.active].callback(win.body[win.active])
     of kg_up:
