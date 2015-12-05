@@ -1,17 +1,26 @@
-import osproc, strutils, json, httpclient, cgi, tables, sequtils, re
-import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
+import osproc, strutils, json, httpclient, cgi, tables, sequtils, re, net
+import macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
 from future import `=>`
 
 const 
-  quitOnApiError  = true
+  quitOnApiError  = false
   quitOnHttpError = true
   conferenceIdStart = 2000000000
   longpollRestartSleep = 2000
+  httpTryagainSleep = 200
+  httpRequestTimeout = 1000
+  directLinksToPics = true
   vkmethod   = "https://api.vk.com/method/"
   apiversion = "5.40"
   fwdprefix = "| "
   fwdname = "➥ "
   wmodstep = -5
+  lpAttachType = "_type"
+
+let
+  lpreFwd = re(r"\d+_")
+  lpreAttach = re(r"attach\d")
+  photoSizes = @["photo_1280", "photo_807", "photo_604", "photo_130", "photo_75"]
 
 type 
   API = object
@@ -32,7 +41,6 @@ type
 
 var 
   api = API()
-  threadLock: Lock
   longpollAllowed = false
   longpollChatid = 0
   nameCache = initTable[int, string]()
@@ -41,18 +49,28 @@ var
 
 #===== api mechanics =====
 
-proc checkError(json: JsonNode): string =
+proc checkError(json: JsonNode): tuple[err: string, errno: int] =
+  if json.kind == JArray:
+    if json.getElems().len == 0: discard #probably error
+    return ("", -1)
   if json.hasKey("error"): 
-    let errobj = json["error"]
-    if errobj.hasKey("error_text"): return errobj["error_text"].str
-    if errobj.hasKey("error_msg"): return errobj["error_msg"].str
+    let 
+      errobj = json["error"]
+      errn = errobj["error_code"].num.int
+    if errobj.hasKey("error_text"): return (errobj["error_text"].str, errn)
+    if errobj.hasKey("error_msg"): return (errobj["error_msg"].str, errn)
   else:
-    return ""
+    return ("", -1)
 
 proc handleError(json: JsonNode): bool = 
   let err = checkError(json)
-  if err == "": return true
-  echo("Api error: " & err)
+  if err.errno < 0: return true
+  echo("Api error: " & $err.errno & " " & err.err)
+  case err.errno:
+    of 6: 
+      echo("wait 2 sec")
+      sleep(2000)
+    else: discard
   if quitOnApiError: 
     quit("Application exit", QuitSuccess)
   else: return false
@@ -85,18 +103,32 @@ proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1
     url &= "offset=" & $offset & "&" & "count=" & $count & "&"
 
   url &= "v=" & apiversion & "&access_token=" & api.token
-  var response: string
-  try:
-    response = getContent(url)
-  except:
-    handleHttpError(getCurrentExceptionMsg())
-  let pjson = parseJson(response)
-  if returnPure: return pjson
-  if not handleError(pjson):
-    echo(error_msg, QuitSuccess)
-    return
-  else:
-    return pjson["response"]
+  while true:
+    var response: string
+    var ok = false
+    while not ok:
+      try:
+        ok = true
+        let resp = request(url, timeout = httpRequestTimeout)
+        #echo(url)
+        echo(resp.status)
+        case resp.status:
+          of "200 OK": discard
+          else: ok = false
+        response = resp.body
+      except TimeoutError:
+        ok = false
+        echo("Timeout!")
+        sleep(httpTryagainSleep)
+      except:
+        ok = false
+        handleHttpError(getCurrentExceptionMsg())
+    let pjson = parseJson(response)
+    if returnPure: return pjson
+    if not handleError(pjson):
+      discard
+    else:
+      return pjson["response"]
 
 proc getNextOffset(offset: int, argcount: int, count: int): int = 
   if offset+argcount < count:
@@ -128,6 +160,8 @@ proc vkusernames*(ids: seq[int]): Table[int, string] =
       rtnames[w] = nameCache[w]
     else:
       fids.add(w)
+
+  if fids.len == 0: return rtnames
 
   let
     jids = map(fids, proc(x: int): string = return $x)
@@ -162,6 +196,23 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     let name = status & fr["first_name"].str & " " & fr["last_name"].str
     friends.add((name, fr["id"].num.int))
   return friends 
+
+proc parseAttaches(att: seq[JsonNode]): string = 
+  var rt = ""
+  for a in att:
+    case a["type"].str
+    of "photo":
+      let o = a["photo"]
+      if directLinksToPics:
+        for ps in photoSizes:
+          if o.hasKey(ps):
+            rt &= "\n" & o[ps].str
+            break
+      else:
+        rt &= "\nhttps://vk.com/photo" & o["owner_id"].str & "_" & o["id"].str
+    else: discard
+  return rt
+
 
 proc cropMsg(msg: string, wmod: int = 0): seq[string] = 
   if msg.len <= winx: return msg.splitLines()
@@ -220,9 +271,13 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
     lastuid   = -2
   parseUidsForNames(fwdmsg, "user_id")
   for f in fwdmsg:
+    var matt = ""
+    if f.hasKey("attachments"): matt = parseAttaches(f["attachments"].getElems())
+
     var
+      wbody = f["body"].str & matt
       wfid = f["user_id"].num.int
-      wmsg = cropMsg(f["body"].str, lastwmod)
+      wmsg = cropMsg(wbody, lastwmod)
     if wfid != lastuid:
       lastuid = wfid
       fs.add(vkmessage(
@@ -253,10 +308,14 @@ proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage] =
     qitems = newSeq[vkmessage](0)
   parseUidsForNames(items, "from_id")
   for m in items:
+    var matt = ""
+    if m.hasKey("attachments"): matt = parseAttaches(m["attachments"].getElems())
+
     var
+      mbody = m["body"].str & matt
       mitems = newSeq[vkmessage](0)
       mfwd = newSeq[vkmessage](0)
-      mlines = cropMsg(m["body"].str)
+      mlines = cropMsg(mbody)
       mid = m["id"].num.int
       mfrom = m["from_id"].num.int
 
@@ -352,74 +411,94 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
         if not unames.hasKey(p.id):
           dst &= "unable to get name: id " & $p.id
         else:
+          echo($p.id)
           dst &= unames[p.id]
+          echo(dst)
       else:
         dst &= p.title
       items.add((dst, p.id))
 
   return (items, noffset)
 
-proc vkmsgbyid(ids: seq[int]): seq[vkmessage] = 
+proc vkphotos(ids: seq[string]): seq[JsonNode] = 
+  let
+    idlist = ids.join(",")
+    json = request("photos.getById", {"photos":idlist}.toTable, "unable to get photos")
+  return json.getElems()
+
+
+proc vkmsgbyid(ids: seq[int]): seq[JsonNode] = 
   let
     i = ids.map(q => $q).join(",")
     j = request("messages.getById", {"message_ids": i}.toTable, "unable to get messages")
     items = j["items"].getElems()
-    names = vkusernames(items.map(q => q["user_id"].num.int))
-  var r = newSeq[vkmessage](0)
-  for q in items:
-    let fid = q["user_id"].num.int
-    r.add(vkmessage(
-      msgid: q["id"].num.int,
-      fromid: fid, chatid: -1,
-      msg: q["body"].str,
-      name: names[fid]
-    ))
-  return r
+  return items
+
 
 #===== longpoll =====
 
-proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(name: string, msg: string)) = 
+var
+  longmsg: proc(name: string, msg: string)
+  updc: proc()
+
+proc parseLongpollUpdates(arr: seq[JsonNode]) = 
   if longpollChatid < 1: return
   for u in arr:
     let q = u.getElems()
     if q[0].num == 4: #message update
       let
         msgid = q[1].num.int
+        flags = q[2].num.int
         chatid = q[3].num.int
         time = q[4].num.int
-        text = q[6].str
         att = q[7]
+        attpairs = att.getFields()
       if chatid != longpollChatid: return
-      #echo(att.pretty())
       var
+        text = q[6].str
         fromid = chatid
-        lfwd = newSeq[int](0)
-        qfwd = newSeq[tuple[uid: int, txt: string]](0)
-        vfwd = newseq[vkmessage](0)
-      if fromid >= conferenceIdStart:
+        fwd = newSeq[int](0)
+        attach = newSeq[tuple[kind: string, id: string]](0)
+        msg = newSeq[vkmessage](0)
+      if att.hasKey("from"): 
         fromid = att["from"].str.parseInt()
+      elif (flags and 2) == 2: #check for outgoing message
+        fromid = api.userid
+      if att.hasKey("fwd"): 
+        for fm in att["fwd"].str.split(","):
+          let b = fm.findBounds(lpreFwd)
+          if b.first == 0: fwd.add(parseInt(fm[(b.last+1)..high(fm)]))
+      for at in attpairs:
+        var atmatch = newSeq[string](0)
+        if match(at.key, lpreAttach, atmatch) and atmatch.len == 1:
+          attach.add((att[at.key & lpAttachType].str, at.val.str))
+      
+      if attach.any(q => q.kind == "photo"):
+        text &= parseAttaches(vkphotos(attach.map(q => q.id)))
 
-      if att.hasKey("fwd"):
-        let
-          fwd = att["fwd"].str.split(",")
-        for ff in fwd:
-          let
-            b = ff.findBounds(re(r"\d+_"))
-            lst = b.last+1
-          if b.first == 0:
-            lfwd.add(parseInt(ff[lst..high(ff)]))
-        if lfwd.len > 0:
-          vfwd = vkmsgbyid(lfwd)
-          qfwd = vfwd.map(f => (f.fromid, f.msg))
+      uidsInit()
+      nameUids.add(fromid)
+      let cropm = cropMsg(text)
+      msg.add(vkmessage(
+          chatid: chatid, fromid: fromid, msgid: msgid,
+          fwdm: false, findname: true,
+          name: "", msg: cropm[0]
+        ))
+      if cropm.len > 1:
+        for ml in 1..high(cropm):
+          msg.add(vkmessage(
+            chatid: chatid, fromid: fromid, msgid: msgid,
+            fwdm: false, findname: false,
+            name: "", msg: cropm[ml]
+          ))
+      if fwd.len > 0:
+        let vkp = vkmessage(chatid: chatid, fromid: fromid, msgid: msgid)
+        for fl in getFwdMessages(vkmsgbyid(fwd), vkp): msg.add(fl)
+      msg.resolveNames()
+      for lpm in msg:
+        longmsg(lpm.name, lpm.msg)
 
-      var name = initTable[int, string]() 
-      for f in vfwd: name[f.fromid] = f.name
-      name[fromid] = vkusername(fromid)
-      #let pre = vkpremsg(msgid: msgid, fromid: fromid, body: text, fwd: qfwd)
-      #for sm in getMessages(pre, chatid, name):
-      #  longmsg(sm.name, sm.msg)
-
-proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, msg: string)): longpollResp  =
+proc longpollParseResp(json: string): longpollResp  =
   var
     o = parseJson(json)
     fail = -1
@@ -428,23 +507,21 @@ proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, m
     fail = getNum(o["failed"]).int32
   else:
     if hasKey(o, "updates"):
-      acquire(threadLock)
       #echo(json)
       updc()
-      parseLongpollUpdates(getElems(o["updates"]), longmsg)
-      release(threadLock)
+      parseLongpollUpdates(getElems(o["updates"]))
   if hasKey(o, "ts"):
     ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
 
-proc longpollRoutine(info: longpollInfo, updc: proc(), longmsg: proc(name: string, msg: string)) = 
+proc longpollRoutine(info: longpollInfo) = 
   var currTs = info.ts
   while true:
     let
       lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
       resp = get(lpUri)
       #todo check server response code\status
-      lpresp = longpollParseResp(resp.body, updc, longmsg)
+      lpresp = longpollParseResp(resp.body)
     if lpresp.failed != -1:
       if lpresp.failed != 1:
         break #get new server
@@ -458,13 +535,14 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updc: proc(), longmsg: proc(name: string, msg: string)) {.thread,gcsafe.} =
+proc longpollAsync*(updcq: proc(), longmsgq: proc(name: string, msg: string)) {.thread,gcsafe.} =
+  longmsg = longmsgq
+  updc = updcq
   while true:
-    if longpollAllowed: longpollRoutine(getLongpollInfo(), updc, longmsg)
+    if longpollAllowed: longpollRoutine(getLongpollInfo())
     sleep(longpollRestartSleep)
 
 proc startLongpoll*() = 
-  initLock(threadLock)
   longpollAllowed = true
 
 proc setLongpollChat*(chatid: int, conference = false) = 
