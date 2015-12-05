@@ -325,7 +325,7 @@ proc updCounter() =
 
 proc newMessage(name: string, msg: string) = 
   echo(name & " : " & msg)
-  #discard #todo implement longpoll
+  #win.dialog.add(Message(name: name, text: msg))
 
 proc entryPoint() = 
   clear()

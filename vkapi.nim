@@ -105,6 +105,7 @@ proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1
       try:
         ok = true
         let resp = request(url, timeout = httpRequestTimeout)
+        #echo(url)
         echo(resp.status)
         case resp.status:
           of "200 OK": discard
@@ -154,6 +155,8 @@ proc vkusernames*(ids: seq[int]): Table[int, string] =
       rtnames[w] = nameCache[w]
     else:
       fids.add(w)
+
+  if fids.len == 0: return rtnames
 
   let
     jids = map(fids, proc(x: int): string = return $x)
@@ -408,6 +411,7 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
     if q[0].num == 4: #message update
       let
         msgid = q[1].num.int
+        flags = q[2].num.int
         chatid = q[3].num.int
         time = q[4].num.int
         text = q[6].str
@@ -419,7 +423,10 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         fwd = newSeq[int](0)
         attach = newSeq[tuple[kind: string, id: string]](0)
         msg = newSeq[vkmessage](0)
-      if att.hasKey("from"): fromid = att["from"].str.parseInt()
+      if att.hasKey("from"): 
+        fromid = att["from"].str.parseInt()
+      elif (flags and 2) == 2: #check for outgoing message
+        fromid = api.userid
       if att.hasKey("fwd"): 
         for fm in att["fwd"].str.split(","):
           let b = fm.findBounds(lpreFwd)
@@ -460,7 +467,7 @@ proc longpollParseResp(json: string): longpollResp  =
     fail = getNum(o["failed"]).int32
   else:
     if hasKey(o, "updates"):
-      #echo(json)
+      echo(json)
       updc()
       parseLongpollUpdates(getElems(o["updates"]))
   if hasKey(o, "ts"):
