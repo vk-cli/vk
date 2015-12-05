@@ -9,6 +9,7 @@ const
   longpollRestartSleep = 2000
   httpTryagainSleep = 200
   httpRequestTimeout = 1000
+  directLinksToPics = true
   vkmethod   = "https://api.vk.com/method/"
   apiversion = "5.40"
   fwdprefix = "| "
@@ -19,6 +20,7 @@ const
 let
   lpreFwd = re(r"\d+_")
   lpreAttach = re(r"attach\d")
+  photoSizes = @["photo_1280", "photo_807", "photo_604", "photo_130", "photo_75"]
 
 type 
   API = object
@@ -48,6 +50,9 @@ var
 #===== api mechanics =====
 
 proc checkError(json: JsonNode): tuple[err: string, errno: int] =
+  if json.kind == JArray:
+    if json.getElems().len == 0: discard #probably error
+    return ("", -1)
   if json.hasKey("error"): 
     let 
       errobj = json["error"]
@@ -192,6 +197,23 @@ proc vkfriends*(): seq[tuple[name: string, id: int]] =
     friends.add((name, fr["id"].num.int))
   return friends 
 
+proc parseAttaches(att: seq[JsonNode]): string = 
+  var rt = ""
+  for a in att:
+    case a["type"].str
+    of "photo":
+      let o = a["photo"]
+      if directLinksToPics:
+        for ps in photoSizes:
+          if o.hasKey(ps):
+            rt &= "\n" & o[ps].str
+            break
+      else:
+        rt &= "\nhttps://vk.com/photo" & o["owner_id"].str & "_" & o["id"].str
+    else: discard
+  return rt
+
+
 proc cropMsg(msg: string, wmod: int = 0): seq[string] = 
   if msg.len <= winx: return msg.splitLines()
   let
@@ -248,9 +270,13 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
     lastuid   = -2
   parseUidsForNames(fwdmsg, "user_id")
   for f in fwdmsg:
+    var matt = ""
+    if f.hasKey("attachments"): matt = parseAttaches(f["attachments"].getElems())
+
     var
+      wbody = f["body"].str & matt
       wfid = f["user_id"].num.int
-      wmsg = cropMsg(f["body"].str, lastwmod)
+      wmsg = cropMsg(wbody, lastwmod)
     if wfid != lastuid:
       lastuid = wfid
       fs.add(vkmessage(
@@ -282,10 +308,14 @@ proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage] =
     qitems = newSeq[vkmessage](0)
   parseUidsForNames(items, "from_id")
   for m in items:
+    var matt = ""
+    if m.hasKey("attachments"): matt = parseAttaches(m["attachments"].getElems())
+
     var
+      mbody = m["body"].str & matt
       mitems = newSeq[vkmessage](0)
       mfwd = newSeq[vkmessage](0)
-      mlines = cropMsg(m["body"].str)
+      mlines = cropMsg(mbody)
       mid = m["id"].num.int
       mfrom = m["from_id"].num.int
 
@@ -390,6 +420,13 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
 
   return (items, noffset)
 
+proc vkphotos(ids: seq[string]): seq[JsonNode] = 
+  let
+    idlist = ids.join(",")
+    json = request("photos.getById", {"photos":idlist}.toTable, "unable to get photos")
+  return json.getElems()
+
+
 proc vkmsgbyid(ids: seq[int]): seq[JsonNode] = 
   let
     i = ids.map(q => $q).join(",")
@@ -414,11 +451,11 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         flags = q[2].num.int
         chatid = q[3].num.int
         time = q[4].num.int
-        text = q[6].str
         att = q[7]
         attpairs = att.getFields()
       if chatid != longpollChatid: return
       var
+        text = q[6].str
         fromid = chatid
         fwd = newSeq[int](0)
         attach = newSeq[tuple[kind: string, id: string]](0)
@@ -435,7 +472,10 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         var atmatch = newSeq[string](0)
         if match(at.key, lpreAttach, atmatch) and atmatch.len == 1:
           attach.add((att[at.key & lpAttachType].str, at.val.str))
-      #parse attaches here
+      
+      if attach.any(q => q.kind == "photo"):
+        text &= parseAttaches(vkphotos(attach.map(q => q.id)))
+
       uidsInit()
       nameUids.add(fromid)
       let cropm = cropMsg(text)
