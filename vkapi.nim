@@ -1,5 +1,5 @@
 import osproc, strutils, json, httpclient, cgi, tables, sequtils, re
-import locks, macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
+import macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
 from future import `=>`
 
 const 
@@ -37,7 +37,6 @@ type
 
 var 
   api = API()
-  threadLock: Lock
   longpollAllowed = false
   longpollChatid = 0
   nameCache = initTable[int, string]()
@@ -357,7 +356,9 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
         if not unames.hasKey(p.id):
           dst &= "unable to get name: id " & $p.id
         else:
+          echo($p.id)
           dst &= unames[p.id]
+          echo(dst)
       else:
         dst &= p.title
       items.add((dst, p.id))
@@ -437,11 +438,9 @@ proc longpollParseResp(json: string): longpollResp  =
     fail = getNum(o["failed"]).int32
   else:
     if hasKey(o, "updates"):
-      acquire(threadLock)
       #echo(json)
       updc()
       parseLongpollUpdates(getElems(o["updates"]))
-      release(threadLock)
   if hasKey(o, "ts"):
     ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
@@ -475,7 +474,6 @@ proc longpollAsync*(updcq: proc(), longmsgq: proc(name: string, msg: string)) {.
     sleep(longpollRestartSleep)
 
 proc startLongpoll*() = 
-  initLock(threadLock)
   longpollAllowed = true
 
 proc setLongpollChat*(chatid: int, conference = false) = 

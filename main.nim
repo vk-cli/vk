@@ -342,8 +342,10 @@ proc entryPoint() =
   clear() 
   quit(QuitSuccess)
 
+{.experimental.}
 when isMainModule: 
-  # spawn longpollAsync(updCounter, newMessage)
-  # spawn entryPoint()
-  entryPoint()
-  # sync()
+  parallel:
+    spawn longpollAsync(updCounter, newMessage)
+    spawn entryPoint()
+  #sync()
+  #entryPoint()
