@@ -14,5 +14,6 @@ A console client for vk.com written in Nim
 # Compilation
 
 debug:
->nim c -d:ssl --threads:on -r --verbosity:0 -d:debug --opt:speed --threadAnalysis:off main.nim 
+>nim c -d:ssl --threads:on -r --verbosity:0 -d:debug --gc:boehm --threadAnalysis:off main.nim
+
 
