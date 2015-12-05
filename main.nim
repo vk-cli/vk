@@ -1,4 +1,4 @@
-import osproc, os, terminal, strutils, unicode, tables, threadpool
+import osproc, os, terminal, strutils, unicode, tables, threadpool, sequtils
 from ncurses import initscr, getmaxyx, endwin, curs_set
 import vkapi, cfg
 
@@ -61,15 +61,15 @@ type
     Mint,
     White
   Window      = object
-    x, y, key, offset   : int
-    active, last_active : int
-    section, start      : int
-    color               : Colors
-    title               : string
-    menu, body, buffer  : seq[ListElement]
-    dialog              : seq[Message]
-    maxname, counter    : int
-    dialogsOpened       : bool
+    x, y, key, offset              : int
+    active, last_active, chatid    : int
+    section, start, messageOffset  : int
+    color                          : Colors
+    title                          : string
+    menu, body, buffer             : seq[ListElement]
+    dialog                         : seq[Message]
+    maxname, counter, scrollOffset : int
+    dialogsOpened                  : bool
 
 proc nop(ListEl: var ListElement) = discard
 proc nopget(): seq[ListElement] = discard
@@ -88,6 +88,8 @@ proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void,
 
 var 
   win = Window(
+    scrollOffset: 1,
+    messageOffset: 0,
     color:    Blue,
     menu:     @[spawnLE("Друзья", "link", open, GetFriends),
                 spawnLE("Сообщения", "link", open, GetDialogs),
@@ -106,19 +108,36 @@ proc AlignBodyText() =
 
 proc chat(ListEl: var ListElement) = 
   win.dialogsOpened = true
-  win.body = newSeq[ListElement](0)
+  win.body   = newSeq[ListElement](0)
   win.buffer = newSeq[ListElement](0)
   win.dialog = newSeq[Message](0)
+  win.chatid = ListEl.link.parseInt
   var
     senderName = ""
     lastName   = "nil"
-  for message in vkhistory(ListEl.link.parseInt, count = win.y).items:
+  for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
     senderName = message.name
     if senderName != lastName:
       lastName = senderName
       win.dialog.add(Message(name: senderName, text: message.msg))
     else:
       win.dialog.add(Message(name: "", text: message.msg))
+  win.messageOffset += win.y
+
+proc LoadMoarMsg() = 
+  var
+    senderName = ""
+    lastName   = "nil"
+    cacheMsg = newSeq[Message](0)
+  for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
+    senderName = message.name
+    if senderName != lastName:
+      lastName = senderName
+      cacheMsg.add(Message(name: senderName, text: message.msg))
+    else:
+      cacheMsg.add(Message(name: "", text: message.msg))
+  win.messageOffset += win.y
+  win.dialog = concat(cacheMsg, win.dialog)
 
 proc open(ListEl: var ListElement) = 
   win.buffer = ListEl.getter()
@@ -238,20 +257,27 @@ proc Controller() =
       else:
         win.body[win.active].callback(win.body[win.active])
     of kg_up:
-      if win.active > 0: dec win.active
-      elif win.buffer.len != 0 and win.start != 0:
-        dec win.start
-        win.body = win.buffer[win.start..win.start+win.y-4]
-        AlignBodyText()
+      if win.dialogsOpened:
+          win.scrollOffset += win.y-3
+          if win.scrollOffset+win.y-3 > win.dialog.len: LoadMoarMsg()
+      else:
+        if win.active > 0: dec win.active
+        elif win.buffer.len != 0 and win.start != 0:
+          dec win.start
+          win.body = win.buffer[win.start..win.start+win.y-4]
+          AlignBodyText()
     of kg_down:
       if win.section == LEFT: 
         if win.active < win.menu.len-1: inc win.active
       else:
-        if win.active < win.body.len-1: inc win.active
-        elif win.buffer.len != 0 and win.start+win.y-3 != win.buffer.len:
-          inc win.start
-          win.body = win.buffer[win.start..win.start+win.y-4]
-          AlignBodyText()
+        if win.dialogsOpened and win.scrollOffset != 1:
+          win.scrollOffset -= win.y-3
+        else:
+          if win.active < win.body.len-1: inc win.active
+          elif win.buffer.len != 0 and win.start+win.y-3 != win.buffer.len:
+            inc win.start
+            win.body = win.buffer[win.start..win.start+win.y-4]
+            AlignBodyText()
     else: discard
 
 proc DrawMenu() = 
@@ -264,7 +290,7 @@ proc DrawMenu() =
       else: regular(e.text)
 
 proc DrawDialog() = 
-  for i, e in win.dialog:
+  for i, e in win.dialog[0..^win.scrollOffset]:
 
     var 
       temp, sep: string
@@ -301,8 +327,8 @@ proc DrawBody() =
 proc cli() = 
   while win.key notin kg_esc:
     clear()
-    Statusbar()
     if win.dialog.len == 0:
+      Statusbar()
       DrawMenu()
       DrawBody()
     else:

@@ -195,9 +195,11 @@ proc cropMsg(msg: string, wmod: int = 0): seq[string] =
   return ($tx).splitLines()
 
 proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage]
+
 proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): seq[vkmessage]
 
 proc uidsInit() = nameUids = newSeq[int](0)
+
 proc parseUidsForNames(items: seq[JsonNode], idname = "user_id") = 
   for t in items:
     let u = t[idname].num.int
@@ -211,7 +213,6 @@ proc resolveNames(rm: var seq[vkmessage]) =
       rm[n].name = names[q.fromid]
     elif q.findname and q.fwdm and q.fwduid > 0:
       rm[n].msg = q.msg & names[q.fwduid]
-
 
 proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): seq[vkmessage] = 
   var
@@ -246,7 +247,6 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
         fs.add(cm)
       
   return fs
-
 
 proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage] = 
   var
