@@ -1,12 +1,14 @@
-import osproc, strutils, json, httpclient, cgi, tables, sequtils, re
+import osproc, strutils, json, httpclient, cgi, tables, sequtils, re, net
 import macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
 from future import `=>`
 
 const 
-  quitOnApiError  = true
+  quitOnApiError  = false
   quitOnHttpError = true
   conferenceIdStart = 2000000000
   longpollRestartSleep = 2000
+  httpTryagainSleep = 200
+  httpRequestTimeout = 1000
   vkmethod   = "https://api.vk.com/method/"
   apiversion = "5.40"
   fwdprefix = "| "
@@ -45,18 +47,25 @@ var
 
 #===== api mechanics =====
 
-proc checkError(json: JsonNode): string =
+proc checkError(json: JsonNode): tuple[err: string, errno: int] =
   if json.hasKey("error"): 
-    let errobj = json["error"]
-    if errobj.hasKey("error_text"): return errobj["error_text"].str
-    if errobj.hasKey("error_msg"): return errobj["error_msg"].str
+    let 
+      errobj = json["error"]
+      errn = errobj["error_code"].num.int
+    if errobj.hasKey("error_text"): return (errobj["error_text"].str, errn)
+    if errobj.hasKey("error_msg"): return (errobj["error_msg"].str, errn)
   else:
-    return ""
+    return ("", -1)
 
 proc handleError(json: JsonNode): bool = 
   let err = checkError(json)
-  if err == "": return true
-  echo("Api error: " & err)
+  if err.errno < 0: return true
+  echo("Api error: " & $err.errno & " " & err.err)
+  case err.errno:
+    of 6: 
+      echo("wait 2 sec")
+      sleep(2000)
+    else: discard
   if quitOnApiError: 
     quit("Application exit", QuitSuccess)
   else: return false
@@ -89,18 +98,31 @@ proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1
     url &= "offset=" & $offset & "&" & "count=" & $count & "&"
 
   url &= "v=" & apiversion & "&access_token=" & api.token
-  var response: string
-  try:
-    response = getContent(url)
-  except:
-    handleHttpError(getCurrentExceptionMsg())
-  let pjson = parseJson(response)
-  if returnPure: return pjson
-  if not handleError(pjson):
-    echo(error_msg, QuitSuccess)
-    return
-  else:
-    return pjson["response"]
+  while true:
+    var response: string
+    var ok = false
+    while not ok:
+      try:
+        ok = true
+        let resp = request(url, timeout = httpRequestTimeout)
+        echo(resp.status)
+        case resp.status:
+          of "200 OK": discard
+          else: ok = false
+        response = resp.body
+      except TimeoutError:
+        ok = false
+        echo("Timeout!")
+        sleep(httpTryagainSleep)
+      except:
+        ok = false
+        handleHttpError(getCurrentExceptionMsg())
+    let pjson = parseJson(response)
+    if returnPure: return pjson
+    if not handleError(pjson):
+      discard
+    else:
+      return pjson["response"]
 
 proc getNextOffset(offset: int, argcount: int, count: int): int = 
   if offset+argcount < count:

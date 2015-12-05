@@ -335,6 +335,7 @@ proc entryPoint() =
   win.title = vkusername()
   win.counter = vkcounter()
   init()
+  startLongpoll()
   cli()
   discard execCmd("tput cnorm")
   pushTo(config)
@@ -344,8 +345,8 @@ proc entryPoint() =
 
 {.experimental.}
 when isMainModule: 
-  parallel:
-    spawn longpollAsync(updCounter, newMessage)
-    spawn entryPoint()
-  #sync()
-  #entryPoint()
+  #parallel:
+  spawn longpollAsync(updCounter, newMessage)
+  spawn entryPoint()
+  sync()
+  #ntryPoint()
