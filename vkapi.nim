@@ -467,7 +467,7 @@ proc longpollParseResp(json: string): longpollResp  =
     fail = getNum(o["failed"]).int32
   else:
     if hasKey(o, "updates"):
-      echo(json)
+      #echo(json)
       updc()
       parseLongpollUpdates(getElems(o["updates"]))
   if hasKey(o, "ts"):
