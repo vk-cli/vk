@@ -12,6 +12,11 @@ const
   fwdprefix = "| "
   fwdname = "➥ "
   wmodstep = -5
+  lpAttachType = "_type"
+
+let
+  lpreFwd = re(r"\d+_")
+  lpreAttach = re(r"attach\d")
 
 type 
   API = object
@@ -359,26 +364,21 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
 
   return (items, noffset)
 
-proc vkmsgbyid(ids: seq[int]): seq[vkmessage] = 
+proc vkmsgbyid(ids: seq[int]): seq[JsonNode] = 
   let
     i = ids.map(q => $q).join(",")
     j = request("messages.getById", {"message_ids": i}.toTable, "unable to get messages")
     items = j["items"].getElems()
-    names = vkusernames(items.map(q => q["user_id"].num.int))
-  var r = newSeq[vkmessage](0)
-  for q in items:
-    let fid = q["user_id"].num.int
-    r.add(vkmessage(
-      msgid: q["id"].num.int,
-      fromid: fid, chatid: -1,
-      msg: q["body"].str,
-      name: names[fid]
-    ))
-  return r
+  return items
+
 
 #===== longpoll =====
 
-proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(name: string, msg: string)) = 
+var
+  longmsg: proc(name: string, msg: string)
+  updc: proc()
+
+proc parseLongpollUpdates(arr: seq[JsonNode]) = 
   if longpollChatid < 1: return
   for u in arr:
     let q = u.getElems()
@@ -389,37 +389,46 @@ proc parseLongpollUpdates(arr: seq[JsonNode], longmsg: proc(name: string, msg: s
         time = q[4].num.int
         text = q[6].str
         att = q[7]
+        attpairs = att.getFields()
       if chatid != longpollChatid: return
-      #echo(att.pretty())
       var
         fromid = chatid
-        lfwd = newSeq[int](0)
-        qfwd = newSeq[tuple[uid: int, txt: string]](0)
-        vfwd = newseq[vkmessage](0)
-      if fromid >= conferenceIdStart:
-        fromid = att["from"].str.parseInt()
+        fwd = newSeq[int](0)
+        attach = newSeq[tuple[kind: string, id: string]](0)
+        msg = newSeq[vkmessage](0)
+      if att.hasKey("from"): fromid = att["from"].str.parseInt()
+      if att.hasKey("fwd"): 
+        for fm in att["fwd"].str.split(","):
+          let b = fm.findBounds(lpreFwd)
+          if b.first == 0: fwd.add(parseInt(fm[(b.last+1)..high(fm)]))
+      for at in attpairs:
+        var atmatch = newSeq[string](0)
+        if match(at.key, lpreAttach, atmatch) and atmatch.len == 1:
+          attach.add((att[at.key & lpAttachType].str, at.val.str))
+      #parse attaches here
+      uidsInit()
+      nameUids.add(fromid)
+      let cropm = cropMsg(text)
+      msg.add(vkmessage(
+          chatid: chatid, fromid: fromid, msgid: msgid,
+          fwdm: false, findname: true,
+          name: "", msg: cropm[0]
+        ))
+      if cropm.len > 1:
+        for ml in 1..high(cropm):
+          msg.add(vkmessage(
+            chatid: chatid, fromid: fromid, msgid: msgid,
+            fwdm: false, findname: false,
+            name: "", msg: cropm[ml]
+          ))
+      if fwd.len > 0:
+        let vkp = vkmessage(chatid: chatid, fromid: fromid, msgid: msgid)
+        for fl in getFwdMessages(vkmsgbyid(fwd), vkp): msg.add(fl)
+      msg.resolveNames()
+      for lpm in msg:
+        longmsg(lpm.name, lpm.msg)
 
-      if att.hasKey("fwd"):
-        let
-          fwd = att["fwd"].str.split(",")
-        for ff in fwd:
-          let
-            b = ff.findBounds(re(r"\d+_"))
-            lst = b.last+1
-          if b.first == 0:
-            lfwd.add(parseInt(ff[lst..high(ff)]))
-        if lfwd.len > 0:
-          vfwd = vkmsgbyid(lfwd)
-          qfwd = vfwd.map(f => (f.fromid, f.msg))
-
-      var name = initTable[int, string]() 
-      for f in vfwd: name[f.fromid] = f.name
-      name[fromid] = vkusername(fromid)
-      #let pre = vkpremsg(msgid: msgid, fromid: fromid, body: text, fwd: qfwd)
-      #for sm in getMessages(pre, chatid, name):
-      #  longmsg(sm.name, sm.msg)
-
-proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, msg: string)): longpollResp  =
+proc longpollParseResp(json: string): longpollResp  =
   var
     o = parseJson(json)
     fail = -1
@@ -431,20 +440,20 @@ proc longpollParseResp(json: string, updc: proc(), longmsg: proc(name: string, m
       acquire(threadLock)
       #echo(json)
       updc()
-      parseLongpollUpdates(getElems(o["updates"]), longmsg)
+      parseLongpollUpdates(getElems(o["updates"]))
       release(threadLock)
   if hasKey(o, "ts"):
     ts = getNum(o["ts"]).int32
   return longpollResp(ts: ts, failed: fail)
 
-proc longpollRoutine(info: longpollInfo, updc: proc(), longmsg: proc(name: string, msg: string)) = 
+proc longpollRoutine(info: longpollInfo) = 
   var currTs = info.ts
   while true:
     let
       lpUri = "https://" & info.server & "?act=a_check&key=" & info.key & "&ts=" & $currTs & "&wait=25&mode=2"
       resp = get(lpUri)
       #todo check server response code\status
-      lpresp = longpollParseResp(resp.body, updc, longmsg)
+      lpresp = longpollParseResp(resp.body)
     if lpresp.failed != -1:
       if lpresp.failed != 1:
         break #get new server
@@ -458,9 +467,11 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updc: proc(), longmsg: proc(name: string, msg: string)) {.thread,gcsafe.} =
+proc longpollAsync*(updcq: proc(), longmsgq: proc(name: string, msg: string)) {.thread,gcsafe.} =
+  longmsg = longmsgq
+  updc = updcq
   while true:
-    if longpollAllowed: longpollRoutine(getLongpollInfo(), updc, longmsg)
+    if longpollAllowed: longpollRoutine(getLongpollInfo())
     sleep(longpollRestartSleep)
 
 proc startLongpoll*() = 
