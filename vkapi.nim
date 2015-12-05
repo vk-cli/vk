@@ -3,24 +3,24 @@ import macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
 from future import `=>`
 
 const 
-  quitOnApiError  = false
-  quitOnHttpError = true
-  conferenceIdStart = 2000000000
+  quitOnApiError       = false
+  quitOnHttpError      = true
+  conferenceIdStart    = 2000000000
   longpollRestartSleep = 2000
-  httpTryagainSleep = 200
-  httpRequestTimeout = 1000
-  directLinksToPics = true
-  vkmethod   = "https://api.vk.com/method/"
-  apiversion = "5.40"
-  fwdprefix = "| "
-  fwdname = "➥ "
-  wmodstep = -5
-  lpAttachType = "_type"
+  httpTryagainSleep    = 200
+  httpRequestTimeout   = 1000
+  directLinksToPics    = true
+  vkmethod             = "https://api.vk.com/method/"
+  apiversion           = "5.40"
+  fwdprefix            = "| "
+  fwdname              = "➥ "
+  wmodstep             = -5
+  lpAttachType         = "_type"
+  photoSizes           = ["photo_1280", "photo_807", "photo_604", "photo_130", "photo_75"]
 
-let
-  lpreFwd = re(r"\d+_")
+let 
+  lpreFwd    = re(r"\d+_")
   lpreAttach = re(r"attach\d")
-  photoSizes = @["photo_1280", "photo_807", "photo_604", "photo_130", "photo_75"]
 
 type 
   API = object
@@ -111,14 +111,14 @@ proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1
         ok = true
         let resp = request(url, timeout = httpRequestTimeout)
         #echo(url)
-        echo(resp.status)
+        # echo(resp.status)
         case resp.status:
           of "200 OK": discard
           else: ok = false
         response = resp.body
       except TimeoutError:
         ok = false
-        echo("Timeout!")
+        # echo("Timeout!")
         sleep(httpTryagainSleep)
       except:
         ok = false
@@ -212,7 +212,6 @@ proc parseAttaches(att: seq[JsonNode]): string =
         rt &= "\nhttps://vk.com/photo" & o["owner_id"].str & "_" & o["id"].str
     else: discard
   return rt
-
 
 proc cropMsg(msg: string, wmod: int = 0): seq[string] = 
   if msg.len <= winx: return msg.splitLines()
@@ -411,9 +410,9 @@ proc vkdialogs*(offset = 0, count = 200): tuple[items: seq[tuple[dialog: string,
         if not unames.hasKey(p.id):
           dst &= "unable to get name: id " & $p.id
         else:
-          echo($p.id)
+          # echo($p.id)
           dst &= unames[p.id]
-          echo(dst)
+          # echo(dst)
       else:
         dst &= p.title
       items.add((dst, p.id))
@@ -426,7 +425,6 @@ proc vkphotos(ids: seq[string]): seq[JsonNode] =
     json = request("photos.getById", {"photos":idlist}.toTable, "unable to get photos")
   return json.getElems()
 
-
 proc vkmsgbyid(ids: seq[int]): seq[JsonNode] = 
   let
     i = ids.map(q => $q).join(",")
@@ -434,10 +432,9 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
     items = j["items"].getElems()
   return items
 
-
 #===== longpoll =====
 
-var
+var 
   longmsg: proc(name: string, msg: string)
   updc: proc()
 

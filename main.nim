@@ -238,11 +238,14 @@ proc Controller() =
   case win.key:
     of kg_left:
       if win.section == RIGHT:
-        win.active  = win.last_active
         win.dialog  = newSeq[Message](0)
+        win.active  = win.last_active
         if win.dialogsOpened:
           win.menu[win.active].callback(win.menu[win.active])
+          win.scrollOffset  = 1
+          win.messageOffset = 0
           win.dialogsOpened = false
+          win.active        = 0
         else:
           win.section = LEFT
           win.body    = newSeq[ListElement](0)
