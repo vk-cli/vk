@@ -42,7 +42,7 @@ const
   # music
   play  = "▶ "
   pause = "▮▮"
-  maxRuneOrd = 3000
+  maxRuneOrd = 10000
 
 type 
   Message     = object
@@ -352,9 +352,18 @@ proc popFrom(config: Table) =
     SetToken(config["token"])
     win.color = Colors(parseInt(config["color"]))
 
-proc updCounter() = 
+proc Update() = 
+  let last = win.counter
   win.counter = vkcounter()
-  #todo redraw statusbar
+  if last != win.counter and win.last_active == 1:
+    win.buffer = GetDialogs()
+    if win.buffer.len+2 < win.y:
+      win.body = win.buffer
+      win.buffer = newSeq[ListElement](0)
+    else:
+      win.start = 0
+      win.body = win.buffer[0..win.y-4]
+    AlignBodyText()
 
 proc newMessage(name: string, msg: string) = 
   echo(name & " : " & msg)
@@ -379,7 +388,7 @@ proc entryPoint() =
 {.experimental.}
 when isMainModule: 
   #parallel:
-  spawn longpollAsync(updCounter, newMessage)
+  spawn longpollAsync(Update, newMessage)
   spawn entryPoint()
   sync()
   #ntryPoint()
