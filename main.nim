@@ -42,6 +42,7 @@ const
   # music
   play  = "▶ "
   pause = "▮▮"
+  maxRuneOrd = 3000
 
 type 
   Message     = object
@@ -175,10 +176,13 @@ proc DurationToStr(n: int): string =
 proc GetMusic(): seq[ListElement] = 
   var music = newSeq[ListElement](0)
   for mus in vkmusic():
+    var rmod = 0
+    for r in mus.track.toRunes():
+      if r.ord > maxRuneOrd: inc(rmod)
     var
       name: string
       durationText = DurationToStr(mus.duration)
-      sp = win.x-win.offset-runeLen(mus.track)-9
+      sp = win.x-win.offset-runeLen(mus.track)-9-rmod
     if sp < 0:
       name = "   " & mus.track
     else:
