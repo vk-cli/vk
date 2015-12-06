@@ -118,11 +118,13 @@ proc chat(ListEl: var ListElement) =
     lastName   = "nil"
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
     senderName = message.name
-    if senderName != lastName:
-      lastName = senderName
-      win.dialog.add(Message(name: senderName, text: message.msg))
-    else:
-      win.dialog.add(Message(name: "", text: message.msg))
+    if message.msg.len != 0:
+      if senderName != lastName:
+        lastName = senderName
+        win.dialog.add(Message(name: "", text: ""))
+        win.dialog.add(Message(name: senderName, text: message.msg))
+      else:
+        win.dialog.add(Message(name: "", text: message.msg))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
@@ -134,6 +136,7 @@ proc LoadMoarMsg() =
     senderName = message.name
     if senderName != lastName:
       lastName = senderName
+      cacheMsg.add(Message(name: "", text: ""))
       cacheMsg.add(Message(name: senderName, text: message.msg))
     else:
       cacheMsg.add(Message(name: "", text: message.msg))
@@ -266,7 +269,11 @@ proc Controller() =
     of kg_up:
       if win.dialogsOpened:
           win.scrollOffset += win.y-3
-          if win.scrollOffset+win.y-3 > win.dialog.len: LoadMoarMsg()
+          if win.scrollOffset+4 > win.dialog.len: LoadMoarMsg()
+          if win.scrollOffset > win.dialog.len and win.y > win.dialog.len: win.scrollOffset = 1
+          if win.dialog.len-win.scrollOffset < win.y:
+            win.scrollOffset = win.dialog.len-win.y+1
+            if win.scrollOffset <= 0: win.scrollOffset = 1
       else:
         if win.active > 0: dec win.active
         elif win.buffer.len != 0 and win.start != 0:
@@ -279,6 +286,7 @@ proc Controller() =
       else:
         if win.dialogsOpened and win.scrollOffset != 1:
           win.scrollOffset -= win.y-3
+          if win.scrollOffset <= 0: win.scrollOffset = 1
         else:
           if win.active < win.body.len-1: inc win.active
           elif win.buffer.len != 0 and win.start+win.y-3 != win.buffer.len:

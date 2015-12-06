@@ -49,6 +49,8 @@ var
 
 #===== api mechanics =====
 
+proc clear() = discard execCmd("clear")
+
 proc checkError(json: JsonNode): tuple[err: string, errno: int] =
   if json.kind == JArray:
     if json.getElems().len == 0: discard #probably error
@@ -76,8 +78,9 @@ proc handleError(json: JsonNode): bool =
   else: return false
 
 proc handleHttpError(emsg: string) = 
+  clear()
   echo("Http error: " & emsg)
-  if quitOnHttpError: quit("Проверьте интернет соединение", QuitSuccess)
+  # if quitOnHttpError: quit("Проверьте интернет соединение", QuitSuccess)
 
 proc SetToken*(tk: string = "") = 
   if tk.len == 0:
