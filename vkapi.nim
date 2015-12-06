@@ -247,12 +247,6 @@ proc cropMsg(msg: string, wmod: int = 0): seq[string] =
       inc(cc)
   return ($tx).splitLines()
 
-proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage]
-
-proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): seq[vkmessage]
-
-proc uidsInit() = nameUids = newSeq[int](0)
-
 proc parseUidsForNames(items: seq[JsonNode], idname = "user_id") = 
   for t in items:
     let u = t[idname].num.int
@@ -352,7 +346,7 @@ proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessag
     noffset = getNextOffset(offset, count, allcount)
     items: seq[vkmessage]
   if allcount > 0:
-    uidsInit()
+    nameUids = newSeq[int](0)
     items = getMessages(json["items"].getElems(), userid)
   return (items, noffset)
 
@@ -476,7 +470,7 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
       if attach.any(q => q.kind == "photo"):
         text &= parseAttaches(vkphotos(attach.map(q => q.id)))
 
-      uidsInit()
+      nameUids = newSeq[int](0)
       nameUids.add(fromid)
       let cropm = cropMsg(text)
       msg.add(vkmessage(
