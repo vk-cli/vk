@@ -66,7 +66,7 @@ type
     active, last_active, chatid    : int
     section, start, messageOffset  : int
     color                          : Colors
-    title                          : string
+    title, username                : string
     menu, body, buffer             : seq[ListElement]
     dialog                         : seq[Message]
     maxname, counter, scrollOffset : int
@@ -212,11 +212,9 @@ proc init() =
   getmaxyx(initscr(), win.y, win.x)
   endwin()
   discard execCmd("tput civis")
-  var 
-    length = win.x div 2 - runeLen(win.title) div 2
-    title = spaces(length) & win.title & spaces(length)
-  if runeLen(title) > win.x: title = title[0..^2]
-  win.title = title
+  let length = win.x div 2 - runeLen(win.username) div 2
+  win.title = spaces(length) & win.username & spaces(length)
+  if runeLen(win.title) > win.x: win.title = win.title[0..^2]
   win.maxname = win.x div 4 + 1
   for e in win.menu:
     if win.offset < runeLen(e.text): win.offset = runeLen(e.text)
@@ -265,7 +263,20 @@ proc Controller() =
         win.active      = 0
         win.section     = RIGHT
       else:
-        win.body[win.active].callback(win.body[win.active])
+        if win.dialogsOpened:
+          stdout.write(": ")
+          var
+            lastname = ""
+            i = 1
+          while lastname == "":
+            lastname = win.dialog[^i].name
+            inc i
+          if lastname != win.username:
+            win.dialog.add(Message(name: "", text: ""))
+            win.dialog.add(Message(name: win.username, text: stdin.readLine()))
+          else:
+            win.dialog.add(Message(name: "", text: stdin.readLine()))
+        else: win.body[win.active].callback(win.body[win.active])
     of kg_up:
       if win.dialogsOpened:
           win.scrollOffset += win.y-3
@@ -382,7 +393,7 @@ proc entryPoint() =
   var config = load()
   popFrom(config)
   vkinit()
-  win.title = vkusername()
+  win.username = vkusername()
   win.counter = vkcounter()
   init()
   startLongpoll()
