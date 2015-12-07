@@ -122,16 +122,18 @@ proc chat(ListEl: var ListElement) =
   win.dialog = newSeq[Message](0)
   win.chatid = ListEl.link.parseInt
   setLongpollChat(win.chatid)
-  var
-    senderName = ""
-    lastName   = "nil"
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
-    senderName = message.name
+    var
+      lastname = ""
+      i = 1
+    if win.dialog.len != 0:
+      while lastname == "":
+        lastname = win.dialog[^i].name
+        inc i
     if message.msg.len != 0:
-      if senderName != lastName:
-        lastName = senderName
+      if lastname != message.name:
         win.dialog.add(Message(name: "", text: ""))
-        win.dialog.add(Message(name: senderName, text: message.msg))
+        win.dialog.add(Message(name: message.name, text: message.msg))
       else:
         win.dialog.add(Message(name: "", text: message.msg))
   win.messageOffset += win.y
@@ -432,8 +434,6 @@ proc newMessage(m: vkmessage) =
     while lastname == "":
       lastname = win.dialog[^i].name
       inc i
-    echo "last = " & lastname
-    echo "curr = " & m.name
     if lastname != m.name:
       win.dialog.add(Message(name: "", text: ""))
       win.dialog.add(Message(name: m.name, text: m.msg))
