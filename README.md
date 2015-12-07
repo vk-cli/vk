@@ -9,7 +9,7 @@ A console client for vk.com written in Nim
 + enter
 
 # Workflow
-[![demo](https://asciinema.org/a/9xk3udeee2xf7m31ngpwxzc57.png)](https://asciinema.org/a/9xk3udeee2xf7m31ngpwxzc57?autoplay=1)
+[![demo](https://asciinema.org/a/47nt6rjyyxuwel9y5gtv8xs4h.png)](https://asciinema.org/a/47nt6rjyyxuwel9y5gtv8xs4h?autoplay=1)
 
 # Compilation
 

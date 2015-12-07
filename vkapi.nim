@@ -83,8 +83,8 @@ proc handleError(json: JsonNode): bool =
   else: return false
 
 proc handleHttpError(emsg: string) = 
-  clear()
-  echo("Http error: " & emsg)
+  # clear()
+  # echo("Http error: " & emsg)
   if quitOnHttpError: quit("Проверьте интернет соединение", QuitSuccess)
 
 proc SetToken*(tk: string = "") = 
