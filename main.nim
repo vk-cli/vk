@@ -268,20 +268,9 @@ proc Controller() =
         if win.dialogsOpened:
           setCursorPos(0, win.y)
           stdout.write(": ")
-          var
-            lastname = ""
-            i = 1
-          while lastname == "":
-            lastname = win.dialog[^i].name
-            inc i
-          let
-            msg = stdin.readLine()
-          if msg.len != 0:
-            if lastname != win.username:
-              win.dialog.add(Message(name: "", text: ""))
-              win.dialog.add(Message(name: win.username, text: msg))
-            else:
-              win.dialog.add(Message(name: "", text: msg))
+          if not vksend(win.chatid, stdin.readLine()):
+            echo "Сообщение не отправлено"
+            discard stdin.readLine()
         else: win.body[win.active].callback(win.body[win.active])
     of kg_up:
       if win.dialogsOpened:
