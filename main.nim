@@ -113,6 +113,7 @@ proc chat(ListEl: var ListElement) =
   win.buffer = newSeq[ListElement](0)
   win.dialog = newSeq[Message](0)
   win.chatid = ListEl.link.parseInt
+  setLongpollChat(win.chatid)
   var
     senderName = ""
     lastName   = "nil"
@@ -255,6 +256,7 @@ proc Controller() =
           win.section = LEFT
           win.body    = newSeq[ListElement](0)
       else:
+        setLongpollChat(0)
         win.dialog = newSeq[Message](0)
     of kg_right:
       if win.section == LEFT:
@@ -264,6 +266,7 @@ proc Controller() =
         win.section     = RIGHT
       else:
         if win.dialogsOpened:
+          setCursorPos(0, win.y)
           stdout.write(": ")
           var
             lastname = ""
@@ -271,11 +274,14 @@ proc Controller() =
           while lastname == "":
             lastname = win.dialog[^i].name
             inc i
-          if lastname != win.username:
-            win.dialog.add(Message(name: "", text: ""))
-            win.dialog.add(Message(name: win.username, text: stdin.readLine()))
-          else:
-            win.dialog.add(Message(name: "", text: stdin.readLine()))
+          let
+            msg = stdin.readLine()
+          if msg.len != 0:
+            if lastname != win.username:
+              win.dialog.add(Message(name: "", text: ""))
+              win.dialog.add(Message(name: win.username, text: msg))
+            else:
+              win.dialog.add(Message(name: "", text: msg))
         else: win.body[win.active].callback(win.body[win.active])
     of kg_up:
       if win.dialogsOpened:
@@ -317,25 +323,17 @@ proc DrawMenu() =
 
 proc DrawDialog() = 
   for i, e in win.dialog[0..^win.scrollOffset]:
-
     var 
-      temp, sep: string
+      temp: string
+      sep = ": "
       sum = 0
-
     setCursorPos(0, 3+i)
-
     if runeLen(e.name) < win.maxname:
       temp = spaces(win.maxname-runeLen(e.name)) & e.name
     else:
       temp = e.name[0..win.maxname-4] & "..."
-    if runeLen(e.name) != 0:
-      sep = ": "
-    else:
-      sep = "  "
-
-    for c in e.name:
-      sum += c.int
-
+    if e.name.len == 0: sep = "  "
+    for c in e.name: sum += c.int
     # one char padding
     temp = " " & temp
 
@@ -385,8 +383,19 @@ proc Update() =
     AlignBodyText()
 
 proc newMessage(name: string, msg: string) = 
-  echo(name & " : " & msg)
-  #win.dialog.add(Message(name: name, text: msg))
+  var
+    lastname = ""
+    i = 1
+  while lastname == "":
+    lastname = win.dialog[^i].name
+    inc i
+  if lastname != win.username:
+    win.dialog.add(Message(name: "", text: ""))
+    win.dialog.add(Message(name: name, text: msg))
+  else:
+    win.dialog.add(Message(name: "", text: msg))
+  clear()
+  DrawDialog()
 
 proc entryPoint() = 
   clear()
