@@ -268,9 +268,11 @@ proc Controller() =
         if win.dialogsOpened:
           setCursorPos(0, win.y)
           stdout.write(": ")
-          if not vksend(win.chatid, stdin.readLine()):
-            echo "Сообщение не отправлено"
-            discard stdin.readLine()
+          let msg = stdin.readLine()
+          if msg.len != 0:
+            if not vksend(win.chatid, msg):
+              echo "Сообщение не отправлено"
+              discard stdin.readLine()
         else: win.body[win.active].callback(win.body[win.active])
     of kg_up:
       if win.dialogsOpened:
