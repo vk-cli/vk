@@ -373,7 +373,7 @@ proc Update() =
       win.body = win.buffer[0..win.y-4]
     AlignBodyText()
 
-proc newMessage(name: string, msg: string) = 
+proc newMessage(m: vkmessage) = 
   var
     lastname = ""
     i = 1
@@ -382,11 +382,14 @@ proc newMessage(name: string, msg: string) =
     inc i
   if lastname != win.username:
     win.dialog.add(Message(name: "", text: ""))
-    win.dialog.add(Message(name: name, text: msg))
+    win.dialog.add(Message(name: m.name, text: m.msg))
   else:
-    win.dialog.add(Message(name: "", text: msg))
+    win.dialog.add(Message(name: "", text: m.msg))
   clear()
   DrawDialog()
+
+proc readMessage(m: vkmessage) = 
+  discard
 
 proc entryPoint() = 
   clear()
@@ -407,7 +410,7 @@ proc entryPoint() =
 {.experimental.}
 when isMainModule: 
   #parallel:
-  spawn longpollAsync(Update, newMessage)
+  spawn longpollAsync(Update, newMessage, readMessage)
   spawn entryPoint()
   sync()
   #ntryPoint()
