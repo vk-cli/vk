@@ -4,7 +4,7 @@ from future import `=>`
 
 const 
   quitOnApiError       = false
-  quitOnHttpError      = true
+  quitOnHttpError      = false
   conferenceIdStart    = 2000000000
   longpollRestartSleep = 2000
   httpTryagainSleep    = 200
@@ -34,7 +34,7 @@ type
   vkmessage* = object
     msgid*, fromid*, chatid*: int
     msg*, name*: string
-    fwdm*, findname*: bool
+    fwdm*, findname*, findfwdname*: bool
     fwduid*: int
 
 var 
@@ -85,7 +85,7 @@ proc handleError(json: JsonNode): bool =
 proc handleHttpError(emsg: string) = 
   clear()
   echo("Http error: " & emsg)
-  # if quitOnHttpError: quit("Проверьте интернет соединение", QuitSuccess)
+  if quitOnHttpError: quit("Проверьте интернет соединение", QuitSuccess)
 
 proc SetToken*(tk: string = "") = 
   if tk.len == 0:
@@ -262,9 +262,9 @@ proc resolveNames(rm: var seq[vkmessage]) =
   let names = vkusernames(nameUids)
   for n in low(rm)..high(rm):
     let q = rm[n]
-    if q.findname and not q.fwdm:
+    if q.findname:
       rm[n].name = names[q.fromid]
-    elif q.findname and q.fwdm and q.fwduid > 0:
+    if q.fwdm and q.findfwdname and q.fwduid > 0: 
       rm[n].msg = q.msg & names[q.fwduid]
 
 proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): seq[vkmessage] = 
@@ -284,7 +284,7 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
       lastuid = wfid
       fs.add(vkmessage(
           chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
-          name: "", fwdm: true, findname: true,
+          name: "", fwdm: true, findname: true, findfwdname: true,
           fwduid: wfid,
           msg: fwdprefix & fwdname
         ))
@@ -292,7 +292,7 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
     for l in wmsg:
       fs.add(vkmessage(
           chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
-          name: "", fwdm: true, findname: false,
+          name: "", fwdm: true, findname: true, findfwdname: false,
           fwduid: wfid,
           msg: fwdprefix & l
         ))
@@ -336,7 +336,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
         mitems.add(vkmessage(
             msgid: mid, fromid: mfrom, chatid: dialogid,
             name: "", msg: mlines[fml],
-            fwdm: false, findname: false
+            fwdm: false, findname: true
           ))
     for ffm in mfwd:
       mitems.add(ffm)
