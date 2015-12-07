@@ -2,6 +2,10 @@ import osproc, os, terminal, strutils, unicode, tables, threadpool, sequtils
 from ncurses import initscr, getmaxyx, endwin, curs_set
 import vkapi, cfg
 
+proc memset(s: pointer, c: cint, n: csize) {.header: "<string.h>", importc: "memset", tags: [].}
+proc fgets(c: cstring, n: int, f: File): cstring {.importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
+proc memchr(s: pointer, c: cint, n: csize): pointer {.importc: "memchr", header: "<string.h>", tags: [].}
+
 const 
   # keys
   k_CC     = 3
@@ -224,6 +228,48 @@ proc init() =
     win.menu[i].text = win.menu[i].text & spaces(win.offset - runeLen(e.text))
   SetWinx(win.x-win.maxname-4)
 
+proc readinput(f: File, line: var TaintedString): bool =
+  var pos = 0
+  # Use the currently reserved space for a first try
+  
+  # var space = cast[PGenericSeq](line.string).space
+  var space = 0
+  line.string.setLen(space)
+
+  while true:
+    # memset to \l so that we can tell how far fgets wrote, even on EOF, where
+    # fgets doesn't append an \l
+    memset(addr line.string[pos], '\l'.ord, space)
+    if fgets(addr line.string[pos], space, f) == nil:
+      line.string.setLen(0)
+      return false
+    let m = memchr(addr line.string[pos], '\l'.ord, space)
+    if m != nil:
+      # \l found: Could be our own or the one by fgets, in any case, we're done
+      var last = cast[ByteAddress](m) - cast[ByteAddress](addr line.string[0])
+      if last > 0 and line.string[last-1] == '\c':
+        line.string.setLen(last-1)
+        return true
+        # We have to distinguish between two possible cases:
+        # \0\l\0 => line ending in a null character.
+        # \0\l\l => last line without newline, null was put there by fgets.
+      elif last > 0 and line.string[last-1] == '\0':
+        if last < pos + space - 1 and line.string[last+1] != '\0':
+          dec last
+      line.string.setLen(last)
+      return true
+    else:
+      # fgets will have inserted a null byte at the end of the string.
+      dec space
+    # No \l found: Increase buffer and read more
+    inc pos, space
+    space = 128 # read in 128 bytes at a time
+    line.string.setLen(pos+space)
+
+proc input(f: File): TaintedString =
+  result = TaintedString(newStringOfCap(80))
+  discard readLine(f, result)
+
 proc selected(text: string) = 
   setStyle({styleReverse, styleBright})
   setForegroundColor(ForegroundColor(win.color))
@@ -268,7 +314,7 @@ proc Controller() =
         if win.dialogsOpened:
           setCursorPos(0, win.y)
           stdout.write(": ")
-          let msg = stdin.readLine()
+          let msg = stdin.input()
           if msg.len != 0:
             if not vksend(win.chatid, msg):
               echo "Сообщение не отправлено"
@@ -374,19 +420,22 @@ proc Update() =
     AlignBodyText()
 
 proc newMessage(name: string, msg: string) = 
-  var
-    lastname = ""
-    i = 1
-  while lastname == "":
-    lastname = win.dialog[^i].name
-    inc i
-  if lastname != win.username:
-    win.dialog.add(Message(name: "", text: ""))
-    win.dialog.add(Message(name: name, text: msg))
-  else:
-    win.dialog.add(Message(name: "", text: msg))
-  clear()
-  DrawDialog()
+  if win.dialog.len != 0:
+    var
+      lastname = ""
+      i = 1
+    while lastname == "":
+      lastname = win.dialog[^i].name
+      inc i
+    echo "last = " & lastname
+    echo "curr = " & name
+    if lastname != name:
+      win.dialog.add(Message(name: "", text: ""))
+      win.dialog.add(Message(name: name, text: msg))
+    else:
+      win.dialog.add(Message(name: "", text: msg))
+    clear()
+    DrawDialog()
 
 proc entryPoint() = 
   clear()
