@@ -15,11 +15,9 @@ const
   fwdprefix            = "| "
   fwdname              = "➥ "
   wmodstep             = -5
-  lpAttachType         = "_type"
   photoSizes           = ["photo_1280", "photo_807", "photo_604", "photo_130", "photo_75"]
 
 let 
-  lpreFwd    = re(r"\d+_")
   lpreAttach = re(r"attach\d")
 
 type 
@@ -46,6 +44,13 @@ var
   nameCache = initTable[int, string]()
   nameUids: seq[int]
   winx: int
+  debugfile: File
+
+proc openDebugFile() = 
+  debugfile = open("debugout", fmWrite)
+
+proc dwr(str: string) = 
+  debugfile.writeLine(str)
 
 #===== api mechanics =====
 
@@ -248,6 +253,7 @@ proc cropMsg(msg: string, wmod: int = 0): seq[string] =
   return ($tx).splitLines()
 
 proc parseUidsForNames(items: seq[JsonNode], idname = "user_id") = 
+  dwr("idname: " & idname)
   for t in items:
     let u = t[idname].num.int
     if not nameUids.contains(u): nameUids.add(u)
@@ -299,10 +305,10 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
       
   return fs
 
-proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage] = 
+proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[vkmessage] = 
   var
     qitems = newSeq[vkmessage](0)
-  parseUidsForNames(items, "from_id")
+  parseUidsForNames(items, idname)
   for m in items:
     var matt = ""
     if m.hasKey("attachments"): matt = parseAttaches(m["attachments"].getElems())
@@ -313,7 +319,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int): seq[vkmessage] =
       mfwd = newSeq[vkmessage](0)
       mlines = cropMsg(mbody)
       mid = m["id"].num.int
-      mfrom = m["from_id"].num.int
+      mfrom = m[idname].num.int
 
     let qmm = vkmessage(
         msgid: mid, fromid: mfrom, chatid: dialogid,
@@ -432,7 +438,8 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
 #===== longpoll =====
 
 var 
-  longmsg: proc(name: string, msg: string)
+  longmsg: proc(m: vkmessage)
+  longread: proc(m: vkmessage)
   updc: proc()
 
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
@@ -443,54 +450,37 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
       let
         msgid = q[1].num.int
         flags = q[2].num.int
+        text = q[6].str
         chatid = q[3].num.int
         time = q[4].num.int
         att = q[7]
-        attpairs = att.getFields()
+        attkeys = att.getFields().map(q => q.key)
       if chatid != longpollChatid: return
       var
-        text = q[6].str
         fromid = chatid
-        fwd = newSeq[int](0)
-        attach = newSeq[tuple[kind: string, id: string]](0)
         msg = newSeq[vkmessage](0)
       if att.hasKey("from"): 
         fromid = att["from"].str.parseInt()
       elif (flags and 2) == 2: #check for outgoing message
         fromid = api.userid
-      if att.hasKey("fwd"): 
-        for fm in att["fwd"].str.split(","):
-          let b = fm.findBounds(lpreFwd)
-          if b.first == 0: fwd.add(parseInt(fm[(b.last+1)..high(fm)]))
-      for at in attpairs:
-        var atmatch = newSeq[string](0)
-        if match(at.key, lpreAttach, atmatch) and atmatch.len == 1:
-          attach.add((att[at.key & lpAttachType].str, at.val.str))
-      
-      if attach.any(q => q.kind == "photo"):
-        text &= parseAttaches(vkphotos(attach.map(q => q.id)))
-
-      nameUids = newSeq[int](0)
-      nameUids.add(fromid)
-      let cropm = cropMsg(text)
-      msg.add(vkmessage(
-          chatid: chatid, fromid: fromid, msgid: msgid,
-          fwdm: false, findname: true,
-          name: "", msg: cropm[0]
-        ))
-      if cropm.len > 1:
-        for ml in 1..high(cropm):
-          msg.add(vkmessage(
+      if attkeys.contains("fwd") or attkeys.any(q => q.match(lpreAttach)): 
+        msg = getMessages(vkmsgbyid(@[msgid]), chatid, "user_id")
+      else:
+        let cropm = cropMsg(text.replace("<br>", "\n"))
+        msg.add(vkmessage(
             chatid: chatid, fromid: fromid, msgid: msgid,
             fwdm: false, findname: false,
-            name: "", msg: cropm[ml]
+            name: vkusername(fromid), msg: cropm[0]
           ))
-      if fwd.len > 0:
-        let vkp = vkmessage(chatid: chatid, fromid: fromid, msgid: msgid)
-        for fl in getFwdMessages(vkmsgbyid(fwd), vkp): msg.add(fl)
-      msg.resolveNames()
+        if cropm.len > 1:
+          for ml in 1..high(cropm):
+            msg.add(vkmessage(
+              chatid: chatid, fromid: fromid, msgid: msgid,
+              fwdm: false, findname: false,
+              name: "", msg: cropm[ml]
+            ))
       for lpm in msg:
-        longmsg(lpm.name, lpm.msg)
+        longmsg(lpm)
 
 proc longpollParseResp(json: string): longpollResp  =
   var
@@ -501,7 +491,7 @@ proc longpollParseResp(json: string): longpollResp  =
     fail = getNum(o["failed"]).int32
   else:
     if hasKey(o, "updates"):
-      #echo(json)
+      dwr(json)
       updc()
       parseLongpollUpdates(getElems(o["updates"]))
   if hasKey(o, "ts"):
@@ -529,14 +519,16 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updcq: proc(), longmsgq: proc(name: string, msg: string)) {.thread,gcsafe.} =
+proc longpollAsync*(updcq: proc(), longmsgq: proc(m: vkmessage), longreadq: proc(m: vkmessage)) {.thread,gcsafe.} =
   longmsg = longmsgq
+  longread = longreadq
   updc = updcq
   while true:
     if longpollAllowed: longpollRoutine(getLongpollInfo())
     sleep(longpollRestartSleep)
 
 proc startLongpoll*() = 
+  openDebugFile()
   longpollAllowed = true
 
 proc setLongpollChat*(chatid: int, conference = false) = 
