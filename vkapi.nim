@@ -15,13 +15,10 @@ const
   fwdprefix            = "| "
   fwdname              = "➥ "
   wmodstep             = -5
-  lpAttachType         = "_type"
   photoSizes           = ["photo_1280", "photo_807", "photo_604", "photo_130", "photo_75"]
 
 let 
-  lpreFwd    = re(r"\d+_")
   lpreAttach = re(r"attach\d")
-  lpreAttachType = re(r"attach\d_type")
 
 type 
   API = object
