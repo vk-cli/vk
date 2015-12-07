@@ -2,9 +2,12 @@ import osproc, os, terminal, strutils, unicode, tables, threadpool, sequtils
 from ncurses import initscr, getmaxyx, endwin, curs_set
 import vkapi, cfg
 
-proc memset(s: pointer, c: cint, n: csize) {.header: "<string.h>", importc: "memset", tags: [].}
-proc fgets(c: cstring, n: int, f: File): cstring {.importc: "fgets", header: "<stdio.h>", tags: [ReadIOEffect].}
-proc memchr(s: pointer, c: cint, n: csize): pointer {.importc: "memchr", header: "<string.h>", tags: [].}
+proc memset(s: pointer, c: cint, n: csize) {.header: "<string.h>",
+  importc: "memset", tags: [].}
+proc fgets(c: cstring, n: int, f: File): cstring {.importc: "fgets",
+  header: "<stdio.h>", tags: [ReadIOEffect].}
+proc memchr(s: pointer, c: cint, n: csize): pointer {.importc: "memchr",
+  header: "<string.h>", tags: [].}
 
 const 
   # keys
@@ -88,7 +91,8 @@ proc GetDialogs(): seq[ListElement]
 proc GetMusic(): seq[ListElement]
 proc GenerateSettings(): seq[ListElement]
 
-proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void, gett: proc: seq[ListElement]): ListElement = 
+proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void,
+  gett: proc: seq[ListElement]): ListElement = 
   return ListElement(text: txt, link: lnk, callback: clback, getter: gett)
 
 var 
@@ -324,7 +328,8 @@ proc Controller() =
       if win.dialogsOpened:
           win.scrollOffset += win.y-3
           if win.scrollOffset+4 > win.dialog.len: LoadMoarMsg()
-          if win.scrollOffset > win.dialog.len and win.y > win.dialog.len: win.scrollOffset = 1
+          if win.scrollOffset > win.dialog.len and win.y > win.dialog.len:
+            win.scrollOffset = 1
           if win.dialog.len-win.scrollOffset < win.y:
             win.scrollOffset = win.dialog.len-win.y+1
             if win.scrollOffset <= 0: win.scrollOffset = 1
