@@ -439,14 +439,11 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
 
 var 
   longmsg: proc(m: vkmessage)
-  longread: proc(m: vkmessage)
+  longread: proc(msgid: int)
   updc: proc(ncounter: int)
 
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
-  #if longpollChatid < 1: return
-  var dbcc = 0
   for u in arr:
-    inc(dbcc)
     let q = u.getElems()
     case q[0].num: #message update
       of 4:
@@ -488,8 +485,10 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
       of 80:
         updc(q[1].num.int)
 
+      of 7:
+        if q[1].num.int == longpollChatid: longread(q[2].num.int)
+
       else: discard
-    dwr("processed " & $dbcc & " arrays")
 
 proc longpollParseResp(json: string): longpollResp  =
   var
@@ -527,7 +526,7 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updcq: proc(ncounter: int), longmsgq: proc(m: vkmessage), longreadq: proc(m: vkmessage)) {.thread,gcsafe.} =
+proc longpollAsync*(updcq: proc(ncounter: int), longmsgq: proc(m: vkmessage), longreadq: proc(msgid: int)) {.thread,gcsafe.} =
   longmsg = longmsgq
   longread = longreadq
   updc = updcq

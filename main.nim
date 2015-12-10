@@ -442,7 +442,7 @@ proc newMessage(m: vkmessage) =
     clear()
     DrawDialog()
 
-proc readMessage(m: vkmessage) = 
+proc readMessage(msgid: int) = 
   discard
 
 proc entryPoint() = 
