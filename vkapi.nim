@@ -440,47 +440,56 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
 var 
   longmsg: proc(m: vkmessage)
   longread: proc(m: vkmessage)
-  updc: proc()
+  updc: proc(ncounter: int)
 
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
-  if longpollChatid < 1: return
+  #if longpollChatid < 1: return
+  var dbcc = 0
   for u in arr:
+    inc(dbcc)
     let q = u.getElems()
-    if q[0].num == 4: #message update
-      let
-        msgid = q[1].num.int
-        flags = q[2].num.int
-        text = q[6].str
-        chatid = q[3].num.int
-        time = q[4].num.int
-        att = q[7]
-        attkeys = att.getFields().map(q => q.key)
-      if chatid != longpollChatid: return
-      var
-        fromid = chatid
-        msg = newSeq[vkmessage](0)
-      if att.hasKey("from"): 
-        fromid = att["from"].str.parseInt()
-      elif (flags and 2) == 2: #check for outgoing message
-        fromid = api.userid
-      if attkeys.contains("fwd") or attkeys.any(q => q.match(lpreAttach)): 
-        msg = getMessages(vkmsgbyid(@[msgid]), chatid, "user_id")
-      else:
-        let cropm = cropMsg(text.replace("<br>", "\n"))
-        msg.add(vkmessage(
-            chatid: chatid, fromid: fromid, msgid: msgid,
-            fwdm: false, findname: false,
-            name: vkusername(fromid), msg: cropm[0]
-          ))
-        if cropm.len > 1:
-          for ml in 1..high(cropm):
-            msg.add(vkmessage(
+    case q[0].num: #message update
+      of 4:
+        let
+          msgid = q[1].num.int
+          flags = q[2].num.int
+          text = q[6].str
+          chatid = q[3].num.int
+          time = q[4].num.int
+          att = q[7]
+          attkeys = att.getFields().map(q => q.key)
+        if chatid != longpollChatid: return
+        var
+          fromid = chatid
+          msg = newSeq[vkmessage](0)
+        if att.hasKey("from"): 
+          fromid = att["from"].str.parseInt()
+        elif (flags and 2) == 2: #check for outgoing message
+          fromid = api.userid
+        if attkeys.contains("fwd") or attkeys.any(q => q.match(lpreAttach)): 
+          msg = getMessages(vkmsgbyid(@[msgid]), chatid, "user_id")
+        else:
+          let cropm = cropMsg(text.replace("<br>", "\n"))
+          msg.add(vkmessage(
               chatid: chatid, fromid: fromid, msgid: msgid,
               fwdm: false, findname: false,
-              name: "", msg: cropm[ml]
+              name: vkusername(fromid), msg: cropm[0]
             ))
-      for lpm in msg:
-        longmsg(lpm)
+          if cropm.len > 1:
+            for ml in 1..high(cropm):
+              msg.add(vkmessage(
+                chatid: chatid, fromid: fromid, msgid: msgid,
+                fwdm: false, findname: false,
+                name: "", msg: cropm[ml]
+              ))
+        for lpm in msg:
+          longmsg(lpm)
+
+      of 80:
+        updc(q[1].num.int)
+
+      else: discard
+    dwr("processed " & $dbcc & " arrays")
 
 proc longpollParseResp(json: string): longpollResp  =
   var
@@ -492,7 +501,6 @@ proc longpollParseResp(json: string): longpollResp  =
   else:
     if hasKey(o, "updates"):
       dwr(json)
-      updc()
       parseLongpollUpdates(getElems(o["updates"]))
   if hasKey(o, "ts"):
     ts = getNum(o["ts"]).int32
@@ -519,7 +527,7 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updcq: proc(), longmsgq: proc(m: vkmessage), longreadq: proc(m: vkmessage)) {.thread,gcsafe.} =
+proc longpollAsync*(updcq: proc(ncounter: int), longmsgq: proc(m: vkmessage), longreadq: proc(m: vkmessage)) {.thread,gcsafe.} =
   longmsg = longmsgq
   longread = longreadq
   updc = updcq

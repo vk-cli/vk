@@ -413,9 +413,9 @@ proc popFrom(config: Table) =
     SetToken(config["token"])
     win.color = Colors(parseInt(config["color"]))
 
-proc Update() = 
+proc Update(ncounter: int) = 
   let last = win.counter
-  win.counter = vkcounter()
+  win.counter = ncounter
   if last != win.counter and win.last_active == 1:
     win.buffer = GetDialogs()
     if win.buffer.len+2 < win.y:
