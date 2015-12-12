@@ -1,5 +1,5 @@
 import osproc, strutils, json, httpclient, cgi, tables, sequtils, re, net
-import macros, asyncdispatch, asynchttpserver, strtabs, os, times, unicode
+import macros, strtabs, os, times, unicode, locks
 from future import `=>`
 
 const 
@@ -65,7 +65,7 @@ proc `$`(v: vkmessage): string =
 
 
 
-#===== api mechanics =====
+# ===== api mechanics =====
 
 proc clear() = discard execCmd("clear")
 
@@ -469,7 +469,7 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
     items = j["items"].getElems()
   return items
 
-#===== longpoll =====
+# ===== longpoll =====
 
 var 
   longmsg: proc(m: vkmessage)
@@ -587,3 +587,40 @@ proc setLongpollChat*(chatid: int, conference = false) =
   var cid = chatid
   if conference: cid += conferenceIdStart
   longpollChatid = cid
+
+
+# ===== async api loop =====
+
+type 
+  apimethods = enum
+    sendMessage, nop
+
+var
+  command = apimethods.nop
+  hasc = false
+  slk: Lock
+
+  sendMessageParams: tuple[peer: int, msg: string]
+
+proc vksendAsync*(peer: int, msg: string): bool =
+  slk.acquire()
+  command = apimethods.sendMessage
+  hasc = true
+  sendMessageParams = (peer, msg)
+  dwr("command set vksend")
+  slk.release()
+  return true
+
+proc eventLoop*() = 
+  slk.initLock()
+  while true:
+    if hasc:
+      slk.acquire()
+      case command:
+        of apimethods.sendMessage:
+          let p = sendMessageParams
+          discard vksend(p.peer, p.msg)
+        else: discard
+      hasc = false
+      slk.release()
+

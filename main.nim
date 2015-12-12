@@ -322,7 +322,7 @@ proc Controller() =
           stdout.write(": ")
           let msg = stdin.input()
           if msg.len != 0:
-            if not vksend(win.chatid, msg):
+            if not vksendAsync(win.chatid, msg):
               echo "Сообщение не отправлено"
               discard stdin.readLine()
         else: win.body[win.active].callback(win.body[win.active])
@@ -465,6 +465,7 @@ proc entryPoint() =
 when isMainModule: 
   #parallel:
   spawn longpollAsync(Update, newMessage, readMessage)
+  spawn eventLoop()
   spawn entryPoint()
   sync()
   #ntryPoint()
