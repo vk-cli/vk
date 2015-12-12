@@ -507,7 +507,8 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
           dwr("[attkeys]")
           msg = getMessages(vkmsgbyid(@[msgid]), chatid, "user_id")
         else:
-          let cropm = cropMsg(text.replace("<br>", "\n"))
+          let 
+            cropm = cropMsg(text.replace("<br>", "\n").replace("&quot;", "\""))
           msg.add(vkmessage(
               chatid: chatid, fromid: fromid, msgid: msgid,
               fwdm: false, findname: false, unread: unread,
