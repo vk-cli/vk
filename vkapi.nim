@@ -32,10 +32,10 @@ type
     failed, ts: int
 
   vkmessage* = object
-    msgid*, fromid*, chatid*: int
-    msg*, name*: string
-    fwdm*, findname*, findfwdname*: bool
-    fwduid*: int
+    msgid*, fromid*, chatid*, fwduid*: int
+    time*: float
+    msg*, name*, strtime*: string
+    fwdm*, unread*, findname, findfwdname: bool
 
 var 
   api = API()
@@ -51,6 +51,19 @@ proc openDebugFile() =
 
 proc dwr(str: string) = 
   debugfile.writeLine(str)
+
+proc `$`(v: vkmessage): string = 
+  var rt = ""
+  rt &= "msgid: " & $v.msgid & ", "
+  rt &= "fromid: " & $v.fromid & ", "
+  rt &= "chatid: " & $v.chatid & ", "
+  rt &= "fwduid: " & $v.fwduid & "\n"
+  rt &= "time: " & $v.time & ", "
+  rt &= "strtime: " & v.strtime & "\n"
+  rt &= "fwdm unread findname findfwdname : " & $v.fwdm & $v.unread & $v.findname & $v.findfwdname
+  return rt
+
+
 
 #===== api mechanics =====
 
@@ -305,6 +318,20 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
       
   return fs
 
+proc getStrDate(utime: float): string =
+  #dwr("utime " & $utime)
+  let
+   tinfo = getLocalTime(fromSeconds(utime))
+   ct = getLocalTime(getTime())
+  var tstr = ""
+  if tinfo.year != ct.year or tinfo.yearday != ct.yearday:
+    tstr = tinfo.format(r"dd'.'MM'.'yy")
+  else:
+    tstr = tinfo.format(r"HH:mm:ss")
+  #dwr("getstr " & tstr)
+  #dwr("ftime " & tinfo.format(r"dd'.'MM'.'yy HH:mm:ss") & " ctime " & $ct)
+  return tstr
+
 proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[vkmessage] = 
   var
     qitems = newSeq[vkmessage](0)
@@ -320,11 +347,17 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
       mlines = cropMsg(mbody)
       mid = m["id"].num.int
       mfrom = m[idname].num.int
+      mdate = m["date"].num.float
+      mstrdate = getStrDate(mdate)
+      munread = false
+
+    if m["out"].num.int == 1 and m["read_state"].num.int == 0: munread = true
 
     let qmm = vkmessage(
         msgid: mid, fromid: mfrom, chatid: dialogid,
         name: "", msg: mlines[0],
-        fwdm: false, findname: true
+        fwdm: false, findname: true, unread: munread,
+        time: mdate, strtime: mstrdate
       )
 
     if m.hasKey("fwd_messages"):
@@ -336,7 +369,8 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
         mitems.add(vkmessage(
             msgid: mid, fromid: mfrom, chatid: dialogid,
             name: "", msg: mlines[fml],
-            fwdm: false, findname: true
+            fwdm: false, findname: true, unread: false,
+            time: mdate, strtime: ""
           ))
     for ffm in mfwd:
       mitems.add(ffm)
@@ -452,34 +486,44 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
           flags = q[2].num.int
           text = q[6].str
           chatid = q[3].num.int
-          time = q[4].num.int
+          time = q[4].num.float
           att = q[7]
           attkeys = att.getFields().map(q => q.key)
-        if chatid != longpollChatid: return
+        #if chatid != longpollChatid: return
         var
+          unread = false
           fromid = chatid
           msg = newSeq[vkmessage](0)
+
         if att.hasKey("from"): 
           fromid = att["from"].str.parseInt()
         elif (flags and 2) == 2: #check for outgoing message
           fromid = api.userid
+
+        if (flags and 1) == 1:
+          unread = true
+
         if attkeys.contains("fwd") or attkeys.any(q => q.match(lpreAttach)): 
+          dwr("[attkeys]")
           msg = getMessages(vkmsgbyid(@[msgid]), chatid, "user_id")
         else:
           let cropm = cropMsg(text.replace("<br>", "\n"))
           msg.add(vkmessage(
               chatid: chatid, fromid: fromid, msgid: msgid,
-              fwdm: false, findname: false,
-              name: vkusername(fromid), msg: cropm[0]
+              fwdm: false, findname: false, unread: unread,
+              name: vkusername(fromid), msg: cropm[0],
+              time: time, strtime: getStrDate(time)
             ))
           if cropm.len > 1:
             for ml in 1..high(cropm):
               msg.add(vkmessage(
                 chatid: chatid, fromid: fromid, msgid: msgid,
-                fwdm: false, findname: false,
-                name: "", msg: cropm[ml]
+                fwdm: false, findname: false, unread: false,
+                name: "", msg: cropm[ml],
+                time: time, strtime: ""
               ))
         for lpm in msg:
+          dwr($lpm)
           longmsg(lpm)
 
       of 80:
