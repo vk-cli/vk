@@ -489,7 +489,7 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
           time = q[4].num.float
           att = q[7]
           attkeys = att.getFields().map(q => q.key)
-        #if chatid != longpollChatid: return
+        if chatid != longpollChatid: return
         var
           unread = false
           fromid = chatid
@@ -523,7 +523,7 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
                 time: time, strtime: ""
               ))
         for lpm in msg:
-          dwr($lpm)
+          #dwr($lpm)
           longmsg(lpm)
 
       of 80:
