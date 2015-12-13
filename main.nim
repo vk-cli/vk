@@ -323,7 +323,7 @@ proc Controller() =
           let msg = stdin.input()
           if msg.len != 0:
             if not vksendAsync(win.chatid, msg):
-              echo "Сообщение не отправлено"
+              echo "Сообщение не отправлено, подождите отправки предыдущего"
               discard stdin.readLine()
         else: win.body[win.active].callback(win.body[win.active])
     of kg_up:

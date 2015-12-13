@@ -502,7 +502,6 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         var
           unread = false
           outm = false
-          orderm = false
           fromid = chatid
           msg = newSeq[vkmessage](0)
 
@@ -516,23 +515,6 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
 
         if fromid == api.userid:
           outm = true
-
-        if outm:
-          for k,v in sentMessageOrder.mpairs():
-            if v.msgid == msgid:
-              dwr("sentmessage lp catch msgid " & $msgid)
-              orderm = true
-            elif v.hash == text:
-              let delta = epochTime() - v.time
-              if delta < longpollOrderMsgHashTimeout:
-                dwr("sentmessage lp catch hash (no timeout)")
-                orderm = true
-
-            if orderm:
-              if r:
-                longsent(k, msgid, unread, time, getStrDate(time))
-              sentMessageOrder.del(k)
-              return
 
         if not r: return
 
@@ -625,20 +607,10 @@ proc setLongpollChat*(chatid: int, conference = false) =
 # ===== async api methods =====
 
 proc vkordersend(peerid: int, msg: string) = 
-  inc(latSendid)
-  let 
-    sid = latSendid
-    sm = vkmessage(
-      msgid: -1, sendid: sid, fromid: api.userid,
-      chatid: peerid, msg: msg, name: vkusername(api.userid),
-      time: epochTime(), strtime: getStrDate(epochTime()), unread: true
-    )
   sleep(5)
-  #longmsg(sm)
-  #sentMessageOrder[sid] = (-1, epochTime(), msg)
-  dwr("vksend added msghash sid:" & $sid)
-  let mid = vksend(peerid, msg)
-  #sentMessageOrder[sid].msgid = mid
+  let 
+    sid = 1
+    mid = vksend(peerid, msg)
   dwr("vksend done sid:" & $sid & " mid:" & $mid & " msg:" & msg)
 
 # ===== async api loop =====
@@ -655,6 +627,7 @@ var
   sendMessageParams: tuple[peer: int, msg: string]
 
 proc vksendAsync*(peer: int, msg: string): bool =
+  if hasc: return false
   slk.acquire()
   command = apimethods.sendMessage
   hasc = true
