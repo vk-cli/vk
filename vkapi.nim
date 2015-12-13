@@ -32,7 +32,7 @@ type
     failed, ts: int
 
   vkmessage* = object
-    msgid*, fromid*, chatid*, fwduid*: int
+    msgid*, sendid*, fromid*, chatid*, fwduid*: int
     time*: float
     msg*, name*, strtime*: string
     fwdm*, unread*, findname, findfwdname: bool
@@ -49,7 +49,7 @@ var
 proc openDebugFile() = 
   debugfile = open("debugout", fmWrite)
 
-proc dwr(str: string) = 
+proc dwr*(str: string) = 
   debugfile.writeLine(str)
 
 proc `$`(v: vkmessage): string = 
@@ -390,11 +390,11 @@ proc vkhistory*(userid: int, offset = 0, count = 200): tuple[items: seq[vkmessag
     items = getMessages(json["items"].getElems(), userid)
   return (items, noffset)
 
-proc vksend*(peerid: int, msg: string): bool = 
-  if msg.len == 0: return false
+proc vksend*(peerid: int, msg: string): int = 
+  if msg.len == 0: return -1
   let resp = request("messages.send", {"peer_id":($peerid), "message":msg}.toTable, "Unable to send message")
-  if resp.kind != JInt: return false
-  return true
+  if resp.kind != JInt: return -1
+  return resp.num.int
 
 proc vkmusic*(): seq[tuple[track: string, duration: int, link: string]] =
   let
@@ -474,7 +474,11 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
 var 
   longmsg: proc(m: vkmessage)
   longread: proc(msgid: int)
+  longsent: proc(sendid: int, newmsgid: int, newunread: bool, newtime: float, newstrtime: string)
   updc: proc(ncounter: int)
+
+  sentMessageOrder = newSeq[tuple[msgid, sendid: int]](0)
+  latSendid = 0
 
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
   for u in arr:
@@ -489,7 +493,8 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
           time = q[4].num.float
           att = q[7]
           attkeys = att.getFields().map(q => q.key)
-        if chatid != longpollChatid: return
+          r = (chatid == longpollChatid)
+
         var
           unread = false
           fromid = chatid
@@ -502,6 +507,16 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
 
         if (flags and 1) == 1:
           unread = true
+
+        for i in 0..sentMessageOrder.high():
+          let s = sentMessageOrder[i]
+          if s.msgid == msgid:
+            if r:
+              longsent(s.sendid, msgid, unread, time, getStrDate(time))
+            sentMessageOrder.del(i)
+            return
+
+        if not r: return
 
         if attkeys.contains("fwd") or attkeys.any(q => q.match(lpreAttach)): 
           dwr("[attkeys]")
@@ -571,9 +586,10 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updcq: proc(ncounter: int), longmsgq: proc(m: vkmessage), longreadq: proc(msgid: int)) {.thread,gcsafe.} =
+proc longpollAsync*(updcq: proc(ncounter: int), longmsgq: proc(m: vkmessage), longreadq: proc(msgid: int), longsentq: proc(sendid: int, newmsgid: int, newunread: bool, newtime: float, newstrtime: string)) {.thread,gcsafe.} =
   longmsg = longmsgq
   longread = longreadq
+  longsent = longsentq
   updc = updcq
   while true:
     if longpollAllowed: longpollRoutine(getLongpollInfo())
@@ -588,6 +604,21 @@ proc setLongpollChat*(chatid: int, conference = false) =
   if conference: cid += conferenceIdStart
   longpollChatid = cid
 
+# ===== async api methods =====
+
+proc vkordersend(peerid: int, msg: string) = 
+  inc(latSendid)
+  let 
+    sid = latSendid
+    sm = vkmessage(
+      msgid: -1, sendid: sid, fromid: api.userid,
+      chatid: peerid, msg: msg, name: vkusername(api.userid),
+      time: epochTime(), strtime: getStrDate(epochTime()), unread: true
+    )
+  sleep(5)
+  longmsg(sm)
+  let mid = vksend(peerid, msg)
+  sentMessageOrder.add((mid, sid))
 
 # ===== async api loop =====
 
@@ -619,8 +650,7 @@ proc eventLoop*() =
       case command:
         of apimethods.sendMessage:
           let p = sendMessageParams
-          discard vksend(p.peer, p.msg)
+          vkordersend(p.peer, p.msg)
         else: discard
       hasc = false
       slk.release()
-

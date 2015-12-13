@@ -445,6 +445,9 @@ proc newMessage(m: vkmessage) =
 proc readMessage(msgid: int) = 
   discard
 
+proc sentMessage(sendid: int, newmsgid: int, newunread: bool, newtime: float, newstrtime: string) = 
+  dwr("sentmessage sid:" & $sendid & " mid:" & $newmsgid & " uflag:" & $newunread & " (" & newstrtime & ")")
+
 proc entryPoint() = 
   clear()
   var config = load()
@@ -464,7 +467,7 @@ proc entryPoint() =
 {.experimental.}
 when isMainModule: 
   #parallel:
-  spawn longpollAsync(Update, newMessage, readMessage)
+  spawn longpollAsync(Update, newMessage, readMessage, sentMessage)
   spawn eventLoop()
   spawn entryPoint()
   sync()
