@@ -300,7 +300,8 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
           chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
           name: "", fwdm: true, findname: true, findfwdname: true,
           fwduid: wfid,
-          msg: fwdprefix & fwdname
+          msg: fwdprefix & fwdname,
+          unread: false, time: -1, strtime: ""
         ))
 
     for l in wmsg:
@@ -308,7 +309,8 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
           chatid: p.chatid, fromid: p.fromid, msgid: p.msgid,
           name: "", fwdm: true, findname: true, findfwdname: false,
           fwduid: wfid,
-          msg: fwdprefix & l
+          msg: fwdprefix & l,
+          unread: false, time: -1, strtime: ""
         ))
 
     if f.hasKey("fwd_messages"):
