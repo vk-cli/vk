@@ -477,7 +477,6 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
 var 
   longmsg: proc(m: vkmessage)
   longread: proc(msgid: int)
-  longsent: proc(sendid: int, newmsgid: int, newunread: bool, newtime: float, newstrtime: string)
   updc: proc(ncounter: int)
 
   sentMessageOrder = initTable[int, tuple[msgid: int, time: float, hash: string]]()
@@ -588,10 +587,9 @@ proc getLongpollInfo(): longpollInfo =
     ts: getNum(o["ts"]).int32
   )
 
-proc longpollAsync*(updcq: proc(ncounter: int), longmsgq: proc(m: vkmessage), longreadq: proc(msgid: int), longsentq: proc(sendid: int, newmsgid: int, newunread: bool, newtime: float, newstrtime: string)) {.thread,gcsafe.} =
+proc longpollAsync*(updcq: proc(ncounter: int), longmsgq: proc(m: vkmessage), longreadq: proc(msgid: int)) {.thread,gcsafe.} =
   longmsg = longmsgq
   longread = longreadq
-  longsent = longsentq
   updc = updcq
   while true:
     if longpollAllowed: longpollRoutine(getLongpollInfo())
