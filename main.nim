@@ -367,27 +367,16 @@ proc DrawMenu() =
       else: regular(e.text)
 
 proc DrawDialog() = 
-  const
-    datew = 5
-    fullw = datew+2
   for i, e in win.dialog[0..^win.scrollOffset]:
     var 
       temp: string
-      time: string
       sep = ": "
       sum = 0
-      max = win.maxname-fullw
     setCursorPos(0, 3+i)
-    if runeLen(e.name) < max:
-      temp = spaces(max-runeLen(e.name)) & e.name
+    if runeLen(e.name) < win.maxname:
+      temp = spaces(win.maxname-runeLen(e.name)) & e.name
     else:
-      temp = e.name[0..max-4] & "..."
-
-    time = " " & e.time
-    if e.time.len == 0:
-      time &= spaces(datew)
-    if e.unread: time &= "⚫"
-    else: time &= " "
+      temp = e.name[0..win.maxname-4] & "..."
 
     if e.name.len == 0: sep = "  "
     for c in e.name: sum += c.int
@@ -397,7 +386,6 @@ proc DrawDialog() =
     setForegroundColor(ForegroundColor(Colors(31+sum mod 6)))
     stdout.write temp
     setForegroundColor(ForegroundColor(White))
-    stdout.write time
     echo sep & e.text
 
 proc DrawBody() = 
