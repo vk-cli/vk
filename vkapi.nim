@@ -35,7 +35,7 @@ type
   vkmessage* = object
     msgid*, sendid*, fromid*, chatid*, fwduid*: int
     time*: float
-    msg*, name*, strtime*: string
+    msg*, name*, strtime*, sectime*: string
     fwdm*, unread*, findname, findfwdname: bool
 
 var 
@@ -321,16 +321,19 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
       
   return fs
 
-proc getStrDate(utime: float): string =
+proc getStrDate(utime: float, sectime = false): string =
   #dwr("utime " & $utime)
   let
    tinfo = getLocalTime(fromSeconds(utime))
    ct = getLocalTime(getTime())
   var tstr = ""
-  if tinfo.year != ct.year or tinfo.yearday != ct.yearday:
-    tstr = tinfo.format(r"dd'.'MM'.'yy")
+  if sectime:
+    tstr = tinfo.format("ss")
   else:
-    tstr = tinfo.format(r"HH:mm:ss")
+    if tinfo.year != ct.year or tinfo.yearday != ct.yearday:
+      tstr = tinfo.format(r"dd'.'MM'.'yy")
+    else:
+      tstr = tinfo.format(r"HH:mm:ss")
   #dwr("getstr " & tstr)
   #dwr("ftime " & tinfo.format(r"dd'.'MM'.'yy HH:mm:ss") & " ctime " & $ct)
   return tstr
@@ -352,6 +355,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
       mfrom = m[idname].num.int
       mdate = m["date"].num.float
       mstrdate = getStrDate(mdate)
+      msecdate = getStrDate(mdate, true)
       munread = false
 
     if m["out"].num.int == 1 and m["read_state"].num.int == 0: munread = true
@@ -360,7 +364,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
         msgid: mid, fromid: mfrom, chatid: dialogid,
         name: "", msg: mlines[0],
         fwdm: false, findname: true, unread: munread,
-        time: mdate, strtime: mstrdate
+        time: mdate, strtime: mstrdate, sectime: msecdate
       )
 
     if m.hasKey("fwd_messages"):
@@ -373,7 +377,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
             msgid: mid, fromid: mfrom, chatid: dialogid,
             name: "", msg: mlines[fml],
             fwdm: false, findname: true, unread: false,
-            time: mdate, strtime: ""
+            time: mdate, strtime: "", sectime: ""
           ))
     for ffm in mfwd:
       mitems.add(ffm)

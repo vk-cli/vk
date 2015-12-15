@@ -51,6 +51,11 @@ const
   pause = "▮▮"
   maxRuneOrd = 10000
 
+  #dialog
+  timeWidth = 11
+  timeOnRight = true
+  maxTimeDelta = 60
+
 type 
   Message     = object
     name, text, time    : string
@@ -61,7 +66,7 @@ type
     callback            : proc(ListEl: var ListElement): void
     getter              : proc: seq[ListElement] 
   Colors      = enum
-    Gray      = 30,
+    Gray      = 30, 
     Red,
     Green,
     Yellow,
@@ -77,7 +82,8 @@ type
     title, username                : string
     menu, body, buffer             : seq[ListElement]
     dialog                         : seq[Message]
-    maxname, counter, scrollOffset : int
+    maxname, maxmsg                : int
+    counter, scrollOffset          : int
     dialogsOpened                  : bool
 
 proc nop(ListEl: var ListElement) = discard
@@ -123,10 +129,17 @@ proc chat(ListEl: var ListElement) =
   win.dialog = newSeq[Message](0)
   win.chatid = ListEl.link.parseInt
   setLongpollChat(win.chatid)
+  var lasttime: float = 0
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
     var
       lastname = ""
+      ctime = message.strtime
       i = 1
+
+    if message.time > 0:
+      if (message.time - lasttime) < maxTimeDelta: ctime = message.sectime
+      lasttime = message.time
+
     if win.dialog.len != 0:
       while lastname == "":
         lastname = win.dialog[^i].name
@@ -134,9 +147,9 @@ proc chat(ListEl: var ListElement) =
     if message.msg.len != 0:
       if lastname != message.name:
         win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-        win.dialog.add(Message(name: message.name, text: message.msg, time: message.strtime, unread: message.unread))
+        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread))
       else:
-        win.dialog.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
+        win.dialog.add(Message(name: "", text: message.msg, time: ctime, unread: message.unread))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
@@ -227,13 +240,16 @@ proc init() =
   let length = win.x div 2 - runeLen(win.username) div 2
   win.title = spaces(length) & win.username & spaces(length)
   if runeLen(win.title) > win.x: win.title = win.title[0..^2]
-  win.maxname = win.x div 5 + 1
+  win.maxname = win.x div 4 + 1
   for e in win.menu:
     if win.offset < runeLen(e.text): win.offset = runeLen(e.text)
   win.offset += 5
   for i, e in win.menu:
     win.menu[i].text = win.menu[i].text & spaces(win.offset - runeLen(e.text))
-  SetWinx(win.x-win.maxname-4)
+  let basewinx = win.x-win.maxname-4
+  if timeOnRight: win.maxmsg = (basewinx-timeWidth)
+  else: win.maxmsg = basewinx
+  SetWinx(win.maxmsg)
 
 proc readinput(f: File, line: var TaintedString): bool =
   var pos = 0
@@ -369,7 +385,8 @@ proc DrawMenu() =
 proc DrawDialog() = 
   for i, e in win.dialog[0..^win.scrollOffset]:
     var 
-      temp: string
+      temp : string
+      rtime: string
       sep = ": "
       sum = 0
     setCursorPos(0, 3+i)
@@ -383,10 +400,23 @@ proc DrawDialog() =
     # one char padding
     temp = " " & temp
 
+    rtime = ""
+    if timeOnRight:
+      let ml = e.text.runeLen()
+      if ml < win.maxmsg:
+        rtime &= spaces(win.maxmsg-ml)
+
+      rtime &= " " & e.time
+      if e.unread: rtime &= " +"
+      else: rtime &= "  "
+
     setForegroundColor(ForegroundColor(Colors(31+sum mod 6)))
     stdout.write temp
     setForegroundColor(ForegroundColor(White))
-    echo sep & e.text
+    stdout.write sep & e.text
+    setForegroundColor(ForegroundColor(Gray))
+    echo rtime
+    setForegroundColor(ForegroundColor(White))
 
 proc DrawBody() = 
   for i, e in win.body:
