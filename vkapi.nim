@@ -475,6 +475,17 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
     items = j["items"].getElems()
   return items
 
+proc vkread(pid, start_mid: int) = 
+  let j = request("messages.markAsRead", {"peer_id":($pid), "start_message_id":($start_mid)}.toTable, "unable to markAsRead")
+  if j.kind != JInt or j.num.int != 1: discard #error possible?
+
+proc readLatestLp*() = 
+  let
+    h = vkhistory(longpollChatid, 0, 1)
+    mid = h.items[0].msgid
+  vkread(longpollChatid, mid)
+
+
 # ===== longpoll =====
 
 var 

@@ -56,6 +56,7 @@ const
   timeWidth = strtimeWidth+3
   timeOnRight = true
   unreadOnRight = true
+  readOnDialogLeave = true
 
 type 
   Message     = object
@@ -346,6 +347,7 @@ proc Controller() =
           win.section = LEFT
           win.body    = newSeq[ListElement](0)
       else:
+        if readOnDialogLeave: readLatestLp()
         setLongpollChat(0)
         win.dialog = newSeq[Message](0)
     of kg_right:
