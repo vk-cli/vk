@@ -53,8 +53,7 @@ const
 
   #dialog
   timeWidth = 11
-  timeOnRight = true
-  maxTimeDelta = 60
+  timeOnRight = false
 
 type 
   Message     = object
@@ -129,17 +128,10 @@ proc chat(ListEl: var ListElement) =
   win.dialog = newSeq[Message](0)
   win.chatid = ListEl.link.parseInt
   setLongpollChat(win.chatid)
-  var lasttime: float = 0
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
     var
       lastname = ""
-      ctime = message.strtime
       i = 1
-
-    if message.time > 0:
-      if (message.time - lasttime) < maxTimeDelta: ctime = message.sectime
-      lasttime = message.time
-
     if win.dialog.len != 0:
       while lastname == "":
         lastname = win.dialog[^i].name
@@ -147,9 +139,9 @@ proc chat(ListEl: var ListElement) =
     if message.msg.len != 0:
       if lastname != message.name:
         win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread))
+        win.dialog.add(Message(name: message.name, text: message.msg, time: message.strtime, unread: message.unread))
       else:
-        win.dialog.add(Message(name: "", text: message.msg, time: ctime, unread: message.unread))
+        win.dialog.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
