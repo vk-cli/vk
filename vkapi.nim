@@ -35,7 +35,7 @@ type
   vkmessage* = object
     msgid*, sendid*, fromid*, chatid*, fwduid*: int
     time*: float
-    msg*, name*, strtime*, sectime*: string
+    msg*, name*, strtime*: string
     fwdm*, unread*, findname, findfwdname: bool
 
 var 
@@ -321,19 +321,19 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
       
   return fs
 
-proc getStrDate(utime: float, sectime = false): string =
+proc getStrDate*(utime: float, customFormat = ""): string =
   #dwr("utime " & $utime)
   let
    tinfo = getLocalTime(fromSeconds(utime))
    ct = getLocalTime(getTime())
   var tstr = ""
-  if sectime:
-    tstr = tinfo.format("ss")
+  if customFormat != "":
+    tstr = tinfo.format(customFormat)
   else:
     if tinfo.year != ct.year or tinfo.yearday != ct.yearday:
-      tstr = tinfo.format(r"dd'.'MM'.'yy")
+      tstr = tinfo.format(r"dd'.'MM")
     else:
-      tstr = tinfo.format(r"HH:mm:ss")
+      tstr = tinfo.format(r"HH:mm")
   #dwr("getstr " & tstr)
   #dwr("ftime " & tinfo.format(r"dd'.'MM'.'yy HH:mm:ss") & " ctime " & $ct)
   return tstr
@@ -355,7 +355,6 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
       mfrom = m[idname].num.int
       mdate = m["date"].num.float
       mstrdate = getStrDate(mdate)
-      msecdate = getStrDate(mdate, true)
       munread = false
 
     if m["out"].num.int == 1 and m["read_state"].num.int == 0: munread = true
@@ -364,7 +363,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
         msgid: mid, fromid: mfrom, chatid: dialogid,
         name: "", msg: mlines[0],
         fwdm: false, findname: true, unread: munread,
-        time: mdate, strtime: mstrdate, sectime: msecdate
+        time: mdate, strtime: mstrdate
       )
 
     if m.hasKey("fwd_messages"):
@@ -377,7 +376,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
             msgid: mid, fromid: mfrom, chatid: dialogid,
             name: "", msg: mlines[fml],
             fwdm: false, findname: true, unread: false,
-            time: mdate, strtime: "", sectime: ""
+            time: mdate, strtime: ""
           ))
     for ffm in mfwd:
       mitems.add(ffm)
@@ -529,10 +528,11 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         else:
           let 
             cropm = cropMsg(text.lpReplace())
+            fromn = vkusername(fromid)
           msg.add(vkmessage(
               chatid: chatid, fromid: fromid, msgid: msgid,
               fwdm: false, findname: false, unread: unread,
-              name: vkusername(fromid), msg: cropm[0],
+              name: fromn, msg: cropm[0],
               time: time, strtime: getStrDate(time)
             ))
           if cropm.len > 1:
@@ -540,11 +540,11 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
               msg.add(vkmessage(
                 chatid: chatid, fromid: fromid, msgid: msgid,
                 fwdm: false, findname: false, unread: false,
-                name: "", msg: cropm[ml],
+                name: fromn, msg: cropm[ml],
                 time: time, strtime: ""
               ))
+        dwr("lp string count " & $msg.len)
         for lpm in msg:
-          #dwr($lpm)
           longmsg(lpm)
 
       of 80:

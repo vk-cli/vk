@@ -52,8 +52,10 @@ const
   maxRuneOrd = 10000
 
   #dialog
-  timeWidth = 11
-  timeOnRight = false
+  strtimeWidth = 5
+  timeWidth = strtimeWidth+3
+  timeOnRight = true
+  unreadOnRight = true
 
 type 
   Message     = object
@@ -111,6 +113,7 @@ var
                 spawnLE("Музыка", "link", open, GetMusic),
                 spawnLE("Настройки", "link", open, GenerateSettings)],
     )
+  lastLpTime = ""
 
 proc AlignBodyText() = 
   for i, e in win.body:
@@ -128,35 +131,58 @@ proc chat(ListEl: var ListElement) =
   win.dialog = newSeq[Message](0)
   win.chatid = ListEl.link.parseInt
   setLongpollChat(win.chatid)
+  var lasttime = ""
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
     var
       lastname = ""
+      stime = ""
+      ctime = message.strtime
       i = 1
+
+    if message.time > 0:
+      if ctime != "" and ctime != lasttime:
+        dwr("newtime last:" & $lasttime & " new:" & $ctime)
+        dwr("on msg:" & message.msg)
+        stime = ctime
+        lasttime = stime
+
     if win.dialog.len != 0:
       while lastname == "":
         lastname = win.dialog[^i].name
         inc i
     if message.msg.len != 0:
       if lastname != message.name:
+        lasttime = ctime
         win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-        win.dialog.add(Message(name: message.name, text: message.msg, time: message.strtime, unread: message.unread))
+        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread))
       else:
-        win.dialog.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
+        win.dialog.add(Message(name: "", text: message.msg, time: stime, unread: message.unread))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
   var
+    lasttime = ""
     senderName = ""
     lastName   = "nil"
     cacheMsg = newSeq[Message](0)
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
+    var
+      ctime = message.strtime
+      stime = ""
     senderName = message.name
+
+    if message.time > 0:
+      if ctime != "" and ctime != lasttime:
+        stime = ctime
+        lasttime = stime
+
     if senderName != lastName:
       lastName = senderName
+      lasttime = ctime
       cacheMsg.add(Message(name: "", text: "", time: "", unread: false))
-      cacheMsg.add(Message(name: senderName, text: message.msg, time: message.strtime, unread: message.unread))
+      cacheMsg.add(Message(name: senderName, text: message.msg, time: ctime, unread: message.unread))
     else:
-      cacheMsg.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
+      cacheMsg.add(Message(name: "", text: message.msg, time: stime, unread: message.unread))
   win.messageOffset += win.y
   win.dialog = concat(cacheMsg, win.dialog)
 
@@ -393,13 +419,17 @@ proc DrawDialog() =
     temp = " " & temp
 
     rtime = ""
-    if timeOnRight:
-      let ml = e.text.runeLen()
-      if ml < win.maxmsg:
-        rtime &= spaces(win.maxmsg-ml)
+    let ml = e.text.runeLen()
+    if ml < win.maxmsg:
+      rtime &= spaces(win.maxmsg-ml)
 
+    if timeOnRight:
       rtime &= " " & e.time
-      if e.unread: rtime &= " +"
+      if e.time == "":
+        rtime &= spaces(strtimeWidth)
+
+    if unreadOnRight:
+      if e.unread: rtime &= " ⚫"
       else: rtime &= "  "
 
     setForegroundColor(ForegroundColor(Colors(31+sum mod 6)))
@@ -451,18 +481,29 @@ proc Update(ncounter: int) =
     AlignBodyText()
 
 proc newMessage(m: vkmessage) = 
+  dwr("lp nm txt " & m.msg)
+  dwr("lp nm name " & m.name)
   if win.dialog.len != 0:
     var
       lastname = ""
+      ctime = m.strtime
+      stime = ""
       i = 1
+
+    if m.time > 0:
+      if ctime != "" and ctime != lastLpTime:
+        stime = ctime
+        lastLpTime = stime
+
     while lastname == "":
       lastname = win.dialog[^i].name
       inc i
     if lastname != m.name:
+      lastLpTime = ctime
       win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-      win.dialog.add(Message(name: m.name, text: m.msg, time: m.strtime, unread: m.unread))
+      win.dialog.add(Message(name: m.name, text: m.msg, time: ctime, unread: m.unread))
     else:
-      win.dialog.add(Message(name: "", text: m.msg, time: m.strtime, unread: m.unread))
+      win.dialog.add(Message(name: "", text: m.msg, time: stime, unread: m.unread))
     clear()
     DrawDialog()
 
