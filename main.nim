@@ -53,7 +53,8 @@ const
 
 type 
   Message     = object
-    name, text          : string
+    name, text, time    : string
+    unread              : bool
     color               : Colors
   ListElement = object
     text, link          : string
@@ -132,10 +133,10 @@ proc chat(ListEl: var ListElement) =
         inc i
     if message.msg.len != 0:
       if lastname != message.name:
-        win.dialog.add(Message(name: "", text: ""))
-        win.dialog.add(Message(name: message.name, text: message.msg))
+        win.dialog.add(Message(name: "", text: "", time: "", unread: false))
+        win.dialog.add(Message(name: message.name, text: message.msg, time: message.strtime, unread: message.unread))
       else:
-        win.dialog.add(Message(name: "", text: message.msg))
+        win.dialog.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
@@ -147,10 +148,10 @@ proc LoadMoarMsg() =
     senderName = message.name
     if senderName != lastName:
       lastName = senderName
-      cacheMsg.add(Message(name: "", text: ""))
-      cacheMsg.add(Message(name: senderName, text: message.msg))
+      cacheMsg.add(Message(name: "", text: "", time: "", unread: false))
+      cacheMsg.add(Message(name: senderName, text: message.msg, time: message.strtime, unread: message.unread))
     else:
-      cacheMsg.add(Message(name: "", text: message.msg))
+      cacheMsg.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
   win.messageOffset += win.y
   win.dialog = concat(cacheMsg, win.dialog)
 
@@ -226,7 +227,7 @@ proc init() =
   let length = win.x div 2 - runeLen(win.username) div 2
   win.title = spaces(length) & win.username & spaces(length)
   if runeLen(win.title) > win.x: win.title = win.title[0..^2]
-  win.maxname = win.x div 4 + 1
+  win.maxname = win.x div 5 + 1
   for e in win.menu:
     if win.offset < runeLen(e.text): win.offset = runeLen(e.text)
   win.offset += 5
@@ -322,8 +323,8 @@ proc Controller() =
           stdout.write(": ")
           let msg = stdin.input()
           if msg.len != 0:
-            if not vksend(win.chatid, msg):
-              echo "Сообщение не отправлено"
+            if not vksendAsync(win.chatid, msg):
+              echo "Сообщение не отправлено, подождите отправки предыдущего"
               discard stdin.readLine()
         else: win.body[win.active].callback(win.body[win.active])
     of kg_up:
@@ -376,6 +377,7 @@ proc DrawDialog() =
       temp = spaces(win.maxname-runeLen(e.name)) & e.name
     else:
       temp = e.name[0..win.maxname-4] & "..."
+
     if e.name.len == 0: sep = "  "
     for c in e.name: sum += c.int
     # one char padding
@@ -435,10 +437,10 @@ proc newMessage(m: vkmessage) =
       lastname = win.dialog[^i].name
       inc i
     if lastname != m.name:
-      win.dialog.add(Message(name: "", text: ""))
-      win.dialog.add(Message(name: m.name, text: m.msg))
+      win.dialog.add(Message(name: "", text: "", time: "", unread: false))
+      win.dialog.add(Message(name: m.name, text: m.msg, time: m.strtime, unread: m.unread))
     else:
-      win.dialog.add(Message(name: "", text: m.msg))
+      win.dialog.add(Message(name: "", text: m.msg, time: m.strtime, unread: m.unread))
     clear()
     DrawDialog()
 
@@ -465,6 +467,7 @@ proc entryPoint() =
 when isMainModule: 
   #parallel:
   spawn longpollAsync(Update, newMessage, readMessage)
+  spawn eventLoop()
   spawn entryPoint()
   sync()
   #ntryPoint()
