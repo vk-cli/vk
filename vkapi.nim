@@ -115,7 +115,7 @@ proc SetWinx*(maxWidth: int) = winx = maxWidth
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1, returnPure = false): JsonNode= 
+proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1, returnPure = false): JsonNode = 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
@@ -159,7 +159,7 @@ proc getNextOffset(offset: int, argcount: int, count: int): int =
 
 proc vkinit*() = 
   SetToken(api.token)
-  discard request("users.get", {"name_case":"Nom"}.toTable, "Неверный access token")
+  discard request("users.get", {"name_case":"Nom"}.toTable, "Неверный access token") is JsonNode
 
 #===== api methods wrappers =====
 

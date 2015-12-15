@@ -458,7 +458,7 @@ proc entryPoint() =
   discard execCmd("tput cnorm")
   pushTo(config)
   save(config)
-  clear() 
+  clear()
   quit(QuitSuccess)
 
 {.experimental.}
