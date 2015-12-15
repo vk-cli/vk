@@ -60,7 +60,7 @@ const
 type 
   Message     = object
     name, text, time    : string
-    unread              : bool
+    unread, fline       : bool
     color               : Colors
   ListElement = object
     text, link          : string
@@ -137,6 +137,7 @@ proc chat(ListEl: var ListElement) =
       lastname = ""
       stime = ""
       ctime = message.strtime
+      newmess = not message.nline
       i = 1
 
     if message.time > 0:
@@ -153,10 +154,10 @@ proc chat(ListEl: var ListElement) =
     if message.msg.len != 0:
       if lastname != message.name:
         lasttime = ctime
-        win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread))
+        win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false))
+        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread, fline: true))
       else:
-        win.dialog.add(Message(name: "", text: message.msg, time: stime, unread: message.unread))
+        win.dialog.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
@@ -169,6 +170,7 @@ proc LoadMoarMsg() =
     var
       ctime = message.strtime
       stime = ""
+      newmess = not message.nline
     senderName = message.name
 
     if message.time > 0:
@@ -179,10 +181,10 @@ proc LoadMoarMsg() =
     if senderName != lastName:
       lastName = senderName
       lasttime = ctime
-      cacheMsg.add(Message(name: "", text: "", time: "", unread: false))
-      cacheMsg.add(Message(name: senderName, text: message.msg, time: ctime, unread: message.unread))
+      cacheMsg.add(Message(name: "", text: "", time: "", unread: false, fline: false))
+      cacheMsg.add(Message(name: senderName, text: message.msg, time: ctime, unread: message.unread, fline: true))
     else:
-      cacheMsg.add(Message(name: "", text: message.msg, time: stime, unread: message.unread))
+      cacheMsg.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess))
   win.messageOffset += win.y
   win.dialog = concat(cacheMsg, win.dialog)
 
@@ -413,7 +415,9 @@ proc DrawDialog() =
     else:
       temp = e.name[0..win.maxname-4] & "..."
 
-    if e.name.len == 0: sep = "  "
+    if e.name.len == 0:
+      if e.fline: sep = "▪ "
+      else: sep = "  "
     for c in e.name: sum += c.int
     # one char padding
     temp = " " & temp
@@ -488,6 +492,7 @@ proc newMessage(m: vkmessage) =
       lastname = ""
       ctime = m.strtime
       stime = ""
+      newmess = not m.nline
       i = 1
 
     if m.time > 0:
@@ -500,10 +505,10 @@ proc newMessage(m: vkmessage) =
       inc i
     if lastname != m.name:
       lastLpTime = ctime
-      win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-      win.dialog.add(Message(name: m.name, text: m.msg, time: ctime, unread: m.unread))
+      win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false))
+      win.dialog.add(Message(name: m.name, text: m.msg, time: ctime, unread: m.unread, fline: true))
     else:
-      win.dialog.add(Message(name: "", text: m.msg, time: stime, unread: m.unread))
+      win.dialog.add(Message(name: "", text: m.msg, time: stime, unread: m.unread, fline: newmess))
     clear()
     DrawDialog()
 

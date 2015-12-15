@@ -36,7 +36,7 @@ type
     msgid*, sendid*, fromid*, chatid*, fwduid*: int
     time*: float
     msg*, name*, strtime*: string
-    fwdm*, unread*, findname, findfwdname: bool
+    fwdm*, unread*, findname, findfwdname, nline*: bool
 
 var 
   api = API()
@@ -301,7 +301,7 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
           name: "", fwdm: true, findname: true, findfwdname: true,
           fwduid: wfid,
           msg: fwdprefix & fwdname,
-          unread: false, time: -1, strtime: ""
+          unread: false, nline: true, time: -1, strtime: ""
         ))
 
     for l in wmsg:
@@ -310,7 +310,7 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
           name: "", fwdm: true, findname: true, findfwdname: false,
           fwduid: wfid,
           msg: fwdprefix & l,
-          unread: false, time: -1, strtime: ""
+          unread: false, nline: true, time: -1, strtime: ""
         ))
 
     if f.hasKey("fwd_messages"):
@@ -362,7 +362,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
     let qmm = vkmessage(
         msgid: mid, fromid: mfrom, chatid: dialogid,
         name: "", msg: mlines[0],
-        fwdm: false, findname: true, unread: munread,
+        fwdm: false, findname: true, unread: munread, nline: false,
         time: mdate, strtime: mstrdate
       )
 
@@ -375,7 +375,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
         mitems.add(vkmessage(
             msgid: mid, fromid: mfrom, chatid: dialogid,
             name: "", msg: mlines[fml],
-            fwdm: false, findname: true, unread: false,
+            fwdm: false, findname: true, unread: false, nline: true,
             time: mdate, strtime: ""
           ))
     for ffm in mfwd:
@@ -486,7 +486,7 @@ var
   latSendid = 0
 
 proc lpReplace(inp: string): string = 
-  return inp.replace("<br>", "\n").replace("&quot;", "\"").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("\\r", "&#13;")
+  return inp.replace("<br>", "\n").replace("&quot;", "\"").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("\r", "&#13;")
 
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
   for u in arr:
@@ -531,7 +531,7 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
             fromn = vkusername(fromid)
           msg.add(vkmessage(
               chatid: chatid, fromid: fromid, msgid: msgid,
-              fwdm: false, findname: false, unread: unread,
+              fwdm: false, findname: false, unread: unread, nline: false,
               name: fromn, msg: cropm[0],
               time: time, strtime: getStrDate(time)
             ))
@@ -539,7 +539,7 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
             for ml in 1..high(cropm):
               msg.add(vkmessage(
                 chatid: chatid, fromid: fromid, msgid: msgid,
-                fwdm: false, findname: false, unread: false,
+                fwdm: false, findname: false, unread: false, nline: true,
                 name: fromn, msg: cropm[ml],
                 time: time, strtime: ""
               ))
