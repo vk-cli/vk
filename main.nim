@@ -61,6 +61,7 @@ type
   Message     = object
     name, text, time    : string
     unread, fline       : bool
+    mid                 : int
     color               : Colors
   ListElement = object
     text, link          : string
@@ -154,10 +155,10 @@ proc chat(ListEl: var ListElement) =
     if message.msg.len != 0:
       if lastname != message.name:
         lasttime = ctime
-        win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false))
-        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread, fline: true))
+        win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false, mid: -1))
+        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread, fline: true, mid: message.msgid))
       else:
-        win.dialog.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess))
+        win.dialog.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess, mid: message.msgid))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
@@ -181,10 +182,10 @@ proc LoadMoarMsg() =
     if senderName != lastName:
       lastName = senderName
       lasttime = ctime
-      cacheMsg.add(Message(name: "", text: "", time: "", unread: false, fline: false))
-      cacheMsg.add(Message(name: senderName, text: message.msg, time: ctime, unread: message.unread, fline: true))
+      cacheMsg.add(Message(name: "", text: "", time: "", unread: false, fline: false, mid: -1))
+      cacheMsg.add(Message(name: senderName, text: message.msg, time: ctime, unread: message.unread, fline: true, mid: message.msgid))
     else:
-      cacheMsg.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess))
+      cacheMsg.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess, mid: message.msgid))
   win.messageOffset += win.y
   win.dialog = concat(cacheMsg, win.dialog)
 
@@ -505,15 +506,36 @@ proc newMessage(m: vkmessage) =
       inc i
     if lastname != m.name:
       lastLpTime = ctime
-      win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false))
-      win.dialog.add(Message(name: m.name, text: m.msg, time: ctime, unread: m.unread, fline: true))
+      win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false, mid: -1))
+      win.dialog.add(Message(name: m.name, text: m.msg, time: ctime, unread: m.unread, fline: true, mid: m.msgid))
     else:
-      win.dialog.add(Message(name: "", text: m.msg, time: stime, unread: m.unread, fline: newmess))
+      win.dialog.add(Message(name: "", text: m.msg, time: stime, unread: m.unread, fline: newmess, mid: m.msgid))
     clear()
     DrawDialog()
 
 proc readMessage(msgid: int) = 
-  discard
+  if win.dialog.len == 0: return
+  dwr("readMessage mid:" & $msgid)
+  var 
+    wipe = false
+    i = high(win.dialog)
+    lw = low(win.dialog)
+  while (i >= lw):
+    #dwr($i & " " & win.dialog[i].text)
+    let m = win.dialog[i]
+    if wipe:
+      if m.unread:
+        win.dialog[i].unread = false
+      else: break
+    else:
+      if m.mid == msgid:
+        win.dialog[i].unread = false
+        wipe = true
+    dec i
+  clear()
+  DrawDialog()
+  dwr("readMessage done")
+
 
 proc entryPoint() = 
   clear()

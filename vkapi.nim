@@ -357,7 +357,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
       mstrdate = getStrDate(mdate)
       munread = false
 
-    if m["out"].num.int == 1 and m["read_state"].num.int == 0: munread = true
+    if m["read_state"].num.int == 0: munread = true
 
     let qmm = vkmessage(
         msgid: mid, fromid: mfrom, chatid: dialogid,
@@ -488,6 +488,16 @@ var
 proc lpReplace(inp: string): string = 
   return inp.replace("<br>", "\n").replace("&quot;", "\"").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("\r", "&#13;")
 
+proc lpReadEvent(q: seq[JsonNode]) = 
+  let
+    cid = q[1].num.int
+    mid = q[2].num.int
+  dwr("catch lpReadEvent mid:" & $mid & " cid:" & $cid)
+  if cid == longpollChatid: 
+    dwr("lpReadEvent sent (main) mid:" & $mid)
+    longread(mid)
+
+
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
   for u in arr:
     let q = u.getElems()
@@ -550,8 +560,11 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
       of 80:
         updc(q[1].num.int)
 
+      of 6:
+        lpReadEvent(q)
+
       of 7:
-        if q[1].num.int == longpollChatid: longread(q[2].num.int)
+        lpReadEvent(q)
 
       else: discard
 
