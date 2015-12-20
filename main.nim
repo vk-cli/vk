@@ -100,7 +100,7 @@ proc GetFriends(): seq[ListElement]
 proc GetDialogs(): seq[ListElement]
 proc GetMusic(): seq[ListElement]
 proc GenerateSettings(): seq[ListElement]
-proc runeSpaces(inp: string): int
+proc runeSpaces(inp: string, add = false): int
 
 proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void,
   gett: proc: seq[ListElement]): ListElement = 
@@ -238,13 +238,16 @@ proc GetMusic(): seq[ListElement] =
     music.add(spawnLE(name, mus.link, nop, nopget))
   return music
 
-proc runeSpaces(inp: string): int = 
+proc runeSpaces(inp: string, add = false): int = 
   var 
     rmod = 0
     max = maxRuneOrd
   for r in inp.toRunes():
     if r.ord > max: inc(rmod)
-  return runeLen(inp)-rmod
+  if add: rmod = -rmod
+  let res = runeLen(inp)-rmod
+  if rmod > 0: dwr("runeSpaces: rmod:" & $rmod & " res:" & $res & " string:" & inp)
+  return res
 
 proc GenerateSettings(): seq[ListElement] = 
   return @[spawnLE("Цвет = " & $win.color, "link", ChangeColor, nopget)]
@@ -420,7 +423,7 @@ proc DrawDialog() =
       sum = 0
     setCursorPos(0, 3+i)
     if runeLen(e.name) < win.maxname:
-      temp = spaces(win.maxname-runeLen(e.name)) & e.name
+      temp = spaces(win.maxname-runeSpaces(e.name, true)) & e.name
     else:
       temp = e.name[0..win.maxname-4] & "..."
 
@@ -432,6 +435,7 @@ proc DrawDialog() =
     temp = " " & temp
 
     rtime = ""
+    #let ml = e.text.runeSpaces()
     let ml = e.text.runeLen()
     if ml < win.maxmsg:
       rtime &= spaces(win.maxmsg-ml)
