@@ -407,74 +407,10 @@ proc downEvent() =
 proc Controller() = 
   win.key = getch().ord
   case win.key:
-<<<<<<< HEAD
     of kg_left: backEvent()
     of kg_right: selectEvent()
     of kg_up: upEvent()
     of kg_down: downEvent()
-=======
-    of kg_left:
-      if win.section == RIGHT:
-        win.dialog  = newSeq[Message](0)
-        win.active  = win.last_active
-        if win.dialogsOpened:
-          win.menu[win.active].callback(win.menu[win.active])
-          win.scrollOffset  = 1
-          win.messageOffset = 0
-          win.dialogsOpened = false
-          win.active        = 0
-        else:
-          win.section = LEFT
-          win.body    = newSeq[ListElement](0)
-      else:
-        if readOnDialogLeave: readLatestLp()
-        setLongpollChat(0)
-        win.dialog = newSeq[Message](0)
-    of kg_right:
-      if win.section == LEFT:
-        win.menu[win.active].callback(win.menu[win.active])
-        win.last_active = win.active
-        win.active      = 0
-        win.section     = RIGHT
-      else:
-        if win.dialogsOpened:
-          setCursorPos(0, win.y)
-          stdout.write(": ")
-          let msg = stdin.input()
-          if msg.len != 0:
-            if not vksendAsync(win.chatid, msg):
-              echo "Сообщение не отправлено, подождите отправки предыдущего"
-              discard stdin.readLine()
-        else: win.body[win.active].callback(win.body[win.active])
-    of kg_up:
-      if win.dialogsOpened:
-          win.scrollOffset += win.y-3
-          if win.scrollOffset+4 > win.dialog.len: LoadMoarMsg()
-          if win.scrollOffset > win.dialog.len and win.y > win.dialog.len:
-            win.scrollOffset = 1
-          if win.dialog.len-win.scrollOffset < win.y:
-            win.scrollOffset = win.dialog.len-win.y+1
-            if win.scrollOffset <= 0: win.scrollOffset = 1
-      else:
-        if win.active > 0: dec win.active
-        elif win.buffer.len != 0 and win.start != 0:
-          dec win.start
-          win.body = win.buffer[win.start..win.start+win.y-4]
-          AlignBodyText()
-    of kg_down:
-      if win.section == LEFT: 
-        if win.active < win.menu.len-1: inc win.active
-      else:
-        if win.dialogsOpened and win.scrollOffset != 1:
-          win.scrollOffset -= win.y-3
-          if win.scrollOffset <= 0: win.scrollOffset = 1
-        else:
-          if win.active < win.body.len-1: inc win.active
-          elif win.buffer.len != 0 and win.start+win.y-3 != win.buffer.len:
-            inc win.start
-            win.body = win.buffer[win.start..win.start+win.y-4]
-            AlignBodyText()
->>>>>>> 59f72ff5a6eaa38e5faba85a9dab263693a56227
     else: discard
 
 proc DrawMenu() = 
