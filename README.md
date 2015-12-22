@@ -11,9 +11,12 @@ A console client for vk.com written in Nim
 # Workflow
 [![demo](https://asciinema.org/a/47nt6rjyyxuwel9y5gtv8xs4h.png)](https://asciinema.org/a/47nt6rjyyxuwel9y5gtv8xs4h?autoplay=1)
 
+# Dependencies
+
+nimble install ncurses
+
 # Compilation
 
-debug:
->nim c -d:ssl --threads:on -r --verbosity:0 -d:debug --gc:boehm --threadAnalysis:off main.nim
+nim c -d:ssl --threads:on -r --verbosity:0 -d:debug --gc:boehm --threadAnalysis:off main.nim
 
 
