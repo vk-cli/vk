@@ -13,10 +13,10 @@ A console client for vk.com written in Nim
 
 # Dependencies
 
-nimble install ncurses
+>nimble install ncurses
 
 # Compilation
 
-nim c -d:ssl --threads:on -r --verbosity:0 -d:debug --gc:boehm --threadAnalysis:off main.nim
+>nim c -d:ssl --threads:on -r --verbosity:0 -d:debug --gc:boehm --threadAnalysis:off main.nim
 
 
