@@ -639,6 +639,7 @@ proc vksendAsync*(peer: int, msg: string): bool =
 proc eventLoop*() = 
   slk.initLock()
   while true:
+    sleep(50)
     slk.acquire()
     if hasc:
       case command:
