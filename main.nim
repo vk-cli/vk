@@ -11,6 +11,7 @@ proc memchr(s: pointer, c: cint, n: csize): pointer {.importc: "memchr",
 
 const 
   # keys
+  k_q      = 113
   k_CC     = 3
   k_CD     = 4
   k_enter  = 13
@@ -36,7 +37,7 @@ const
   k_rus_l  = 180
 
   # key groups
-  kg_esc   = [k_CC, k_CD]
+  kg_esc   = [k_CC, k_CD, k_q]
   kg_up    = [k_up, k_w, k_k, k_rus_w, k_rus_k]
   kg_down  = [k_down, k_s, k_j, k_rus_s, k_rus_j]
   kg_left  = [k_left, k_a, k_h, k_rus_a, k_rus_h]
@@ -51,17 +52,25 @@ const
   pause = "▮▮"
   maxRuneOrd = 10000
 
+  #dialog
+  strtimeWidth = 5
+  timeWidth = strtimeWidth+3
+  timeOnRight = true
+  unreadOnRight = true
+  readOnDialogLeave = true
+
 type 
   Message     = object
     name, text, time    : string
-    unread              : bool
+    unread, fline       : bool
+    mid                 : int
     color               : Colors
   ListElement = object
     text, link          : string
     callback            : proc(ListEl: var ListElement): void
     getter              : proc: seq[ListElement] 
   Colors      = enum
-    Gray      = 30,
+    Gray      = 30, 
     Red,
     Green,
     Yellow,
@@ -77,7 +86,8 @@ type
     title, username                : string
     menu, body, buffer             : seq[ListElement]
     dialog                         : seq[Message]
-    maxname, counter, scrollOffset : int
+    maxname, maxmsg                : int
+    counter, scrollOffset          : int
     dialogsOpened                  : bool
 
 proc nop(ListEl: var ListElement) = discard
@@ -91,6 +101,7 @@ proc GetFriends(): seq[ListElement]
 proc GetDialogs(): seq[ListElement]
 proc GetMusic(): seq[ListElement]
 proc GenerateSettings(): seq[ListElement]
+proc runeSpaces(inp: string, add = false): int
 
 proc spawnLE(txt: string, lnk = "", clback: proc(ListEl: var ListElement): void,
   gett: proc: seq[ListElement]): ListElement = 
@@ -106,6 +117,7 @@ var
                 spawnLE("Музыка", "link", open, GetMusic),
                 spawnLE("Настройки", "link", open, GenerateSettings)],
     )
+  lastLpTime = ""
 
 proc AlignBodyText() = 
   for i, e in win.body:
@@ -123,35 +135,60 @@ proc chat(ListEl: var ListElement) =
   win.dialog = newSeq[Message](0)
   win.chatid = ListEl.link.parseInt
   setLongpollChat(win.chatid)
+  var lasttime = ""
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
     var
       lastname = ""
+      stime = ""
+      ctime = message.strtime
+      newmess = not message.nline
       i = 1
+
+    if message.time > 0:
+      if ctime != "" and ctime != lasttime:
+        dwr("newtime last:" & $lasttime & " new:" & $ctime)
+        dwr("on msg:" & message.msg)
+        stime = ctime
+        lasttime = stime
+
     if win.dialog.len != 0:
       while lastname == "":
         lastname = win.dialog[^i].name
         inc i
     if message.msg.len != 0:
       if lastname != message.name:
-        win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-        win.dialog.add(Message(name: message.name, text: message.msg, time: message.strtime, unread: message.unread))
+        lasttime = ctime
+        win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false, mid: -1))
+        win.dialog.add(Message(name: message.name, text: message.msg, time: ctime, unread: message.unread, fline: true, mid: message.msgid))
       else:
-        win.dialog.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
+        win.dialog.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess, mid: message.msgid))
   win.messageOffset += win.y
 
 proc LoadMoarMsg() = 
   var
+    lasttime = ""
     senderName = ""
     lastName   = "nil"
     cacheMsg = newSeq[Message](0)
   for message in vkhistory(win.chatid, win.messageOffset, win.y).items:
+    var
+      ctime = message.strtime
+      stime = ""
+      newmess = not message.nline
     senderName = message.name
+
+    if message.time > 0:
+      if ctime != "" and ctime != lasttime:
+        stime = ctime
+        lasttime = stime
+
     if senderName != lastName:
       lastName = senderName
-      cacheMsg.add(Message(name: "", text: "", time: "", unread: false))
-      cacheMsg.add(Message(name: senderName, text: message.msg, time: message.strtime, unread: message.unread))
+      lasttime = ctime
+      cacheMsg.add(Message(name: "", text: "", time: "", unread: false, fline: false, mid: -1))
+      cacheMsg.add(Message(name: senderName, text: message.msg, time: ctime, unread: message.unread, fline: true, mid: message.msgid))
     else:
-      cacheMsg.add(Message(name: "", text: message.msg, time: message.strtime, unread: message.unread))
+      cacheMsg.add(Message(name: "", text: message.msg, time: stime, unread: message.unread, fline: newmess, mid: message.msgid))
   win.messageOffset += win.y
   win.dialog = concat(cacheMsg, win.dialog)
 
@@ -191,19 +228,27 @@ proc DurationToStr(n: int): string =
 proc GetMusic(): seq[ListElement] = 
   var music = newSeq[ListElement](0)
   for mus in vkmusic():
-    var rmod = 0
-    for r in mus.track.toRunes():
-      if r.ord > maxRuneOrd: inc(rmod)
     var
       name: string
       durationText = DurationToStr(mus.duration)
-      sp = win.x-win.offset-runeLen(mus.track)-9-rmod
+      sp = win.x-win.offset-runeSpaces(mus.track)-9
     if sp < 0:
       name = "   " & mus.track
     else:
       name = "   " & mus.track & spaces(sp) & durationText
     music.add(spawnLE(name, mus.link, nop, nopget))
   return music
+
+proc runeSpaces(inp: string, add = false): int = 
+  var 
+    rmod = 0
+    max = maxRuneOrd
+  for r in inp.toRunes():
+    if r.ord > max: inc(rmod)
+  if add: rmod = -rmod
+  let res = runeLen(inp)-rmod
+  if rmod > 0: dwr("runeSpaces: rmod:" & $rmod & " res:" & $res & " string:" & inp)
+  return res
 
 proc GenerateSettings(): seq[ListElement] = 
   return @[spawnLE("Цвет = " & $win.color, "link", ChangeColor, nopget)]
@@ -227,13 +272,16 @@ proc init() =
   let length = win.x div 2 - runeLen(win.username) div 2
   win.title = spaces(length) & win.username & spaces(length)
   if runeLen(win.title) > win.x: win.title = win.title[0..^2]
-  win.maxname = win.x div 5 + 1
+  win.maxname = win.x div 4 + 1
   for e in win.menu:
     if win.offset < runeLen(e.text): win.offset = runeLen(e.text)
   win.offset += 5
   for i, e in win.menu:
     win.menu[i].text = win.menu[i].text & spaces(win.offset - runeLen(e.text))
-  SetWinx(win.x-win.maxname-4)
+  let basewinx = win.x-win.maxname-4
+  if timeOnRight: win.maxmsg = (basewinx-timeWidth)
+  else: win.maxmsg = basewinx
+  SetWinx(win.maxmsg)
 
 proc readinput(f: File, line: var TaintedString): bool =
   var pos = 0
@@ -292,69 +340,77 @@ proc regular(text: string) =
 proc Statusbar() = 
   selected(" " & $win.counter & " ✉ " & win.title[5..win.title.len] & "\n")
 
+proc backEvent() = 
+  if win.section == RIGHT:
+    win.dialog  = newSeq[Message](0)
+    win.active  = win.last_active
+    if win.dialogsOpened:
+      win.menu[win.active].callback(win.menu[win.active])
+      win.scrollOffset  = 1
+      win.messageOffset = 0
+      win.dialogsOpened = false
+      win.active        = 0
+    else:
+      win.section = LEFT
+      win.body    = newSeq[ListElement](0)
+  else:
+    setLongpollChat(0)
+    win.dialog = newSeq[Message](0)
+
+proc selectEvent() = 
+  if win.section == LEFT:
+    win.menu[win.active].callback(win.menu[win.active])
+    win.last_active = win.active
+    win.active      = 0
+    win.section     = RIGHT
+  else:
+    if win.dialogsOpened:
+      setCursorPos(0, win.y)
+      stdout.write(": ")
+      let msg = stdin.input()
+      if msg.len != 0:
+        if not vksendAsync(win.chatid, msg):
+          echo "Сообщение не отправлено, подождите отправки предыдущего"
+          discard stdin.readLine()
+    else: win.body[win.active].callback(win.body[win.active])
+
+proc upEvent() = 
+  if win.dialogsOpened:
+    win.scrollOffset += win.y-3
+    if win.scrollOffset+4 > win.dialog.len: LoadMoarMsg()
+    if win.scrollOffset > win.dialog.len and win.y > win.dialog.len:
+      win.scrollOffset = 1
+    if win.dialog.len-win.scrollOffset < win.y:
+      win.scrollOffset = win.dialog.len-win.y+1
+      if win.scrollOffset <= 0: win.scrollOffset = 1
+  else:
+    if win.active > 0: dec win.active
+    elif win.buffer.len != 0 and win.start != 0:
+      dec win.start
+      win.body = win.buffer[win.start..win.start+win.y-4]
+      AlignBodyText()
+
+proc downEvent() = 
+  if win.section == LEFT: 
+    if win.active < win.menu.len-1: inc win.active
+  else:
+    if win.dialogsOpened and win.scrollOffset != 1:
+      win.scrollOffset -= win.y-3
+      if win.scrollOffset <= 0: win.scrollOffset = 1
+    else:
+      if win.active < win.body.len-1: inc win.active
+      elif win.buffer.len != 0 and win.start+win.y-3 != win.buffer.len:
+        inc win.start
+        win.body = win.buffer[win.start..win.start+win.y-4]
+        AlignBodyText()
+
 proc Controller() = 
   win.key = getch().ord
   case win.key:
-    of kg_left:
-      if win.section == RIGHT:
-        win.dialog  = newSeq[Message](0)
-        win.active  = win.last_active
-        if win.dialogsOpened:
-          win.menu[win.active].callback(win.menu[win.active])
-          win.scrollOffset  = 1
-          win.messageOffset = 0
-          win.dialogsOpened = false
-          win.active        = 0
-        else:
-          win.section = LEFT
-          win.body    = newSeq[ListElement](0)
-      else:
-        setLongpollChat(0)
-        win.dialog = newSeq[Message](0)
-    of kg_right:
-      if win.section == LEFT:
-        win.menu[win.active].callback(win.menu[win.active])
-        win.last_active = win.active
-        win.active      = 0
-        win.section     = RIGHT
-      else:
-        if win.dialogsOpened:
-          setCursorPos(0, win.y)
-          stdout.write(": ")
-          let msg = stdin.input()
-          if msg.len != 0:
-            if not vksendAsync(win.chatid, msg):
-              echo "Сообщение не отправлено, подождите отправки предыдущего"
-              discard stdin.readLine()
-        else: win.body[win.active].callback(win.body[win.active])
-    of kg_up:
-      if win.dialogsOpened:
-          win.scrollOffset += win.y-3
-          if win.scrollOffset+4 > win.dialog.len: LoadMoarMsg()
-          if win.scrollOffset > win.dialog.len and win.y > win.dialog.len:
-            win.scrollOffset = 1
-          if win.dialog.len-win.scrollOffset < win.y:
-            win.scrollOffset = win.dialog.len-win.y+1
-            if win.scrollOffset <= 0: win.scrollOffset = 1
-      else:
-        if win.active > 0: dec win.active
-        elif win.buffer.len != 0 and win.start != 0:
-          dec win.start
-          win.body = win.buffer[win.start..win.start+win.y-4]
-          AlignBodyText()
-    of kg_down:
-      if win.section == LEFT: 
-        if win.active < win.menu.len-1: inc win.active
-      else:
-        if win.dialogsOpened and win.scrollOffset != 1:
-          win.scrollOffset -= win.y-3
-          if win.scrollOffset <= 0: win.scrollOffset = 1
-        else:
-          if win.active < win.body.len-1: inc win.active
-          elif win.buffer.len != 0 and win.start+win.y-3 != win.buffer.len:
-            inc win.start
-            win.body = win.buffer[win.start..win.start+win.y-4]
-            AlignBodyText()
+    of kg_left: backEvent()
+    of kg_right: selectEvent()
+    of kg_up: upEvent()
+    of kg_down: downEvent()
     else: discard
 
 proc DrawMenu() = 
@@ -369,24 +425,45 @@ proc DrawMenu() =
 proc DrawDialog() = 
   for i, e in win.dialog[0..^win.scrollOffset]:
     var 
-      temp: string
+      temp : string
+      rtime: string
       sep = ": "
       sum = 0
     setCursorPos(0, 3+i)
     if runeLen(e.name) < win.maxname:
-      temp = spaces(win.maxname-runeLen(e.name)) & e.name
+      temp = spaces(win.maxname-runeSpaces(e.name, true)) & e.name
     else:
       temp = e.name[0..win.maxname-4] & "..."
 
-    if e.name.len == 0: sep = "  "
+    if e.name.len == 0:
+      if e.fline: sep = "▪ "
+      else: sep = "  "
     for c in e.name: sum += c.int
     # one char padding
     temp = " " & temp
 
+    rtime = ""
+    #let ml = e.text.runeSpaces()
+    let ml = e.text.runeLen()
+    if ml < win.maxmsg:
+      rtime &= spaces(win.maxmsg-ml)
+
+    if timeOnRight:
+      rtime &= " " & e.time
+      if e.time == "":
+        rtime &= spaces(strtimeWidth)
+
+    if unreadOnRight:
+      if e.unread: rtime &= " ⚫"
+      else: rtime &= "  "
+
     setForegroundColor(ForegroundColor(Colors(31+sum mod 6)))
     stdout.write temp
     setForegroundColor(ForegroundColor(White))
-    echo sep & e.text
+    stdout.write sep & e.text
+    setForegroundColor(ForegroundColor(Gray))
+    echo rtime
+    setForegroundColor(ForegroundColor(White))
 
 proc DrawBody() = 
   for i, e in win.body:
@@ -429,23 +506,56 @@ proc Update(ncounter: int) =
     AlignBodyText()
 
 proc newMessage(m: vkmessage) = 
+  dwr("lp nm txt " & m.msg)
+  dwr("lp nm name " & m.name)
   if win.dialog.len != 0:
     var
       lastname = ""
+      ctime = m.strtime
+      stime = ""
+      newmess = not m.nline
       i = 1
+
+    if m.time > 0:
+      if ctime != "" and ctime != lastLpTime:
+        stime = ctime
+        lastLpTime = stime
+
     while lastname == "":
       lastname = win.dialog[^i].name
       inc i
     if lastname != m.name:
-      win.dialog.add(Message(name: "", text: "", time: "", unread: false))
-      win.dialog.add(Message(name: m.name, text: m.msg, time: m.strtime, unread: m.unread))
+      lastLpTime = ctime
+      win.dialog.add(Message(name: "", text: "", time: "", unread: false, fline: false, mid: -1))
+      win.dialog.add(Message(name: m.name, text: m.msg, time: ctime, unread: m.unread, fline: true, mid: m.msgid))
     else:
-      win.dialog.add(Message(name: "", text: m.msg, time: m.strtime, unread: m.unread))
+      win.dialog.add(Message(name: "", text: m.msg, time: stime, unread: m.unread, fline: newmess, mid: m.msgid))
     clear()
     DrawDialog()
 
 proc readMessage(msgid: int) = 
-  discard
+  if win.dialog.len == 0: return
+  dwr("readMessage mid:" & $msgid)
+  var 
+    wipe = false
+    i = high(win.dialog)
+    lw = low(win.dialog)
+  while (i >= lw):
+    #dwr($i & " " & win.dialog[i].text)
+    let m = win.dialog[i]
+    if wipe:
+      if m.unread:
+        win.dialog[i].unread = false
+      else: break
+    else:
+      if m.mid == msgid:
+        win.dialog[i].unread = false
+        wipe = true
+    dec i
+  clear()
+  DrawDialog()
+  dwr("readMessage done")
+
 
 proc entryPoint() = 
   clear()
@@ -460,7 +570,7 @@ proc entryPoint() =
   discard execCmd("tput cnorm")
   pushTo(config)
   save(config)
-  clear() 
+  clear()
   quit(QuitSuccess)
 
 {.experimental.}

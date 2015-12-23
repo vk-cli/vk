@@ -36,7 +36,7 @@ type
     msgid*, sendid*, fromid*, chatid*, fwduid*: int
     time*: float
     msg*, name*, strtime*: string
-    fwdm*, unread*, findname, findfwdname: bool
+    fwdm*, unread*, findname, findfwdname, nline*: bool
 
 var 
   api = API()
@@ -116,7 +116,7 @@ proc SetWinx*(maxWidth: int) = winx = maxWidth
 
 proc GetToken*(): string = return api.token
 
-proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1, returnPure = false): JsonNode= 
+proc request(methodname: string, vkparams: Table, error_msg: string, offset = -1, count = -1, returnPure = false): JsonNode = 
   var url = vkmethod & methodname & "?"
   for key, value in vkparams.pairs:
     url &= key & "=" & encodeUrl(value) & "&"
@@ -160,7 +160,7 @@ proc getNextOffset(offset: int, argcount: int, count: int): int =
 
 proc vkinit*() = 
   SetToken(api.token)
-  discard request("users.get", {"name_case":"Nom"}.toTable, "Неверный access token")
+  discard request("users.get", {"name_case":"Nom"}.toTable, "Неверный access token") is JsonNode
 
 #===== api methods wrappers =====
 
@@ -301,7 +301,7 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
           name: "", fwdm: true, findname: true, findfwdname: true,
           fwduid: wfid,
           msg: fwdprefix & fwdname,
-          unread: false, time: -1, strtime: ""
+          unread: false, nline: true, time: -1, strtime: ""
         ))
 
     for l in wmsg:
@@ -310,7 +310,7 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
           name: "", fwdm: true, findname: true, findfwdname: false,
           fwduid: wfid,
           msg: fwdprefix & l,
-          unread: false, time: -1, strtime: ""
+          unread: false, nline: true, time: -1, strtime: ""
         ))
 
     if f.hasKey("fwd_messages"):
@@ -321,16 +321,19 @@ proc getFwdMessages(fwdmsg: seq[JsonNode], p: vkmessage, lastwmod = wmodstep): s
       
   return fs
 
-proc getStrDate(utime: float): string =
+proc getStrDate*(utime: float, customFormat = ""): string =
   #dwr("utime " & $utime)
   let
    tinfo = getLocalTime(fromSeconds(utime))
    ct = getLocalTime(getTime())
   var tstr = ""
-  if tinfo.year != ct.year or tinfo.yearday != ct.yearday:
-    tstr = tinfo.format(r"dd'.'MM'.'yy")
+  if customFormat != "":
+    tstr = tinfo.format(customFormat)
   else:
-    tstr = tinfo.format(r"HH:mm:ss")
+    if tinfo.year != ct.year or tinfo.yearday != ct.yearday:
+      tstr = tinfo.format(r"dd'.'MM")
+    else:
+      tstr = tinfo.format(r"HH:mm")
   #dwr("getstr " & tstr)
   #dwr("ftime " & tinfo.format(r"dd'.'MM'.'yy HH:mm:ss") & " ctime " & $ct)
   return tstr
@@ -354,12 +357,12 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
       mstrdate = getStrDate(mdate)
       munread = false
 
-    if m["out"].num.int == 1 and m["read_state"].num.int == 0: munread = true
+    if m["read_state"].num.int == 0: munread = true
 
     let qmm = vkmessage(
         msgid: mid, fromid: mfrom, chatid: dialogid,
         name: "", msg: mlines[0],
-        fwdm: false, findname: true, unread: munread,
+        fwdm: false, findname: true, unread: munread, nline: false,
         time: mdate, strtime: mstrdate
       )
 
@@ -372,7 +375,7 @@ proc getMessages(items: seq[JsonNode], dialogid: int, idname = "from_id"): seq[v
         mitems.add(vkmessage(
             msgid: mid, fromid: mfrom, chatid: dialogid,
             name: "", msg: mlines[fml],
-            fwdm: false, findname: true, unread: false,
+            fwdm: false, findname: true, unread: false, nline: true,
             time: mdate, strtime: ""
           ))
     for ffm in mfwd:
@@ -472,6 +475,17 @@ proc vkmsgbyid(ids: seq[int]): seq[JsonNode] =
     items = j["items"].getElems()
   return items
 
+proc vkread(pid, start_mid: int) = 
+  let j = request("messages.markAsRead", {"peer_id":($pid), "start_message_id":($start_mid)}.toTable, "unable to markAsRead")
+  if j.kind != JInt or j.num.int != 1: discard #error possible?
+
+proc readLatestLp*() = 
+  let
+    h = vkhistory(longpollChatid, 0, 1)
+    mid = h.items[0].msgid
+  vkread(longpollChatid, mid)
+
+
 # ===== longpoll =====
 
 var 
@@ -483,7 +497,17 @@ var
   latSendid = 0
 
 proc lpReplace(inp: string): string = 
-  return inp.replace("<br>", "\n").replace("&quot;", "\"").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("\\r", "&#13;")
+  return inp.replace("<br>", "\n").replace("&quot;", "\"").replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">").replace("\r", "&#13;")
+
+proc lpReadEvent(q: seq[JsonNode]) = 
+  let
+    cid = q[1].num.int
+    mid = q[2].num.int
+  dwr("catch lpReadEvent mid:" & $mid & " cid:" & $cid)
+  if cid == longpollChatid: 
+    dwr("lpReadEvent sent (main) mid:" & $mid)
+    longread(mid)
+
 
 proc parseLongpollUpdates(arr: seq[JsonNode]) = 
   for u in arr:
@@ -525,29 +549,33 @@ proc parseLongpollUpdates(arr: seq[JsonNode]) =
         else:
           let 
             cropm = cropMsg(text.lpReplace())
+            fromn = vkusername(fromid)
           msg.add(vkmessage(
               chatid: chatid, fromid: fromid, msgid: msgid,
-              fwdm: false, findname: false, unread: unread,
-              name: vkusername(fromid), msg: cropm[0],
+              fwdm: false, findname: false, unread: unread, nline: false,
+              name: fromn, msg: cropm[0],
               time: time, strtime: getStrDate(time)
             ))
           if cropm.len > 1:
             for ml in 1..high(cropm):
               msg.add(vkmessage(
                 chatid: chatid, fromid: fromid, msgid: msgid,
-                fwdm: false, findname: false, unread: false,
-                name: "", msg: cropm[ml],
+                fwdm: false, findname: false, unread: false, nline: true,
+                name: fromn, msg: cropm[ml],
                 time: time, strtime: ""
               ))
+        dwr("lp string count " & $msg.len)
         for lpm in msg:
-          #dwr($lpm)
           longmsg(lpm)
 
       of 80:
         updc(q[1].num.int)
 
+      of 6:
+        lpReadEvent(q)
+
       of 7:
-        if q[1].num.int == longpollChatid: longread(q[2].num.int)
+        lpReadEvent(q)
 
       else: discard
 
