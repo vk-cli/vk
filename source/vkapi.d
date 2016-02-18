@@ -1,6 +1,8 @@
 module vkapi;
 
-import std.stdio, std.net.curl, std.conv, std.string, std.json;
+import std.stdio, std.conv, std.string;
+import std.exception, core.exception;
+import std.net.curl, std.uri, std.json;
 
 
 
@@ -14,7 +16,7 @@ class VKapi{
 
     this(string token){
         if(token.length != 85){
-            throw BackendException("Invalid token length");
+            throw new BackendException("Invalid token length");
         }
         vktoken = token;
     }
@@ -29,7 +31,7 @@ class VKapi{
         auto url = vkurl ~ meth ~ "?"; //so blue
         foreach(key; params.keys) {
             auto val = params[key];
-            url ~= key ~ "=" ~ val ~ "&"; //todo fix val for url
+            url ~= key ~ "=" ~ val.encode ~ "&";
         }
         url ~= "v=" ~ vkver ~ "&access_token=" ~ vktoken;
         JSONValue resp = httpget(url).parseJSON;
@@ -38,9 +40,9 @@ class VKapi{
             if("error" in resp){
 
                 auto eobj = resp["error"];
-                auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
-                auto ecode = eobj["error_code"].uinteger;
-                throw ApiErrorException(emsg, ecode);
+                immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
+                immutable auto ecode = eobj["error_code"].uinteger.to!int;
+                throw new ApiErrorException(emsg, ecode);
 
             } else {
                 rmresp = false;
@@ -67,11 +69,13 @@ class BackendException : Exception {
 
 class ApiErrorException : Exception {
     public {
+        int errorCode;
         @safe pure nothrow this(string message,
                                 int error_code,
                                 string file =__FILE__,
                                 size_t line = __LINE__,
                                 Throwable next = null) {
+            errorCode = error_code;
             super(message, file, line, next);
         }
     }
