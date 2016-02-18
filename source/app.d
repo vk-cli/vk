@@ -29,5 +29,10 @@ void main(string[] args) {
   //auto api = new VKapi(token.to!string);
   //api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.writeln();
 
+  auto stoken = (cast(char*)&token).to!string;
+  auto api = new VKapi(stoken);
+  api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.writeln();
+
+
   getch;
 }
