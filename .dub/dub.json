@@ -1,8 +1,0 @@
-{
-	"dub": {
-		"lastUpgrade": "2016-02-18T21:16:08.409923",
-		"cachedUpgrades": {
-			"ncurses": "~master"
-		}
-	}
-}

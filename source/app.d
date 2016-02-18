@@ -1,7 +1,6 @@
 #!/usr/bin/rdmd -L-lncursesw
 
 import deimos.ncurses.ncurses;
-import std.getopt;
 import std.string;
 import std.c.locale;
 
