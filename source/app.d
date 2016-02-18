@@ -19,12 +19,15 @@ void main(string[] args) {
   spawnShell(`xdg-open "http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
 
   char token;
+
   getstr(&token);
 
   refresh;
 
-  auto api = new VKapi(token.to!string);
-  api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.writeln();
+  token.writeln;
+
+  //auto api = new VKapi(token.to!string);
+  //api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.writeln();
 
   getch;
 }
