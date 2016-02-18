@@ -1,18 +1,18 @@
 #!/usr/bin/rdmd -L-lncursesw
 
+import deimos.ncurses.ncurses;
 import std.string;
 import std.c.locale;
-import deimos.ncurses.ncurses;
 
-void main() {
-    scope(exit) endwin();
+void main(string[] args) {
+  scope(exit) endwin();
 
-    setlocale(LC_CTYPE,"");
+  setlocale(LC_CTYPE,"");
 
-    immutable hello = toStringz("UTF-8 тест: привет)");
+  immutable hello = toStringz("UTF-8 тест: привет)");
 
-    initscr();
-    printw(hello);
-    refresh();
-    getch();
+  initscr();
+  printw(hello);
+  refresh();
+  getch();
 }
