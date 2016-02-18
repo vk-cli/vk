@@ -3,7 +3,7 @@ module vkapi;
 import std.stdio, std.conv, std.string;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
-
+import utils;
 
 
 class VKapi{
@@ -22,7 +22,18 @@ class VKapi{
     }
 
     string httpget(string addr) {
-        auto content = get(addr).to!string; //todo try network errors
+        string content;
+        bool ok = false;
+
+        while(!ok){
+            try{
+                content = get(addr).to!string;
+                ok = true;
+            } catch (CurlException e) {
+                dbm("network error: " ~ e.msg);
+                //todo sleep here
+            }
+        }
         return content;
     }
 
