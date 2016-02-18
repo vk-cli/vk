@@ -1,7 +1,7 @@
 #!/usr/bin/rdmd -L-lncursesw
 
 import deimos.ncurses.ncurses;
-import std.string, std.stdio;
+import std.string, std.stdio, std.process, std.conv;
 import core.stdc.locale;
 import vkapi;
 
@@ -11,10 +11,20 @@ void init() {
 }
 
 void main(string[] args) {
-  scope(exit) endwin;
   init;
+  scope(exit) endwin;
 
   printw("Insert your access token here: ");
+
+  spawnShell(`xdg-open "http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
+
+  char token;
+  getstr(&token);
+
   refresh;
+
+  auto api = new VKapi(token.to!string);
+  api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.writeln();
+
   getch;
 }
