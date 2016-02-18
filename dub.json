@@ -1,0 +1,9 @@
+{
+  "name": "vk",
+  "description": "Terminal client for vk.com",
+  "authors": ["HaCk3D"],
+  "homepage": "",
+  "dependencies": {
+    "ncurses": "~master"
+  }
+}
