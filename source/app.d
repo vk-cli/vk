@@ -1,18 +1,20 @@
 #!/usr/bin/rdmd -L-lncursesw
 
 import deimos.ncurses.ncurses;
-import std.string;
-import std.c.locale;
+import std.string, std.stdio;
+import core.stdc.locale;
+import vkapi;
+
+void init() {
+  setlocale(LC_CTYPE,"");
+  initscr();
+}
 
 void main(string[] args) {
-  scope(exit) endwin();
+  scope(exit) endwin;
+  init;
 
-  setlocale(LC_CTYPE,"");
-
-  immutable hello = toStringz("UTF-8 тест: привет)");
-
-  initscr();
-  printw(hello);
-  refresh();
-  getch();
+  printw("Insert your access token here: ");
+  refresh;
+  getch;
 }
