@@ -31,11 +31,7 @@ class VKapi{
             writeln(resp.toPrettyString);
         }
 
-        if(dontRemoveResponse){
-            return resp;
-        } else {
-            return resp["response"];
-        }
+        return dontRemoveResponse ? resp : resp["response"];
     }
 
 }
