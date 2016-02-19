@@ -1,7 +1,7 @@
 {
   "name": "vk",
   "description": "Terminal client for vk.com",
-  "authors": ["HaCk3D", "Unrelated Substance-Of-Melancholy"],
+  "authors": ["HaCk3D", "substanceof"],
   "homepage": "https://github.com/HaCk3Dq/vk",
   "dependencies": {
     "ncurses": "~master"
