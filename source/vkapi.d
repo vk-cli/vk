@@ -55,7 +55,7 @@ class VKapi{
                 immutable auto ecode = eobj["error_code"].uinteger.to!int;
                 throw new ApiErrorException(emsg, ecode);
 
-            } else {
+            } else if ("response" !in resp) {
                 rmresp = false;
             }
         }
