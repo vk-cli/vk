@@ -14,43 +14,51 @@ void print(string s) {
   s.toStringz.printw;
 }
 
-VKapi get_token(ref string[string] stor) {
+VKapi get_token(ref string[string] storage) {
   char token;
   "Insert your access token here: ".print;
   spawnShell(`xdg-open "http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
   getstr(&token);
   auto strtoken = (cast(char*)&token).to!string;
-  stor["token"] = strtoken;
+  storage["token"] = strtoken;
   return new VKapi(strtoken);
 }
 
 void color() {
-  if (has_colors == false) {
+  if (!has_colors) {
     endwin;
-    writeln("Your terminal does not support color... Goodbye");
+    writeln("Your terminal does not support color");
   }
   start_color;
-  init_pair(1, COLOR_RED, Colors.black);
   use_default_colors;
+  for (short i = 1; i < 7; i++) {
+    init_pair(i, i, -1);
+  }
 }
 
-enum Colors { black, red, green, yellow, blue, magenta, cyan, white }
+enum Colors { white, red, green, yellow, blue, magenta, cyan }
 
 void main(string[] args) {
   init;
   color;
-  noecho;
-  cbreak;
+  //noecho;
+  //cbreak;
   scope(exit)    endwin;
   scope(failure) endwin;
 
   auto storage = load;
   auto api = "token" in storage ? new VKapi(storage["token"]) : get_token(storage);
+  while (!api.isTokenValid) {
+    api = get_token(storage);
+  }
 
   attron(A_BOLD);
-  attron(COLOR_PAIR(1));
+  attron(A_REVERSE);
+  attron(COLOR_PAIR(Colors.green));
+
   api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.print;
-  attroff(COLOR_PAIR(1));
+  
+  attroff(COLOR_PAIR(0));
 
   refresh;
   getch;
