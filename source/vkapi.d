@@ -47,9 +47,6 @@ class VKapi {
         } catch (BackendException e) {
             dbm("BackendException: " ~ e.msg);
             return false;
-        } catch (Exception e) {
-            dbm("Exception: " ~ e.msg);
-            return false;
         }
         return true;
     }
@@ -83,11 +80,14 @@ class VKapi {
 
         if(resp.type == JSON_TYPE.OBJECT) {
             if("error" in resp){
-
-                auto eobj = resp["error"];
-                immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
-                immutable auto ecode = eobj["error_code"].uinteger.to!int;
-                throw new ApiErrorException(emsg, ecode);
+                try {
+                    auto eobj = resp["error"];
+                    immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
+                    immutable auto ecode = eobj["error_code"].integer.to!int;
+                    throw new ApiErrorException(emsg, ecode);
+                } catch (JSONException e) {
+                    throw new ApiErrorException(resp.toPrettyString(), 0);
+                }
 
             } else if ("response" !in resp) {
                 rmresp = false;
@@ -105,6 +105,7 @@ class VKapi {
         if(fields != "") params["fields"] = fields;
         if(nameCase != "nom") params["name_case"] = nameCase;
         auto resp = vkget("users.get", params);
+        dbm(resp.toPrettyString());
 
         if(resp.array.length != 1) throw new BackendException("users.get (one user) fail: response array length != 1");
         resp = resp[0];
