@@ -16,7 +16,6 @@ void print(string s) {
 
 VKapi get_token(ref string[string] storage) {
   char token;
-  clear;
   "Insert your access token here: ".print;
   spawnShell(`xdg-open "http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
   getstr(&token);
@@ -26,9 +25,9 @@ VKapi get_token(ref string[string] storage) {
 }
 
 void color() {
-  if (has_colors == false) {
+  if (!has_colors) {
     endwin;
-    writeln("Your terminal does not support color... Goodbye");
+    writeln("Your terminal does not support color");
   }
   start_color;
   use_default_colors;
@@ -50,7 +49,7 @@ void main(string[] args) {
   auto storage = load;
   auto api = "token" in storage ? new VKapi(storage["token"]) : get_token(storage);
   while (!api.isTokenValid) {
-    get_token(storage);
+    api = get_token(storage);
   }
 
   attron(A_BOLD);
