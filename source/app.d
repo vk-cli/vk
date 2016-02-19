@@ -7,7 +7,7 @@ import vkapi, cfg;
 
 void init() {
   setlocale(LC_CTYPE,"");
-  initscr();
+  initscr;
 }
 
 void print(string s) {
@@ -24,14 +24,33 @@ VKapi get_token(ref string[string] stor) {
   return new VKapi(strtoken);
 }
 
+void color() {
+  if (has_colors == false) {
+    endwin;
+    writeln("Your terminal does not support color... Goodbye");
+  }
+  start_color;
+  init_pair(1, COLOR_RED, Colors.black);
+  use_default_colors;
+}
+
+enum Colors { black, red, green, yellow, blue, magenta, cyan, white }
+
 void main(string[] args) {
   init;
+  color;
+  noecho;
+  cbreak;
   scope(exit)    endwin;
-  scope(failure) endwin();
+  scope(failure) endwin;
 
   auto storage = load;
   auto api = "token" in storage ? new VKapi(storage["token"]) : get_token(storage);
+
+  attron(A_BOLD);
+  attron(COLOR_PAIR(1));
   api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.print;
+  attroff(COLOR_PAIR(1));
 
   refresh;
   getch;
