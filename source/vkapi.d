@@ -8,13 +8,21 @@ import utils;
 
 // ===== API objects =====
 
-struct vkUser{
+struct vkUser {
     string first_name;
     string last_name;
     int id;
 }
 
-class VKapi{
+struct vkDialog {
+    string name;
+    string lastMessage;
+    int id;
+    bool unread = false;
+    string formatted;
+}
+
+class VKapi {
 
 // ===== API & networking =====
 
@@ -29,7 +37,7 @@ class VKapi{
         isTokenValid = checkToken(token);
     }
 
-    private bool checkToken(string token){
+    private bool checkToken(string token) {
         if(token.length != 85) return false;
         try{
             me = usersGet();
@@ -59,7 +67,7 @@ class VKapi{
         return content;
     }
 
-    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false){
+    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false) {
         bool rmresp = dontRemoveResponse;
         auto url = vkurl ~ meth ~ "?"; //so blue
         foreach(key; params.keys) {
@@ -88,7 +96,7 @@ class VKapi{
 
     // ===== API method wrappers =====
 
-    vkUser usersGet(int userId = 0, string fields = "", string nameCase = "nom"){
+    vkUser usersGet(int userId = 0, string fields = "", string nameCase = "nom") {
         string[string] params;
         if(userId != 0) params["user_ids"] = userId.to!string;
         if(fields != "") params["fields"] = fields;
@@ -104,6 +112,34 @@ class VKapi{
             last_name:resp["last_name"].str
         };
         return rt;
+    }
+
+    vkDialog[] messagesGetDialogs(int count = 20, int offset = 0) {
+        string[string] params;
+        if(count != 0) params["count"] = count.to!string;
+        if(offset != 0) params["offset"] = offset.to!string;
+        auto resp = vkget("messages.getDialogs", params);
+
+        vkDialog[] dialogs;
+        foreach(dlg; resp["items"].array){
+            auto msg = dlg["message"];
+            auto ds = vkDialog();
+            if("chat_id" in msg){
+                ds.id = msg["chat_id"].integer.to!int;
+                ds.name = msg["title"].str;
+            } else {
+                ds.id = msg["user_id"].integer.to!int;
+                ds.name = ds.id.to!string; //todo resolve names
+            }
+            ds.lastMessage = msg["body"].str;
+            if(msg["out"].integer == 0 && msg["read_state"].integer == 0) ds.unread = true;
+            ds.formatted = (ds.unread ? "+ " : "  ") ~ ds.lastMessage;
+            dialogs ~= ds;
+            //dbm(ds.id.to!string ~ " " ~ ds.unread.to!string ~ "   " ~ ds.name ~ " " ~ ds.lastMessage);
+            //dbm(ds.formatted);
+        }
+
+        return dialogs;
     }
 
 }
