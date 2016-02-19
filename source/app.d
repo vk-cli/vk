@@ -25,7 +25,6 @@ VKapi get_token() {
 }
 
 VKapi set_token(string token) {
-  "set".print;
   return new VKapi(token);
 }
 
