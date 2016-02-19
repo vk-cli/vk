@@ -180,7 +180,8 @@ class VKapi {
                 switch(u[0].integer.to!int) {
                     case 4:
                         //new message
-                        dbm("longpoll message: " ~ u[6].str);
+                        immutable string mbody = u[6].str.longpollReplaces;
+                        dbm("longpoll message: " ~ mbody);
                         break;
                     default:
                         break;
