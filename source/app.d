@@ -24,17 +24,13 @@ VKapi get_token() {
   return new VKapi(strtoken);
 }
 
-VKapi set_token(string token) {
-  return new VKapi(token);
-}
-
 void main(string[] args) {
   init;
   scope(exit)    endwin;
   scope(failure) endwin();
 
   auto storage = load;
-  auto api = "token" in storage ? set_token(storage["token"]) : get_token;
+  auto api = "token" in storage ? new VKapi(storage["token"]) : get_token;
   api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.print;
 
   refresh;
