@@ -49,6 +49,7 @@ void main(string[] args) {
   auto storage = load;
   auto api = "token" in storage ? new VKapi(storage["token"]) : get_token(storage);
   while (!api.isTokenValid) {
+    "Wrong token, try again".print;
     api = get_token(storage);
   }
 
