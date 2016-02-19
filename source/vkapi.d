@@ -44,8 +44,11 @@ class VKapi {
         } catch (ApiErrorException e) {
             dbm("ApiErrorException: " ~ e.msg);
             return false;
-        } catch (BackendException e){
+        } catch (BackendException e) {
             dbm("BackendException: " ~ e.msg);
+            return false;
+        } catch (Exception e) {
+            dbm("Exception: " ~ e.msg);
             return false;
         }
         return true;
@@ -68,7 +71,7 @@ class VKapi {
     }
 
     JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false) {
-        bool rmresp = dontRemoveResponse;
+        bool rmresp = !dontRemoveResponse;
         auto url = vkurl ~ meth ~ "?"; //so blue
         foreach(key; params.keys) {
             auto val = params[key];
@@ -89,9 +92,9 @@ class VKapi {
             } else if ("response" !in resp) {
                 rmresp = false;
             }
-        }
+        } else rmresp = false;
 
-        return rmresp ? resp : resp["response"];
+        return rmresp ? resp["response"] : resp;
     }
 
     // ===== API method wrappers =====
