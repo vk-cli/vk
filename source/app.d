@@ -38,7 +38,22 @@ void color() {
 
 enum Colors { white, red, green, yellow, blue, magenta, cyan }
 
+void test() {
+    auto storage = load;
+    if("token" !in storage) {
+        writeln("cyka");
+        return;
+    }
+    auto api = new VKapi(storage["token"]);
+    if(!api.isTokenValid) {
+        writeln("bad token");
+        return;
+    }
+    api.startLongpoll();
+}
+
 void main(string[] args) {
+  //test();
   init;
   color;
   //noecho;

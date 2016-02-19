@@ -22,6 +22,17 @@ struct vkDialog {
     string formatted;
 }
 
+struct vkLongpoll {
+    string key;
+    string server;
+    int ts;
+}
+
+struct vkNextLp {
+    int ts;
+    int failed;
+}
+
 class VKapi {
 
 // ===== API & networking =====
@@ -144,6 +155,72 @@ class VKapi {
         }
 
         return dialogs;
+    }
+
+    // ===== longpoll =====
+
+    vkLongpoll getLongpollServer() {
+        auto resp = vkget("messages.getLongPollServer", [ "use_ssl": "1", "need_pts": "0" ]);
+        vkLongpoll rt = {
+            server: resp["server"].str,
+            key: resp["key"].str,
+            ts: resp["ts"].integer.to!int
+        };
+        return rt;
+    }
+
+    vkNextLp parseLongpoll(string resp) {
+        JSONValue j = parseJSON(resp);
+        vkNextLp rt;
+        auto failed = ("failed" in j ? j["failed"].integer.to!int : -1 );
+        auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
+        if(failed == -1) {
+            auto upd = j["updates"].array;
+            foreach(u; upd) {
+                switch(u[0].integer.to!int) {
+                    case 4:
+                        //new message
+                        dbm("longpoll message: " ~ u[6].str);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        rt.ts = ts;
+        rt.failed = failed;
+        return rt;
+    }
+
+    void doLongpoll(vkLongpoll start) {
+        int cts = start.ts;
+        bool ok = true;
+        dbm("longpoll works");
+        while(ok) {
+            try {
+                if(cts < 1) break;
+                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=2";
+                auto resp = httpget(url);
+                immutable auto next = parseLongpoll(resp);
+                if(next.failed == 2 || next.failed == 3) ok = false; //get new server
+                cts = next.ts;
+            } catch(Exception e) {
+                dbm("longpoll exception: " ~ e.msg);
+                ok = false;
+            }
+        }
+    }
+
+    void startLongpoll() {
+        dbm("longpoll is starting...");
+        while(true) {
+            try {
+                doLongpoll(getLongpollServer());
+            } catch (ApiErrorException e) {
+                dbm("longpoll ApiErrorException: " ~ e.msg);
+            }
+            dbm("longpoll is restarting...");
+        }
     }
 
 }
