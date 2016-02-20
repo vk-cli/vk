@@ -99,9 +99,13 @@ void statusbar(VKapi api) {
 }
 
 void draw(ListElement[] menu) {
+  ulong amount;
+  foreach(le; menu) {
+    amount = le.text.walkLength > amount ? le.text.walkLength : amount;
+  }
   foreach(i, le; menu) {
-    immutable auto space = " ".replicate(COLS/8 - le.text.walkLength);
-    immutable auto text = le.text ~ space ~ "\n";
+    auto space = (le.text.walkLength < amount) ? " ".replicate(amount-le.text.walkLength) : "";
+    auto text = le.text ~ space ~ "\n";
     if (win.section == Sections.left) {
       i == win.active ? text.selected : text.regular;
     } else {
