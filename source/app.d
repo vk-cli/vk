@@ -12,12 +12,7 @@ enum Sections { left, right }
 Win win;
 
 struct Win {
-  ListElement[] menu = [
-    {"m_friends".getLocal},
-    {"m_conversations".getLocal},
-    {"m_music".getLocal},
-    {"m_settings".getLocal}
-  ];
+  ListElement[] menu;
   int 
     textcolor = Colors.mint,
     counter, active, section,
@@ -34,10 +29,20 @@ struct ListElement {
   int getter;
 }
 
+void relocale() {
+    win.menu = [
+        ListElement("m_friends".getLocal),
+        ListElement("m_conversations".getLocal),
+        ListElement("m_music".getLocal),
+        ListElement("m_settings".getLocal)
+    ];
+}
+
 void init() {
   setlocale(LC_CTYPE,"");
   localize();
   setLang(EN);
+  relocale();
   initscr;
 }
 

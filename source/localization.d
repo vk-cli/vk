@@ -3,8 +3,8 @@ module localization;
 import std.stdio;
 
 struct lang {
-  string En;
-  string Ru;
+  string en;
+  string ru;
 }
 
 const int
@@ -27,8 +27,8 @@ void setLang(int lang) {
 
 string getLocal(string id, int lang = currentLang) {
   switch(lang){
-    case EN: return local[id].En;
-    case RU: return local[id].Ru;
+    case EN: return local[id].en;
+    case RU: return local[id].ru;
     default: return "";
   }
 }
