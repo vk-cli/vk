@@ -4,12 +4,45 @@ import deimos.ncurses.ncurses;
 import core.stdc.locale;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
-       std.range;
+       std.range, std.algorithm, core.stdc.stdlib;
 import vkapi, cfg, localization;
 
 // INIT VARS
 enum Sections { left, right }
 Win win;
+
+const int 
+  // keys
+  k_q      = 113,
+  k_enter  = 13,
+  k_up     = 65,
+  k_down   = 66,
+  k_left   = 68,
+  k_right  = 67,
+  k_w      = 119,
+  k_s      = 115,
+  k_a      = 97,
+  k_d      = 100,
+  k_rus_w  = 134,
+  k_rus_a  = 132,
+  k_rus_s  = 139,
+  k_rus_d  = 178,
+  k_k      = 107,
+  k_j      = 106,
+  k_h      = 104,
+  k_l      = 108,
+  k_rus_h  = 128,
+  k_rus_j  = 190,
+  k_rus_k  = 187,
+  k_rus_l  = 180;
+
+const int[] 
+  // key groups
+  kg_esc   = [k_q],
+  kg_up    = [k_up, k_w, k_k, k_rus_w, k_rus_k],
+  kg_down  = [k_down, k_s, k_j, k_rus_s, k_rus_j],
+  kg_left  = [k_left, k_a, k_h, k_rus_a, k_rus_h],
+  kg_right = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
 struct Win {
   ListElement[] menu = [
@@ -118,6 +151,8 @@ void draw(ListElement[] menu) {
 void controller() {
   win.key = getch;
   win.key.to!string.print;
+  if (canFind(kg_down, win.key)) win.active++;
+  else if (canFind(kg_up, win.key)) win.active--;
 }
 
 void test() {
@@ -150,9 +185,9 @@ void main(string[] args) {
     api = storage.get_token;
   }
   
-  while (win.key != 10) {
-    //clear;
-    win.counter = api.messagesCounter;
+  while (!canFind(kg_esc, win.key)) {
+    clear;
+    //win.counter = api.messagesCounter;
     api.statusbar;
     win.menu.draw;
     refresh;
