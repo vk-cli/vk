@@ -1,21 +1,37 @@
 #!/usr/bin/rdmd -L-lncursesw
 
 import deimos.ncurses.ncurses;
+import core.stdc.locale;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range;
-import core.stdc.locale;
-import vkapi, cfg;
+import vkapi, cfg, localization;
 
 // INIT VARS
 enum Sections { left, right }
-
+Win win;
+const langs = localize;
 int 
-  textcolor = Colors.mint,
-  counter, active, section,
-  last_active, key;
-string
-  title;
+  En = 0,
+  Ru = 1;
+
+
+struct Win {
+  ListElement[] menu = [
+    {"Friends"},
+    {"Messages"},
+    {"Music"},
+    {"Settings"}
+  ];
+  int 
+    textcolor = Colors.mint,
+    counter, active, section,
+    last_active;
+  string
+    title;
+  int
+    key;
+}
 
 struct ListElement {
   string text, link;
@@ -64,27 +80,28 @@ void selected(string text) {
 
 void regular(string text) {
   attron(A_BOLD);
-  attron(COLOR_PAIR(textcolor));
+  attron(COLOR_PAIR(win.textcolor));
   text.print;
   attroff(A_BOLD);
-  attroff(COLOR_PAIR(textcolor));
+  attroff(COLOR_PAIR(win.textcolor));
 }
 
 void statusbar(VKapi api) {
-  string notify = " " ~ counter.to!string ~ " ✉ ";
+  string notify = " " ~ win.counter.to!string ~ " ✉ ";
   notify.selected;
   center(api.me.first_name~" "~api.me.last_name, COLS+2-notify.length, ' ').selected;
   "\n".print;
+  win.title.print;
 }
 
 void draw(ListElement[] menu) {
   foreach(i, le; menu) {
     const space = " ".replicate(COLS/8 - le.text.walkLength);
     const text = le.text ~ space ~ "\n";
-    if (section == Sections.left) {
-      i == active ? text.selected : text.regular;
+    if (win.section == Sections.left) {
+      i == win.active ? text.selected : text.regular;
     } else {
-      i == last_active ? text.selected : text.regular;
+      i == win.last_active ? text.selected : text.regular;
     }
   }
 }
@@ -105,16 +122,10 @@ void test() {
 
 void main(string[] args) {
   //test();
-  ListElement[] menu = [
-    {"Friends"},
-    {"Messages"},
-    {"Music"},
-    {"Settings"}
-  ];
   init;
   color;
   curs_set(0);
-  //noecho;
+  noecho;
   //cbreak;
   scope(exit)    endwin;
   scope(failure) endwin;
@@ -125,11 +136,16 @@ void main(string[] args) {
     "Wrong token, try again".print;
     api = storage.get_token;
   }
-    
-  api.statusbar;
-  menu.draw;
-  refresh;
-  getch;
+  
+  while (win.key != 10) {
+    //clear;
+    langs[En].text["wrong_token"].print;
+    api.statusbar;
+    win.menu.draw;
+    refresh;
+    win.key = getch;
+    win.key.to!string.print;
+  }
 
   storage.save;
 }
