@@ -22,6 +22,13 @@ struct vkDialog {
     string formatted;
 }
 
+struct vkCounters {
+    int friends = 0;
+    int messages = 0;
+    int notifications = 0;
+    int groups = 0;
+}
+
 struct vkLongpoll {
     string key;
     string server;
@@ -155,6 +162,18 @@ class VKapi {
         }
 
         return dialogs;
+    }
+
+    vkCounters accountGetCounters(string filter = "") {
+        string ft = (filter == "") ? "friends,messages,groups,notifications" : filter;
+        auto resp = vkget("account.getCounters", [ "filter": ft ]);
+        vkCounters rt = {
+            messages: resp["messages"].integer.to!int,
+            groups: resp["groups"].integer.to!int,
+            notifications: resp["notifications"].integer.to!int,
+            friends: resp["friends"].integer.to!int
+        };
+        return rt;
     }
 
     // ===== longpoll =====
