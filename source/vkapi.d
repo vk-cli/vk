@@ -178,6 +178,10 @@ class VKapi {
         return rt;
     }
 
+    int messagesCounter() {
+        return accountGetCounters("messages").messages;
+    }
+
     // ===== longpoll =====
 
     vkLongpoll getLongpollServer() {
