@@ -103,6 +103,7 @@ void draw(ListElement[] menu) {
   foreach(le; menu) {
     amount = le.text.walkLength > amount ? le.text.walkLength : amount;
   }
+  amount++;
   foreach(i, le; menu) {
     auto space = (le.text.walkLength < amount) ? " ".replicate(amount-le.text.walkLength) : "";
     auto text = le.text ~ space ~ "\n";
@@ -112,6 +113,11 @@ void draw(ListElement[] menu) {
       i == win.last_active ? text.selected : text.regular;
     }
   }
+}
+
+void controller() {
+  win.key = getch;
+  win.key.to!string.print;
 }
 
 void test() {
@@ -137,7 +143,6 @@ void main(string[] args) {
   //cbreak;
   scope(exit)    endwin;
   scope(failure) endwin;
-
   auto storage = load;
   auto api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   while (!api.isTokenValid) {
@@ -147,12 +152,11 @@ void main(string[] args) {
   
   while (win.key != 10) {
     //clear;
+    win.counter = api.messagesCounter;
     api.statusbar;
     win.menu.draw;
     refresh;
-    win.key = getch;
-    win.key.to!string.print;
+    controller;
   }
-
   storage.save;
 }
