@@ -7,7 +7,7 @@ import vkapi, cfg;
 
 // INIT VARS
 int
-  textcolor = Colors.green,
+  textcolor = Colors.mint,
   counter;
 string title;
 
@@ -42,7 +42,7 @@ void color() {
   }
 }
 
-enum Colors { white, red, green, yellow, blue, magenta, cyan }
+enum Colors { white, red, green, yellow, blue, pink, mint }
 
 void selected(string text) {
   attron(A_REVERSE);
