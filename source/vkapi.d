@@ -168,6 +168,9 @@ class VKapi {
         string ft = (filter == "") ? "friends,messages,groups,notifications" : filter;
         auto resp = vkget("account.getCounters", [ "filter": ft ]);
         vkCounters rt;
+
+        if(resp.type == JSON_TYPE.ARRAY) return rt;
+
         foreach(c; resp.object.keys) switch (c) {
             case "messages": rt.messages = resp[c].integer.to!int; break;
             case "friends": rt.friends = resp[c].integer.to!int; break;
