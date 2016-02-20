@@ -1,15 +1,27 @@
 #!/usr/bin/rdmd -L-lncursesw
 
 import deimos.ncurses.ncurses;
-import std.string, std.stdio, std.process, std.conv;
+import std.string, std.stdio, std.process,
+       std.conv, std.array, std.encoding,
+       std.range;
 import core.stdc.locale;
 import vkapi, cfg;
 
 // INIT VARS
-int
+enum Sections { left, right }
+
+int 
   textcolor = Colors.mint,
-  counter;
-string title;
+  counter, active, section,
+  last_active, key;
+string
+  title;
+
+struct ListElement {
+  string text, link;
+  int callback;
+  int getter;
+}
 
 void init() {
   setlocale(LC_CTYPE,"");
@@ -62,6 +74,19 @@ void statusbar(VKapi api) {
   string notify = " " ~ counter.to!string ~ " ✉ ";
   notify.selected;
   center(api.me.first_name~" "~api.me.last_name, COLS+2-notify.length, ' ').selected;
+  "\n".print;
+}
+
+void draw(ListElement[] menu) {
+  foreach(i, le; menu) {
+    const space = " ".replicate(COLS/8 - le.text.walkLength);
+    const text = le.text ~ space ~ "\n";
+    if (section == Sections.left) {
+      i == active ? text.selected : text.regular;
+    } else {
+      i == last_active ? text.selected : text.regular;
+    }
+  }
 }
 
 void test() {
@@ -80,23 +105,31 @@ void test() {
 
 void main(string[] args) {
   //test();
+  ListElement[] menu = [
+    {"Friends"},
+    {"Messages"},
+    {"Music"},
+    {"Settings"}
+  ];
   init;
   color;
+  curs_set(0);
   //noecho;
   //cbreak;
   scope(exit)    endwin;
   scope(failure) endwin;
 
   auto storage = load;
-  auto api = "token" in storage ? new VKapi(storage["token"]) : get_token(storage);
+  auto api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   while (!api.isTokenValid) {
     "Wrong token, try again".print;
-    api = get_token(storage);
+    api = storage.get_token;
   }
     
   api.statusbar;
-
+  menu.draw;
   refresh;
   getch;
+
   storage.save;
 }
