@@ -44,7 +44,7 @@ void init() {
   setlocale(LC_CTYPE,"");
   localize();
   setLang(EN);
-  //relocale();
+  relocale();
   initscr;
 }
 
