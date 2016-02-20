@@ -12,7 +12,11 @@ enum Sections { left, right }
 Win win;
 
 struct Win {
-  ListElement[] menu;
+  ListElement[] menu = [
+                     {"Friends"},
+                     {"Conversations"},
+                     {"Music"},
+                     {"Settings"}];
   int 
     textcolor = Colors.mint,
     counter, active, section,
@@ -30,19 +34,17 @@ struct ListElement {
 }
 
 void relocale() {
-    win.menu = [
-        ListElement("m_friends".getLocal),
-        ListElement("m_conversations".getLocal),
-        ListElement("m_music".getLocal),
-        ListElement("m_settings".getLocal)
-    ];
+    win.menu[0].text = "m_friends".getLocal;
+    win.menu[1].text = "m_conversations".getLocal;
+    win.menu[2].text = "m_music".getLocal;
+    win.menu[3].text = "m_settings".getLocal;
 }
 
 void init() {
   setlocale(LC_CTYPE,"");
   localize();
   setLang(EN);
-  relocale();
+  //relocale();
   initscr;
 }
 
@@ -98,8 +100,8 @@ void statusbar(VKapi api) {
 
 void draw(ListElement[] menu) {
   foreach(i, le; menu) {
-    const space = " ".replicate(COLS/8 - le.text.walkLength);
-    const text = le.text ~ space ~ "\n";
+    immutable space = " ".replicate(COLS/8 - le.text.walkLength);
+    immutable text = le.text ~ space ~ "\n";
     if (win.section == Sections.left) {
       i == win.active ? text.selected : text.regular;
     } else {
