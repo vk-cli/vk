@@ -167,12 +167,14 @@ class VKapi {
     vkCounters accountGetCounters(string filter = "") {
         string ft = (filter == "") ? "friends,messages,groups,notifications" : filter;
         auto resp = vkget("account.getCounters", [ "filter": ft ]);
-        vkCounters rt = {
-            messages: resp["messages"].integer.to!int,
-            groups: resp["groups"].integer.to!int,
-            notifications: resp["notifications"].integer.to!int,
-            friends: resp["friends"].integer.to!int
-        };
+        vkCounters rt;
+        foreach(c; resp.object.keys) switch (c) {
+            case "messages": rt.messages = resp[c].integer.to!int; break;
+            case "friends": rt.friends = resp[c].integer.to!int; break;
+            case "notifications": rt.notifications = resp[c].integer.to!int; break;
+            case "groups": rt.groups = resp[c].integer.to!int; break;
+            default: break;
+        }
         return rt;
     }
 
