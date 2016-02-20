@@ -10,11 +10,6 @@ import vkapi, cfg, localization;
 // INIT VARS
 enum Sections { left, right }
 Win win;
-const langs = localize;
-int 
-  En = 0,
-  Ru = 1;
-
 
 struct Win {
   ListElement[] menu = [
@@ -122,6 +117,13 @@ void test() {
 
 void main(string[] args) {
   //test();
+
+  localize();
+  setLang(LANG_RU);
+
+  //anywhere in gui
+  string menuMusicItemText = getLocal("menu_music");
+
   init;
   color;
   curs_set(0);
