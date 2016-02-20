@@ -5,6 +5,12 @@ import std.string, std.stdio, std.process, std.conv;
 import core.stdc.locale;
 import vkapi, cfg;
 
+// INIT VARS
+int
+  textcolor = Colors.green,
+  counter;
+string title;
+
 void init() {
   setlocale(LC_CTYPE,"");
   initscr;
@@ -38,6 +44,26 @@ void color() {
 
 enum Colors { white, red, green, yellow, blue, magenta, cyan }
 
+void selected(string text) {
+  attron(A_REVERSE);
+  regular(text);
+  attroff(A_REVERSE);
+}
+
+void regular(string text) {
+  attron(A_BOLD);
+  attron(COLOR_PAIR(textcolor));
+  text.print;
+  attroff(A_BOLD);
+  attroff(COLOR_PAIR(textcolor));
+}
+
+void statusbar(VKapi api) {
+  string notify = " " ~ counter.to!string ~ " ✉ ";
+  notify.selected;
+  center(api.me.first_name~" "~api.me.last_name, COLS+2-notify.length, ' ').selected;
+}
+
 void main(string[] args) {
   init;
   color;
@@ -52,14 +78,8 @@ void main(string[] args) {
     "Wrong token, try again".print;
     api = get_token(storage);
   }
-
-  attron(A_BOLD);
-  attron(A_REVERSE);
-  attron(COLOR_PAIR(Colors.green));
-
-  api.vkget("messages.getDialogs", ["count": "1", "offset": "0"]).toPrettyString.print;
-  
-  attroff(COLOR_PAIR(0));
+    
+  api.statusbar;
 
   refresh;
   getch;
