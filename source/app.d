@@ -13,10 +13,10 @@ Win win;
 
 struct Win {
   ListElement[] menu = [
-    {"Friends"},
-    {"Messages"},
-    {"Music"},
-    {"Settings"}
+    {"m_friends".getLocal},
+    {"m_conversations".getLocal},
+    {"m_music".getLocal},
+    {"m_settings".getLocal}
   ];
   int 
     textcolor = Colors.mint,
@@ -36,6 +36,8 @@ struct ListElement {
 
 void init() {
   setlocale(LC_CTYPE,"");
+  localize();
+  setLang(EN);
   initscr;
 }
 
@@ -117,13 +119,6 @@ void test() {
 
 void main(string[] args) {
   //test();
-
-  localize();
-  setLang(LANG_RU);
-
-  //anywhere in gui
-  string menuMusicItemText = getLocal("menu_music");
-
   init;
   color;
   curs_set(0);
@@ -141,7 +136,6 @@ void main(string[] args) {
   
   while (win.key != 10) {
     //clear;
-    langs[En].text["wrong_token"].print;
     api.statusbar;
     win.menu.draw;
     refresh;
