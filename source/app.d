@@ -13,10 +13,10 @@ Win win;
 
 struct Win {
   ListElement[] menu = [
-                     {"Friends"},
-                     {"Conversations"},
-                     {"Music"},
-                     {"Settings"}];
+                     {},
+                     {},
+                     {},
+                     {}];
   int 
     textcolor = Colors.mint,
     counter, active, section,
@@ -28,7 +28,7 @@ struct Win {
 }
 
 struct ListElement {
-  string text, link;
+  string text = "", link;
   int callback;
   int getter;
 }

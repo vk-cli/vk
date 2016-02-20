@@ -25,8 +25,8 @@ void setLang(int lang) {
   currentLang = lang;
 }
 
-string getLocal(string id, int lang = currentLang) {
-  switch(lang){
+string getLocal(string id) {
+  switch(currentLang){
     case EN: return local[id].en;
     case RU: return local[id].ru;
     default: return "";
