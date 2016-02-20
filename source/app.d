@@ -4,7 +4,7 @@ import deimos.ncurses.ncurses;
 import core.stdc.locale;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
-       std.range, std.algorithm, core.stdc.stdlib;
+       std.range, std.algorithm;
 import vkapi, cfg, localization;
 
 // INIT VARS
@@ -175,7 +175,6 @@ void main(string[] args) {
   color;
   curs_set(0);
   noecho;
-  //cbreak;
   scope(exit)    endwin;
   scope(failure) endwin;
   auto storage = load;
@@ -185,9 +184,9 @@ void main(string[] args) {
     api = storage.get_token;
   }
   
+  win.counter = api.messagesCounter;
   while (!canFind(kg_esc, win.key)) {
     clear;
-    //win.counter = api.messagesCounter;
     api.statusbar;
     win.menu.draw;
     refresh;
