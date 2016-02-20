@@ -100,8 +100,8 @@ void statusbar(VKapi api) {
 
 void draw(ListElement[] menu) {
   foreach(i, le; menu) {
-    immutable space = " ".replicate(COLS/8 - le.text.walkLength);
-    immutable text = le.text ~ space ~ "\n";
+    immutable auto space = " ".replicate(COLS/8 - le.text.walkLength);
+    immutable auto text = le.text ~ space ~ "\n";
     if (win.section == Sections.left) {
       i == win.active ? text.selected : text.regular;
     } else {
