@@ -64,7 +64,22 @@ void statusbar(VKapi api) {
   center(api.me.first_name~" "~api.me.last_name, COLS+2-notify.length, ' ').selected;
 }
 
+void test() {
+    auto storage = load;
+    if("token" !in storage) {
+        writeln("cyka");
+        return;
+    }
+    auto api = new VKapi(storage["token"]);
+    if(!api.isTokenValid) {
+        writeln("bad token");
+        return;
+    }
+    api.startLongpoll();
+}
+
 void main(string[] args) {
+  //test();
   init;
   color;
   //noecho;

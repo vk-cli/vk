@@ -22,6 +22,17 @@ struct vkDialog {
     string formatted;
 }
 
+struct vkLongpoll {
+    string key;
+    string server;
+    int ts;
+}
+
+struct vkNextLp {
+    int ts;
+    int failed;
+}
+
 class VKapi {
 
 // ===== API & networking =====
@@ -46,9 +57,6 @@ class VKapi {
             return false;
         } catch (BackendException e) {
             dbm("BackendException: " ~ e.msg);
-            return false;
-        } catch (Exception e) {
-            dbm("Exception: " ~ e.msg);
             return false;
         }
         return true;
@@ -83,11 +91,14 @@ class VKapi {
 
         if(resp.type == JSON_TYPE.OBJECT) {
             if("error" in resp){
-
-                auto eobj = resp["error"];
-                immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
-                immutable auto ecode = eobj["error_code"].uinteger.to!int;
-                throw new ApiErrorException(emsg, ecode);
+                try {
+                    auto eobj = resp["error"];
+                    immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
+                    immutable auto ecode = eobj["error_code"].integer.to!int;
+                    throw new ApiErrorException(emsg, ecode);
+                } catch (JSONException e) {
+                    throw new ApiErrorException(resp.toPrettyString(), 0);
+                }
 
             } else if ("response" !in resp) {
                 rmresp = false;
@@ -105,6 +116,7 @@ class VKapi {
         if(fields != "") params["fields"] = fields;
         if(nameCase != "nom") params["name_case"] = nameCase;
         auto resp = vkget("users.get", params);
+        dbm(resp.toPrettyString());
 
         if(resp.array.length != 1) throw new BackendException("users.get (one user) fail: response array length != 1");
         resp = resp[0];
@@ -143,6 +155,73 @@ class VKapi {
         }
 
         return dialogs;
+    }
+
+    // ===== longpoll =====
+
+    vkLongpoll getLongpollServer() {
+        auto resp = vkget("messages.getLongPollServer", [ "use_ssl": "1", "need_pts": "0" ]);
+        vkLongpoll rt = {
+            server: resp["server"].str,
+            key: resp["key"].str,
+            ts: resp["ts"].integer.to!int
+        };
+        return rt;
+    }
+
+    vkNextLp parseLongpoll(string resp) {
+        JSONValue j = parseJSON(resp);
+        vkNextLp rt;
+        auto failed = ("failed" in j ? j["failed"].integer.to!int : -1 );
+        auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
+        if(failed == -1) {
+            auto upd = j["updates"].array;
+            foreach(u; upd) {
+                switch(u[0].integer.to!int) {
+                    case 4:
+                        //new message
+                        immutable string mbody = u[6].str.longpollReplaces;
+                        dbm("longpoll message: " ~ mbody);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        rt.ts = ts;
+        rt.failed = failed;
+        return rt;
+    }
+
+    void doLongpoll(vkLongpoll start) {
+        int cts = start.ts;
+        bool ok = true;
+        dbm("longpoll works");
+        while(ok) {
+            try {
+                if(cts < 1) break;
+                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=2";
+                auto resp = httpget(url);
+                immutable auto next = parseLongpoll(resp);
+                if(next.failed == 2 || next.failed == 3) ok = false; //get new server
+                cts = next.ts;
+            } catch(Exception e) {
+                dbm("longpoll exception: " ~ e.msg);
+                ok = false;
+            }
+        }
+    }
+
+    void startLongpoll() {
+        dbm("longpoll is starting...");
+        while(true) {
+            try {
+                doLongpoll(getLongpollServer());
+            } catch (ApiErrorException e) {
+                dbm("longpoll ApiErrorException: " ~ e.msg);
+            }
+            dbm("longpoll is restarting...");
+        }
     }
 
 }
