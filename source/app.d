@@ -62,8 +62,8 @@ struct Win {
 
 struct ListElement {
   string text = "", link;
-  int callback;
-  int getter;
+  void function(ref ListElement) callback;
+  ListElement[] function() getter;
 }
 
 void relocale() {
@@ -151,15 +151,19 @@ void draw(ListElement[] menu) {
 void controller() {
   win.key = getch;
   win.key.to!string.print;
-  if (canFind(kg_down, win.key)) {
-    if ((win.section == Sections.left) && (win.active < 3)) {
+  if (canFind(kg_down, win.key)) downEvent;
+  else if (canFind(kg_up, win.key)) upEvent;
+}
+
+void downEvent() {
+  if ((win.section == Sections.left) && (win.active < 3)) {
       win.active++;
-    }
   }
-  else if (canFind(kg_up, win.key)) {
-    if ((win.section == Sections.left) && (win.active != 0)) {
-      win.active--;
-    }
+}
+
+void upEvent() {
+  if ((win.section == Sections.left) && (win.active != 0)) {
+    win.active--;
   }
 }
 
