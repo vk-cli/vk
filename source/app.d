@@ -9,6 +9,7 @@ import vkapi, cfg, localization, utils;
 
 // INIT VARS
 enum Sections { left, right }
+enum Colors { white, red, green, yellow, blue, pink, mint }
 Win win;
 
 const int 
@@ -70,22 +71,26 @@ struct ListElement {
 }
 
 void relocale() {
-    win.menu[0].text = "m_friends".getLocal;
-    win.menu[1].text = "m_conversations".getLocal;
-    win.menu[2].text = "m_music".getLocal;
-    win.menu[3].text = "m_settings".getLocal;
+  win.menu[0].text = "m_friends".getLocal;
+  win.menu[1].text = "m_conversations".getLocal;
+  win.menu[2].text = "m_music".getLocal;
+  win.menu[3].text = "m_settings".getLocal;
 }
 
 void init() {
   setlocale(LC_CTYPE,"");
   localize();
-  setLang(EN);
+  setLang(En);
   relocale();
   initscr;
 }
 
 void print(string s) {
   s.toStringz.printw;
+}
+
+void print(int i) {
+  i.to!string.toStringz.printw;
 }
 
 VKapi get_token(ref string[string] storage) {
@@ -109,8 +114,6 @@ void color() {
     init_pair(i, i, -1);
   }
 }
-
-enum Colors { white, red, green, yellow, blue, pink, mint }
 
 void selected(string text) {
   attron(A_REVERSE);
@@ -153,7 +156,7 @@ void draw(ListElement[] menu) {
 
 void controller() {
   win.key = getch;
-  win.key.to!string.print;
+  win.key.print;
   if (canFind(kg_down, win.key)) downEvent;
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
@@ -196,9 +199,12 @@ void open(ListElement le) {
 }
 
 ListElement[] GenerateSettings() {
-  return [ListElement("Color = " ~ Colors.green)];
+  return [
+    ListElement(
+      ("color"~win.textcolor.to!string).getLocal,
+    ),
+  ];
 }
-
 
 void test() {
     //initFileDbm();
