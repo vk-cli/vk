@@ -4,14 +4,14 @@ import deimos.ncurses.ncurses;
 import core.stdc.locale;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
-       std.range, std.algorithm, core.stdc.stdlib;
+       std.range, std.algorithm;
 import vkapi, cfg, localization, utils;
 
 // INIT VARS
 enum Sections { left, right }
 Win win;
 
-const int 
+const int
   // keys
   k_q      = 113,
   k_enter  = 13,
@@ -36,7 +36,7 @@ const int
   k_rus_k  = 187,
   k_rus_l  = 180;
 
-const int[] 
+const int[]
   // key groups
   kg_esc   = [k_q],
   kg_up    = [k_up, k_w, k_k, k_rus_w, k_rus_k],
@@ -50,7 +50,7 @@ struct Win {
                      {},
                      {},
                      {}];
-  int 
+  int
     textcolor = Colors.mint,
     counter, active, section,
     last_active;
@@ -188,7 +188,7 @@ void main(string[] args) {
     "Wrong token, try again".print;
     api = storage.get_token;
   }
-  
+
   while (!canFind(kg_esc, win.key)) {
     clear;
     win.counter = api.messagesCounter;
