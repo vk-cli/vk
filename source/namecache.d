@@ -14,11 +14,11 @@ string strName(cachedName inp) {
 
 class Namecache {
 
-    this(VKapi* vkapie) {
+    this(VKapi vkapie) {
         api = vkapie;
     }
 
-    VKapi* api;
+    VKapi api;
 
     private int[] order;
     private cachedName[int] cache;
@@ -47,11 +47,20 @@ class Namecache {
             return cache[id];
         }
         dbm("got non-cached name!");
-        return cachedName("huj", "huj");
-/*        auto resp = api.usersGet(id);
-        auto rt = cachedName(resp.first_name, resp.last_name);
-        cache[resp.id] = rt;
-        return rt;*/
+        try {
+            auto resp = api.usersGet(id);
+            auto rt = cachedName(resp.first_name, resp.last_name);
+            cache[resp.id] = rt;
+            return rt;
+        } catch (ApiErrorException e) {
+            if (e.errorCode == 6) {
+                dbm("too many requests, returning default name");
+                return cachedName("default", "name");
+            } else {
+                //rethrow
+                throw e;
+            }
+        }
     }
 
     void resolveNames() {
