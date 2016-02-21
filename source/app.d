@@ -53,11 +53,11 @@ struct Win {
     {},
     {callback:&open, getter: &GenerateSettings}
   ], 
-  buffer;
+  buffer, mbody;
   int
     textcolor = Colors.mint,
     counter, active, section,
-    last_active, mbody;
+    last_active, offset;
   string
     title;
   int
@@ -83,6 +83,7 @@ void init() {
   setLang(En);
   relocale();
   initscr;
+  setOffset;
 }
 
 void print(string s) {
@@ -137,20 +138,39 @@ void statusbar(VKapi api) {
   win.title.print;
 }
 
-void draw(ListElement[] menu) {
-  ulong amount;
-  foreach(le; menu) {
-    amount = le.text.walkLength > amount ? le.text.walkLength : amount;
+void setOffset() {
+  foreach(le; win.menu) {
+    win.offset = le.text.walkLength.to!int > win.offset ? le.text.walkLength.to!int : win.offset;
   }
-  amount++;
-  foreach(i, le; menu) {
-    auto space = (le.text.walkLength < amount) ? " ".replicate(amount-le.text.walkLength) : "";
+  win.offset++;
+}
+
+void drawMenu() {
+  foreach(i, le; win.menu) {
+    auto space = (le.text.walkLength < win.offset) ? " ".replicate(win.offset-le.text.walkLength) : "";
     auto text = le.text ~ space ~ "\n";
     if (win.section == Sections.left) {
       i == win.active ? text.selected : text.regular;
     } else {
       i == win.last_active ? text.selected : text.regular;
     }
+  }
+}
+
+void alignBodyText() {
+  foreach(i, e; win.mbody) {
+    if (e.text.walkLength.to!int + win.offset+1 > COLS) {
+      win.mbody[i].text = e.text[0..COLS-win.offset-4] ~ "...";
+    } else win.mbody[i].text ~= " ".replicate(COLS - e.text.walkLength - win.offset-1);
+  }
+}
+
+
+void drawBody() {
+  alignBodyText;
+  foreach(i, e; win.mbody) {
+    wmove(stdscr, 2+i.to!int, win.offset+1);
+    i.to!int == win.active && win.section == Sections.right ? e.text.selected : e.text.regular;
   }
 }
 
@@ -165,13 +185,17 @@ void controller() {
 
 void downEvent() {
   if (win.section == Sections.left) {
-    win.active >= win.menu.length.to!int-1 ? win.active = 0 : win.active++;
+    win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
+  } else {
+    win.active >= win.mbody.length-1 ? win.active = 0 : win.active++;
   }
 }
 
 void upEvent() {
   if (win.section == Sections.left) {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
+  } else {
+    win.active == 0 ? win.active = win.mbody.length.to!int-1 : win.active--;
   }
 }
 
@@ -192,17 +216,16 @@ void backEvent() {
 }
 
 void open(ListElement le) {
-  //win.buffer = le.getter;
-  //if (win.buffer.length + 2 < LINES) {
-    //win.mbody = win.buffer;
-  //}
+  win.buffer = le.getter();
+  if (win.buffer.length + 2 < LINES) {
+    win.mbody = win.buffer;
+  }
 }
 
 ListElement[] GenerateSettings() {
   return [
-    ListElement(
-      ("color"~win.textcolor.to!string).getLocal,
-    ),
+    ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal),
+    ListElement("lo".replicate(50)),
   ];
 }
 
@@ -243,7 +266,8 @@ void main(string[] args) {
   while (!canFind(kg_esc, win.key)) {
     clear;
     api.statusbar;
-    win.menu.draw;
+    drawMenu;
+    drawBody;
     refresh;
     controller;
   }
