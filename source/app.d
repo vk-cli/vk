@@ -5,7 +5,7 @@ import core.stdc.locale;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm, core.stdc.stdlib;
-import vkapi, cfg, localization;
+import vkapi, cfg, localization, utils;
 
 // INIT VARS
 enum Sections { left, right }
@@ -156,6 +156,7 @@ void controller() {
 }
 
 void test() {
+    //initFileDbm();
     auto storage = load;
     if("token" !in storage) {
         writeln("cyka");
@@ -166,7 +167,10 @@ void test() {
         writeln("bad token");
         return;
     }
-    api.startLongpoll();
+    //api.startLongpoll();
+    auto conv = api.messagesGetDialogs();
+    api.nc.dbmAll();
+    readln();
 }
 
 void main(string[] args) {
@@ -187,7 +191,7 @@ void main(string[] args) {
   
   while (!canFind(kg_esc, win.key)) {
     clear;
-    //win.counter = api.messagesCounter;
+    win.counter = api.messagesCounter;
     api.statusbar;
     win.menu.draw;
     refresh;

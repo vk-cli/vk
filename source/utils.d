@@ -1,6 +1,6 @@
 module utils;
 
-import std.stdio, std.array;
+import std.stdio, std.array, std.file;
 
 const bool debugMessagesEnabled = false;//true;
 

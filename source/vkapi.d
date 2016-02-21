@@ -1,9 +1,9 @@
 module vkapi;
 
-import std.stdio, std.conv, std.string;
+import std.stdio, std.conv, std.string, std.algorithm, std.array;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
-import utils;
+import utils, namecache;
 
 
 // ===== API objects =====
@@ -50,9 +50,13 @@ class VKapi {
     bool isTokenValid;
     vkUser me;
 
+    Namecache nc;
+
     this(string token){
         vktoken = token;
         isTokenValid = checkToken(token);
+        nc = new Namecache(&this);
+        nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
     }
 
     private bool checkToken(string token) {
@@ -123,7 +127,7 @@ class VKapi {
         if(fields != "") params["fields"] = fields;
         if(nameCase != "nom") params["name_case"] = nameCase;
         auto resp = vkget("users.get", params);
-        dbm(resp.toPrettyString());
+        //dbm(resp.toPrettyString());
 
         if(resp.array.length != 1) throw new BackendException("users.get (one user) fail: response array length != 1");
         resp = resp[0];
@@ -136,22 +140,60 @@ class VKapi {
         return rt;
     }
 
+    vkUser[] usersGet(int[] userIds, string fields = "", string nameCase = "nom") {
+        string[string] params;
+        params["user_ids"] = userIds.map!(i => i.to!string).join(",");
+        if(fields != "") params["fields"] = fields;
+        if(nameCase != "nom") params["name_case"] = nameCase;
+        auto resp = vkget("users.get", params).array;
+
+        vkUser[] rt;
+        foreach(t; resp){
+            vkUser rti = {
+                id:t["id"].integer.to!int,
+                first_name:t["first_name"].str,
+                last_name:t["last_name"].str
+            };
+            rt ~= rti;
+        }
+        return rt;
+    }
+
+
     vkDialog[] messagesGetDialogs(int count = 20, int offset = 0) {
         string[string] params;
         if(count != 0) params["count"] = count.to!string;
         if(offset != 0) params["offset"] = offset.to!string;
         auto resp = vkget("messages.getDialogs", params);
+        auto respt = resp["items"].array
+                                    .map!(q => q["message"]);
+
+        //name resolving
+        int[] rootIds = respt
+                        .filter!(q => "user_id" in q)
+                        .map!(q => q["user_id"].integer.to!int)
+                        .array;
+        auto convAcvtives = respt
+                        .filter!(q => "chat_active" in q)
+                        .map!(q => q["chat_active"]);
+        int[] convIds;
+        foreach(ca; convAcvtives) {
+            //dbm(ca.type.to!string);
+            convIds ~= ca.array.map!(a => a.integer.to!int).array;
+        }
+        nc.requestId(rootIds);
+        nc.requestId(convIds);
+        nc.resolveNames();
 
         vkDialog[] dialogs;
-        foreach(dlg; resp["items"].array){
-            auto msg = dlg["message"];
+        foreach(msg; respt){
             auto ds = vkDialog();
             if("chat_id" in msg){
                 ds.id = msg["chat_id"].integer.to!int;
                 ds.name = msg["title"].str;
             } else {
                 ds.id = msg["user_id"].integer.to!int;
-                ds.name = ds.id.to!string; //todo resolve names
+                ds.name = nc.getName(ds.id).strName;
             }
             ds.lastMessage = msg["body"].str;
             if(msg["out"].integer == 0 && msg["read_state"].integer == 0) ds.unread = true;
