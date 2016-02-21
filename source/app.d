@@ -179,7 +179,6 @@ void main(string[] args) {
   color;
   curs_set(0);
   noecho;
-  //cbreak;
   scope(exit)    endwin;
   scope(failure) endwin;
   auto storage = load;
@@ -191,7 +190,6 @@ void main(string[] args) {
 
   while (!canFind(kg_esc, win.key)) {
     clear;
-    win.counter = api.messagesCounter;
     api.statusbar;
     win.menu.draw;
     refresh;
