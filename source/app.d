@@ -212,6 +212,8 @@ void backEvent() {
   if (win.section == Sections.right) {
     win.active = win.last_active;
     win.section = Sections.left;
+  } else {
+    win.mbody = new ListElement[0];
   }
 }
 
