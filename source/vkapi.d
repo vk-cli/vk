@@ -55,7 +55,7 @@ class VKapi {
     this(string token){
         vktoken = token;
         isTokenValid = checkToken(token);
-        nc = new Namecache(&this);
+        nc = new Namecache(this);
         nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
     }
 
