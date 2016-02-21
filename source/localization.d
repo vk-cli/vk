@@ -19,6 +19,8 @@ void localize() {
   local["m_conversations"] = lang("Conversations", "Диалоги");
   local["m_music"] = lang("Music", "Музыка");
   local["m_settings"] = lang("Settings", "Настройки");
+  local["e_input_token"] = lang("Insert your access token here: ", "Вставьте свой access token сюда: ");
+  local["e_wrong_token"] = lang("Wrong token, try again", "Неверный access token, попробуйте еще раз");
 }
 
 void setLang(int lang) {

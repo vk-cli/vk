@@ -11,7 +11,7 @@ import vkapi, cfg, localization, utils;
 enum Sections { left, right }
 Win win;
 
-const int
+const int 
   // keys
   k_q      = 113,
   k_enter  = 13,
@@ -36,7 +36,7 @@ const int
   k_rus_k  = 187,
   k_rus_l  = 180;
 
-const int[]
+const int[] 
   // key groups
   kg_esc   = [k_q],
   kg_up    = [k_up, k_w, k_k, k_rus_w, k_rus_k],
@@ -87,7 +87,7 @@ void print(string s) {
 
 VKapi get_token(ref string[string] storage) {
   char token;
-  "Insert your access token here: ".print;
+  "e_input_token".getLocal.print;
   spawnShell(`xdg-open "http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
   getstr(&token);
   auto strtoken = (cast(char*)&token).to!string;
@@ -196,7 +196,7 @@ void main(string[] args) {
   auto storage = load;
   auto api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   while (!api.isTokenValid) {
-    "Wrong token, try again".print;
+    "e_wrong_token".getLocal.print;
     api = storage.get_token;
   }
 
