@@ -45,15 +45,18 @@ const int[]
   kg_right = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
 struct Win {
-  ListElement[] menu = [
-                     {},
-                     {},
-                     {},
-                     {}];
+  ListElement[]
+  menu = [
+    {},
+    {},
+    {},
+    {callback:&open, getter: &GenerateSettings}
+  ], 
+  buffer;
   int
     textcolor = Colors.mint,
     counter, active, section,
-    last_active;
+    last_active, mbody;
   string
     title;
   int
@@ -62,7 +65,7 @@ struct Win {
 
 struct ListElement {
   string text = "", link;
-  void function(ref ListElement) callback;
+  void function(ListElement) callback;
   ListElement[] function() getter;
 }
 
@@ -153,19 +156,49 @@ void controller() {
   win.key.to!string.print;
   if (canFind(kg_down, win.key)) downEvent;
   else if (canFind(kg_up, win.key)) upEvent;
+  else if (canFind(kg_right, win.key)) selectEvent;
+  else if (canFind(kg_left, win.key)) backEvent;
 }
 
 void downEvent() {
-  if ((win.section == Sections.left) && (win.active < 3)) {
-      win.active++;
+  if (win.section == Sections.left) {
+    win.active >= win.menu.length.to!int-1 ? win.active = 0 : win.active++;
   }
 }
 
 void upEvent() {
-  if ((win.section == Sections.left) && (win.active != 0)) {
-    win.active--;
+  if (win.section == Sections.left) {
+    win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   }
 }
+
+void selectEvent() {
+  if (win.section == Sections.left) {
+    if (win.menu[win.active].callback) win.menu[win.active].callback(win.menu[win.active]);
+    win.last_active = win.active;
+    win.active = 0;
+    win.section = Sections.right;
+  }
+}
+
+void backEvent() {
+  if (win.section == Sections.right) {
+    win.active = win.last_active;
+    win.section = Sections.left;
+  }
+}
+
+void open(ListElement le) {
+  //win.buffer = le.getter;
+  //if (win.buffer.length + 2 < LINES) {
+    //win.mbody = win.buffer;
+  //}
+}
+
+ListElement[] GenerateSettings() {
+  return [ListElement("Color = " ~ Colors.green)];
+}
+
 
 void test() {
     //initFileDbm();
@@ -193,6 +226,7 @@ void main(string[] args) {
   noecho;
   scope(exit)    endwin;
   scope(failure) endwin;
+
   auto storage = load;
   auto api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   while (!api.isTokenValid) {
