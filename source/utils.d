@@ -2,7 +2,7 @@ module utils;
 
 import std.stdio, std.array, std.file;
 
-const bool debugMessagesEnabled = false;//true;
+const bool debugMessagesEnabled = true;
 
 void dbm(string msg) {
     if(debugMessagesEnabled) writeln("[debug]" ~ msg);

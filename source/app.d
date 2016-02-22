@@ -4,8 +4,8 @@ import deimos.ncurses.ncurses;
 import core.stdc.locale;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
-       std.range, std.algorithm;
-import vkapi, cfg, localization, utils;
+       std.range, std.algorithm, core.thread;
+import vkapi, cfg, localization, utils, namecache;
 
 // INIT VARS
 enum Sections { left, right }
@@ -244,6 +244,13 @@ void changeColor(ref ListElement le) {
 }
 
 
+void ticker() {
+    while (true) {
+        writeln("kappa");
+        Thread.sleep(dur!"msecs"(200));
+    }
+}
+
 void test() {
     //initFileDbm();
     auto storage = load;
@@ -256,10 +263,11 @@ void test() {
         writeln("bad token");
         return;
     }
-    //api.startLongpoll();
-    auto conv = api.messagesGetDialogs();
+    api.asyncLongpoll();
+    //auto conv = api.messagesGetDialogs();
     //nc.dbmAll();
     readln();
+    ticker();
 }
 
 void main(string[] args) {

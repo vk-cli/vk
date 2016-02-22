@@ -41,13 +41,13 @@ struct vkNextLp {
     int failed;
 }
 
-private struct apiTransfer {
+struct apiTransfer {
     string token;
     bool tokenvalid;
     vkUser user;
 }
 
-Namecache nc;
+__gshared nameCache nc = nameCache();
 
 class VKapi {
 
@@ -60,16 +60,24 @@ class VKapi {
     vkUser me;
 
     this(string token){
-        vktoken = token;
-        isTokenValid = checkToken(token);
-        nc = new Namecache(this);
-        nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
+        tokenInit(token);
+        nc = nc.createNC(this.exportStruct());
+        addMeNC();
     }
 
     this(apiTransfer st) {
         vktoken = st.token;
         isTokenValid = st.tokenvalid;
         me = st.user;
+    }
+
+    void addMeNC() {
+        nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
+    }
+
+    void tokenInit(string token) {
+        vktoken = token;
+        isTokenValid = checkToken(token);
     }
 
     apiTransfer exportStruct() {
