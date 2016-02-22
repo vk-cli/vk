@@ -3,6 +3,7 @@ module vkapi;
 import std.stdio, std.conv, std.string, std.algorithm, std.array;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
+import std.parallelism, std.concurrency;
 import utils, namecache;
 
 
@@ -40,6 +41,14 @@ struct vkNextLp {
     int failed;
 }
 
+struct apiTransfer {
+    string token;
+    bool tokenvalid;
+    vkUser user;
+}
+
+__gshared nameCache nc = nameCache();
+
 class VKapi {
 
 // ===== API & networking =====
@@ -50,13 +59,29 @@ class VKapi {
     bool isTokenValid;
     vkUser me;
 
-    Namecache nc;
-
     this(string token){
+        tokenInit(token);
+        nc = nc.createNC(this.exportStruct());
+        addMeNC();
+    }
+
+    this(apiTransfer st) {
+        vktoken = st.token;
+        isTokenValid = st.tokenvalid;
+        me = st.user;
+    }
+
+    void addMeNC() {
+        nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
+    }
+
+    void tokenInit(string token) {
         vktoken = token;
         isTokenValid = checkToken(token);
-        nc = new Namecache(this);
-        nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
+    }
+
+    apiTransfer exportStruct() {
+        return apiTransfer(vktoken, isTokenValid, me);
     }
 
     private bool checkToken(string token) {
@@ -294,6 +319,19 @@ class VKapi {
         }
     }
 
+    void asyncLongpoll() {
+        //auto task = task!(this.startLongpoll)();
+        //task.executeInNewThread();
+        spawn(&asyncLongpollWrapper, this.exportStruct());
+    }
+
+}
+
+// ===== async =====
+
+private void asyncLongpollWrapper(apiTransfer apist) {
+    auto api = new VKapi(apist);
+    api.startLongpoll();
 }
 
 // ===== Exceptions =====
