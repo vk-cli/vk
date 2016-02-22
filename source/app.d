@@ -4,7 +4,8 @@ import deimos.ncurses.ncurses;
 import core.stdc.locale;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
-       std.range, std.algorithm, core.thread;
+       std.range, std.algorithm, core.thread,
+       core.stdc.stdlib:exit;
 import vkapi, cfg, localization, utils, namecache;
 
 // INIT VARS
@@ -368,4 +369,6 @@ void main(string[] args) {
   storage.update;
   storage.save;
   dbmclose();
+  endwin;
+  exit(0);
 }
