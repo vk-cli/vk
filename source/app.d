@@ -66,7 +66,7 @@ struct Win {
 
 struct ListElement {
   string text = "", link;
-  void function(ListElement) callback;
+  void function(ref ListElement) callback;
   ListElement[] function() getter;
 }
 
@@ -80,7 +80,6 @@ void relocale() {
 void init() {
   setlocale(LC_CTYPE,"");
   localize();
-  setLang(En);
   relocale();
   initscr;
   setOffset;
@@ -157,17 +156,18 @@ void drawMenu() {
   }
 }
 
-void alignBodyText() {
-  foreach(i, e; win.mbody) {
+void bodyToBuffer() {
+  win.buffer = win.mbody.dup;
+  foreach(i, e; win.buffer) {
     if (e.text.walkLength.to!int + win.offset+1 > COLS) {
-      win.mbody[i].text = e.text[0..COLS-win.offset-4];
-    } else win.mbody[i].text ~= " ".replicate(COLS - e.text.walkLength - win.offset-1);
+      win.buffer[i].text = e.text[0..COLS-win.offset-4];
+    } else win.buffer[i].text ~= " ".replicate(COLS - e.text.walkLength - win.offset-1);
   }
 }
 
-void drawBody() {
-  alignBodyText;
-  foreach(i, e; win.mbody) {
+void drawBuffer() {
+  bodyToBuffer;
+  foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     i.to!int == win.active && win.section == Sections.right ? e.text.selected : e.text.regular;
   }
@@ -205,6 +205,8 @@ void selectEvent() {
     win.last_active = win.active;
     win.active = 0;
     win.section = Sections.right;
+  } else {
+    if (win.mbody[win.active].callback) win.mbody[win.active].callback(win.mbody[win.active]);
   }
 }
 
@@ -216,7 +218,7 @@ void backEvent() {
   }
 }
 
-void open(ListElement le) {
+void open(ref ListElement le) {
   win.buffer = le.getter();
   if (win.buffer.length + 2 < LINES) {
     win.mbody = win.buffer;
@@ -225,10 +227,22 @@ void open(ListElement le) {
 
 ListElement[] GenerateSettings() {
   return [
-    ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal),
-    ListElement("lo".replicate(50)),
+    ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeColor, null),
+    ListElement("lang".getLocal, "", &changeLang, null),
   ];
 }
+
+void changeLang(ref ListElement le) {
+  swapLang;
+  win.mbody = GenerateSettings;
+  relocale;
+}
+
+void changeColor(ref ListElement le) {
+  win.textcolor == 6 ? win.textcolor = 0 : win.textcolor++;
+  le.text = "color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
+}
+
 
 void test() {
     //initFileDbm();
@@ -268,7 +282,7 @@ void main(string[] args) {
     clear;
     api.statusbar;
     drawMenu;
-    drawBody;
+    drawBuffer;
     refresh;
     controller;
   }
