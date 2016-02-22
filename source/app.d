@@ -11,6 +11,7 @@ import vkapi, cfg, localization, utils, namecache;
 enum Sections { left, right }
 enum Colors { white, red, green, yellow, blue, pink, mint }
 Win win;
+VKapi api;
 
 const int 
   // keys
@@ -49,19 +50,19 @@ struct Win {
   ListElement[]
   menu = [
     {},
-    {},
+    {callback:&open, getter: &GetDialogs},
     {},
     {callback:&open, getter: &GenerateSettings}
   ], 
   buffer, mbody;
   int
-    textcolor = Colors.mint,
+    textcolor = Colors.white,
     counter, active, section,
-    last_active, offset;
+    last_active, offset, key;
   string
     title;
-  int
-    key;
+  bool
+    dialogsOpened;
 }
 
 struct ListElement {
@@ -108,7 +109,9 @@ VKapi get_token(ref string[string] storage) {
   char token;
   "e_input_token".getLocal.print;
   spawnShell(`xdg-open "http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
+  echo;
   getstr(&token);
+  noecho;
   auto strtoken = (cast(char*)&token).to!string;
   storage["token"] = strtoken;
   return new VKapi(strtoken);
@@ -124,6 +127,10 @@ void color() {
   for (short i = 1; i < 7; i++) {
     init_pair(i, i, -1);
   }
+  for (short i = 1; i < 7; i++) {
+    init_pair((7+i).to!short, i, 0.to!short);
+  }
+  init_pair(7, -1, 0);
 }
 
 void selected(string text) {
@@ -138,6 +145,16 @@ void regular(string text) {
   text.print;
   attroff(A_BOLD);
   attroff(COLOR_PAIR(win.textcolor));
+}
+
+void gray(string text) {
+  attron(A_REVERSE);
+  attron(A_BOLD);
+  attron(COLOR_PAIR(win.textcolor+7));
+  text.print;
+  attroff(A_BOLD);
+  attroff(A_REVERSE);
+  attroff(COLOR_PAIR(win.textcolor+7));
 }
 
 void statusbar(VKapi api) {
@@ -178,9 +195,23 @@ void bodyToBuffer() {
 
 void drawBuffer() {
   bodyToBuffer;
-  foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, win.offset+1);
-    i.to!int == win.active && win.section == Sections.right ? e.text.selected : e.text.regular;
+  if (win.dialogsOpened) {
+    foreach(i, e; win.buffer) {
+      string temp;
+      wmove(stdscr, 2+i.to!int, win.offset+1);
+      if (i.to!int == win.active) {
+        e.text.selected;
+        wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+        e.link.gray;
+      } else {
+        e.text.regular;
+      }
+    }
+  } else {
+    foreach(i, e; win.buffer) {
+      wmove(stdscr, 2+i.to!int, win.offset+1);
+      i.to!int == win.active ? e.text.selected : e.text.regular;
+    }
   }
 }
 
@@ -223,6 +254,7 @@ void selectEvent() {
 
 void backEvent() {
   if (win.section == Sections.right) {
+    if (win.dialogsOpened) win.dialogsOpened = false;
     win.active = win.last_active;
     win.section = Sections.left;
     win.mbody = new ListElement[0];
@@ -230,17 +262,10 @@ void backEvent() {
 }
 
 void open(ref ListElement le) {
-  win.buffer = le.getter();
+  win.mbody = le.getter();
   if (win.buffer.length + 2 < LINES) {
-    win.mbody = win.buffer;
+    win.buffer = win.mbody;
   }
-}
-
-ListElement[] GenerateSettings() {
-  return [
-    ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeColor, null),
-    ListElement("lang".getLocal, "", &changeLang, null),
-  ];
 }
 
 void changeLang(ref ListElement le) {
@@ -252,6 +277,23 @@ void changeLang(ref ListElement le) {
 void changeColor(ref ListElement le) {
   win.textcolor == 6 ? win.textcolor = 0 : win.textcolor++;
   le.text = "color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
+}
+
+ListElement[] GenerateSettings() {
+  return [
+    ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeColor, null),
+    ListElement("lang".getLocal, "", &changeLang, null),
+  ];
+}
+
+ListElement[] GetDialogs() {
+  ListElement[] listDialogs;
+  auto dialogs = api.messagesGetDialogs(LINES-2);
+  foreach(e; dialogs) {
+    listDialogs ~= ListElement(e.name ~ ": ", e.lastMessage.replace("\n", " "));
+  }
+  win.dialogsOpened = true;
+  return listDialogs;
 }
 
 void test() {
@@ -291,7 +333,7 @@ void main(string[] args) {
   auto storage = load;
   storage.parse;
 
-  auto api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
+  api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   while (!api.isTokenValid) {
     "e_wrong_token".getLocal.print;
     api = storage.get_token;
