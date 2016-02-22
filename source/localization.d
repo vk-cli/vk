@@ -18,7 +18,7 @@ enum Colors { white, red, green, yellow, blue, pink, mint }
 
 void localize() {
   local["e_input_token"] = lang("Insert your access token here: ", "Вставьте свой access token сюда: ");
-  local["e_wrong_token"] = lang("Wrong token, try again", "Неверный access token, попробуйте еще раз");
+  local["e_wrong_token"] = lang("Wrong token, try again\n", "Неверный access token, попробуйте еще раз");
   local["m_friends"] = lang("Friends", "Друзья");
   local["m_conversations"] = lang("Conversations", "Диалоги");
   local["m_music"] = lang("Music", "Музыка");

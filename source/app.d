@@ -160,11 +160,10 @@ void drawMenu() {
 void alignBodyText() {
   foreach(i, e; win.mbody) {
     if (e.text.walkLength.to!int + win.offset+1 > COLS) {
-      win.mbody[i].text = e.text[0..COLS-win.offset-4] ~ "...";
+      win.mbody[i].text = e.text[0..COLS-win.offset-4];
     } else win.mbody[i].text ~= " ".replicate(COLS - e.text.walkLength - win.offset-1);
   }
 }
-
 
 void drawBody() {
   alignBodyText;
@@ -175,6 +174,7 @@ void drawBody() {
 }
 
 void controller() {
+  timeout(-1);
   win.key = getch;
   win.key.print;
   if (canFind(kg_down, win.key)) downEvent;
@@ -212,7 +212,6 @@ void backEvent() {
   if (win.section == Sections.right) {
     win.active = win.last_active;
     win.section = Sections.left;
-  } else {
     win.mbody = new ListElement[0];
   }
 }
