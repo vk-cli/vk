@@ -197,13 +197,18 @@ void bodyToBuffer() {
 void drawBuffer() {
   bodyToBuffer;
   if (win.dialogsOpened) {
+    string tempText;
     foreach(i, e; win.buffer) {
       string temp;
       wmove(stdscr, 2+i.to!int, win.offset+1);
       if (i.to!int == win.active) {
         e.text.selected;
         wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-        e.link.gray;
+        tempText = e.link;
+        if (e.link.walkLength > COLS-win.offset-win.mbody[i].text.walkLength-1) {
+          tempText = tempText[0..COLS-win.offset-win.mbody[i].text.walkLength-1];
+        }
+        tempText.gray;
       } else {
         e.text.regular;
       }
