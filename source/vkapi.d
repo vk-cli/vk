@@ -64,7 +64,13 @@ struct apiTransfer {
     vkUser user;
 }
 
+struct apiState {
+    bool lp80got = true;
+    int latestUnreadMsg = 0;
+}
+
 __gshared nameCache nc = nameCache();
+__gshared apiState ps = apiState();
 
 class VKapi {
 
@@ -266,7 +272,13 @@ class VKapi {
     }
 
     int messagesCounter() {
-        return accountGetCounters("messages").messages;
+        int u = ps.latestUnreadMsg;
+        if(ps.lp80got) {
+            u = accountGetCounters("messages").messages;
+            ps.latestUnreadMsg = u;
+            ps.lp80got = false;
+        }
+        return u;
     }
 
     vkFriend[] friendsGet(int user_id = 0, int count = 0, int offset = 0) {
@@ -324,6 +336,8 @@ class VKapi {
         return rt;
     }
 
+    const bool return80mc = true;
+
     vkNextLp parseLongpoll(string resp) {
         JSONValue j = parseJSON(resp);
         vkNextLp rt;
@@ -333,10 +347,16 @@ class VKapi {
             auto upd = j["updates"].array;
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
-                    case 4:
-                        //new message
+                    case 4: //new message
                         immutable string mbody = u[6].str.longpollReplaces;
                         dbm("longpoll message: " ~ mbody);
+                        break;
+                    case 80: //counter update
+                        if(return80mc) {
+                            ps.latestUnreadMsg = u[1].integer.to!int;
+                        } else {
+                            ps.lp80got = true;
+                        }
                         break;
                     default:
                         break;

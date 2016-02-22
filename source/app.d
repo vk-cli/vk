@@ -339,8 +339,11 @@ void main(string[] args) {
     api = storage.get_token;
   }
 
+  api.asyncLongpoll();
+
   while (!canFind(kg_esc, win.key)) {
     clear;
+    win.counter = api.messagesCounter();
     api.statusbar;
     drawMenu;
     drawBuffer;
