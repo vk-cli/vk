@@ -321,15 +321,15 @@ void test() {
         writeln("bad token");
         return;
     }
-    api.asyncLongpoll();
-    readln();
-    //auto conv = api.messagesGetDialogs();
+    //api.asyncLongpoll();
+    //readln();
+    auto conv = api.messagesGetDialogs(100);
     //nc.dbmAll();
     auto fr = api.friendsGet();
-    foreach(f; fr) dbm(f.first_name ~ " " ~ f.last_name ~ " " ~ (f.online ? "!" : ""));
+    //foreach(f; fr) dbm(f.first_name ~ " " ~ f.last_name ~ " " ~ (f.online ? "!" : ""));
 
     auto aud = api.audioGet(0, 0, 10);
-    foreach(a; aud) dbm(a.artist ~ " - " ~ a.title ~ "  " ~ a.duration_str);
+    //foreach(a; aud) dbm(a.artist ~ " - " ~ a.title ~ "  " ~ a.duration_str);
 
     readln();
     //ticker();

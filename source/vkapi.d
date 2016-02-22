@@ -43,9 +43,16 @@ struct vkAudio {
     string artist;
     string title;
     int duration_sec;
-    string duration_str;
+    string duration_str; // MM:SS (len 5)
     string url;
 }
+
+struct vkGroup {
+    int id;
+    string name;
+}
+
+// ===== longpoll objects =====
 
 struct vkLongpoll {
     string key;
@@ -57,6 +64,8 @@ struct vkNextLp {
     int ts;
     int failed;
 }
+
+// === API state and meta =====
 
 struct apiTransfer {
     string token;
@@ -140,7 +149,7 @@ class VKapi {
 
         while(!ok){
             try{
-                content = get(addr).to!string;
+                content = get(addr).to!string; //todo timeouts
                 ok = true;
             } catch (CurlException e) {
                 dbm("network error: " ~ e.msg);
@@ -333,6 +342,23 @@ class VKapi {
                 duration_sec: ad, duration_str: (adm.to!string ~ ":" ~ ads_str)
             };
             rt ~= aud;
+        }
+        return rt;
+    }
+
+    vkGroup[] groupsGetById(int[] group_ids) {
+        vkGroup[] rt;
+        if(group_ids.length == 0) return rt;
+
+        auto gids = group_ids.map!(g => (g * -1).to!string).join(",");
+        //dbm("gids: " ~ gids);
+        auto params = [ "group_ids": gids ];
+        auto resp = vkget("groups.getById", params);
+
+        if(resp.type != JSON_TYPE.ARRAY) return rt;
+
+        foreach(g; resp.array) {
+            rt ~= vkGroup(g["id"].integer.to!int * -1, g["name"].str);
         }
         return rt;
     }
