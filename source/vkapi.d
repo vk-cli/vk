@@ -3,6 +3,7 @@ module vkapi;
 import std.stdio, std.conv, std.string, std.algorithm, std.array;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
+import std.concurrency;
 import utils, namecache;
 
 
@@ -292,6 +293,10 @@ class VKapi {
             }
             dbm("longpoll is restarting...");
         }
+    }
+
+    void asyncLongpoll() {
+        spawn(&startLongpoll);
     }
 
 }
