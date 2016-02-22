@@ -49,6 +49,10 @@ void addToCache(ref nameCache nc, int id, cachedName name){
 }
 
 cachedName getName(ref nameCache nc, int id) {
+    if(id < 0) {
+        dbm("got community id"); //todo resolve commmunity names
+        return cachedName("community", id.to!string);
+    }
     if(id in nc.cache) {
         return nc.cache[id];
     }

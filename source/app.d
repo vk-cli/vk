@@ -310,15 +310,22 @@ void test() {
         writeln("bad token");
         return;
     }
-    api.asyncLongpoll();
+    //api.asyncLongpoll();
     //auto conv = api.messagesGetDialogs();
     //nc.dbmAll();
+    auto fr = api.friendsGet();
+    foreach(f; fr) dbm(f.first_name ~ " " ~ f.last_name ~ " " ~ (f.online ? "!" : ""));
+
+    auto aud = api.audioGet(0, 0, 10);
+    foreach(a; aud) dbm(a.artist ~ " - " ~ a.title ~ "  " ~ a.duration_str);
+
     readln();
     //ticker();
 }
 
 void main(string[] args) {
   //test;
+  dbminit;
   init;
   color;
   curs_set(0);
@@ -335,8 +342,11 @@ void main(string[] args) {
     api = storage.get_token;
   }
 
+  api.asyncLongpoll();
+
   while (!canFind(kg_esc, win.key)) {
     clear;
+    win.counter = api.messagesCounter();
     api.statusbar;
     drawMenu;
     drawBuffer;
@@ -345,4 +355,5 @@ void main(string[] args) {
   }
   storage.update;
   storage.save;
+  dbcl();
 }

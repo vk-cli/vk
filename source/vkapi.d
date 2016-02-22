@@ -1,6 +1,6 @@
 module vkapi;
 
-import std.stdio, std.conv, std.string, std.algorithm, std.array;
+import std.stdio, std.conv, std.string, std.algorithm, std.array, std.datetime, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
 import std.parallelism, std.concurrency;
@@ -30,6 +30,23 @@ struct vkCounters {
     int groups = 0;
 }
 
+struct vkFriend {
+    string first_name;
+    string last_name;
+    int id;
+    bool online;
+}
+
+struct vkAudio {
+    int id;
+    int owner;
+    string artist;
+    string title;
+    int duration_sec;
+    string duration_str;
+    string url;
+}
+
 struct vkLongpoll {
     string key;
     string server;
@@ -47,7 +64,13 @@ struct apiTransfer {
     vkUser user;
 }
 
+struct apiState {
+    bool lp80got = true;
+    int latestUnreadMsg = 0;
+}
+
 __gshared nameCache nc = nameCache();
+__gshared apiState ps = apiState();
 
 class VKapi {
 
@@ -249,7 +272,56 @@ class VKapi {
     }
 
     int messagesCounter() {
-        return accountGetCounters("messages").messages;
+        int u = ps.latestUnreadMsg;
+        if(ps.lp80got) {
+            u = accountGetCounters("messages").messages;
+            ps.latestUnreadMsg = u;
+            ps.lp80got = false;
+        }
+        return u;
+    }
+
+    vkFriend[] friendsGet(int user_id = 0, int count = 0, int offset = 0) {
+        auto params = [ "fields": "online" ];
+        if(user_id != 0) params["user_id"] = user_id.to!string;
+        if(count != 0) params["count"] = count.to!string;
+        if(offset != 0) params["offset"] = offset.to!string;
+
+        auto resp = vkget("friends.get", params);
+        //resp.toPrettyString().dbm;
+        vkFriend[] rt;
+        foreach(f; resp["items"].array) {
+            rt ~= vkFriend(
+                f["first_name"].str, f["last_name"].str,
+                f["id"].integer.to!int, (f["online"].integer.to!int == 1) ? true : false
+            );
+        }
+        return rt;
+    }
+
+    vkAudio[] audioGet(int owner_id = 0, int album_id = 0, int count = 0, int offset = 0) {
+        string[string] params;
+        if(owner_id != 0) params["owner_id"] = owner_id.to!string;
+        if(album_id != 0) params["album_id"] = album_id.to!string;
+        if(count != 0) params["count"] = count.to!string;
+        if(offset != 0) params["offset"] = offset.to!string;
+
+        auto resp = vkget("audio.get", params);
+        vkAudio[] rt;
+        foreach(a; resp["items"].array) {
+            int ad = a["duration"].integer.to!int;
+            auto adm = ad.convert!("seconds", "minutes");
+            auto ads = ad - (60*adm);
+            auto ads_str = (ads < 10 ? "0" : "") ~ ads.to!string;
+
+            vkAudio aud = {
+                id: a["id"].integer.to!int, owner: a["owner_id"].integer.to!int,
+                artist: a["artist"].str, title: a["title"].str, url: a["url"].str,
+                duration_sec: ad, duration_str: (adm.to!string ~ ":" ~ ads_str)
+            };
+            rt ~= aud;
+        }
+        return rt;
     }
 
     // ===== longpoll =====
@@ -264,6 +336,8 @@ class VKapi {
         return rt;
     }
 
+    const bool return80mc = true;
+
     vkNextLp parseLongpoll(string resp) {
         JSONValue j = parseJSON(resp);
         vkNextLp rt;
@@ -273,10 +347,16 @@ class VKapi {
             auto upd = j["updates"].array;
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
-                    case 4:
-                        //new message
+                    case 4: //new message
                         immutable string mbody = u[6].str.longpollReplaces;
                         dbm("longpoll message: " ~ mbody);
+                        break;
+                    case 80: //counter update
+                        if(return80mc) {
+                            ps.latestUnreadMsg = u[1].integer.to!int;
+                        } else {
+                            ps.lp80got = true;
+                        }
                         break;
                     default:
                         break;
