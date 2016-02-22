@@ -14,8 +14,6 @@ const int
 private lang[string] local;
 private int currentLang = 0;
 
-enum Colors { white, red, green, yellow, blue, pink, mint }
-
 void localize() {
   local["e_input_token"] = lang("Insert your access token here: ", "Вставьте свой access token сюда: ");
   local["e_wrong_token"] = lang("Wrong token, try again\n", "Неверный access token, попробуйте еще раз");
@@ -31,21 +29,13 @@ void localize() {
   local["color4"] = lang("Blue", "Синий");
   local["color5"] = lang("Pink", "Розовый");
   local["color6"] = lang("Mint", "Мятный");
+  local["lang"] = lang("Language = English", "Язык = Русский");
 }
 
-void setLang(int lang) {
-  currentLang = lang;
-}
-
-int getLang() {
-  return currentLang;
+void swapLang() {
+  currentLang = (currentLang == En) ? Ru : En;
 }
 
 string getLocal(string id) {
-  switch(currentLang){
-    case En: return local[id].en;
-    case Ru: return local[id].ru;
-    default: return "";
-  }
+  return currentLang == En ? local[id].en : local[id].ru;
 }
-
