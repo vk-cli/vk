@@ -14,3 +14,4 @@ dub
 + w, a, s, d
 + h, j, k, l
 + enter
++ q - to exit
