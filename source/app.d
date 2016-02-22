@@ -254,13 +254,6 @@ void changeColor(ref ListElement le) {
   le.text = "color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
 }
 
-void ticker() {
-    while (true) {
-        writeln("kappa");
-        Thread.sleep(dur!"msecs"(200));
-    }
-}
-
 void test() {
     //initFileDbm();
     auto storage = load;
@@ -277,7 +270,7 @@ void test() {
     //auto conv = api.messagesGetDialogs();
     //nc.dbmAll();
     readln();
-    ticker();
+    //ticker();
 }
 
 void main(string[] args) {
