@@ -53,7 +53,8 @@ struct Win {
     {},
     {callback:&open, getter: &GetDialogs},
     {},
-    {callback:&open, getter: &GenerateSettings}
+    {callback:&open, getter: &GenerateSettings},
+    {callback:&exit}
   ], 
   buffer, mbody;
   int
@@ -77,6 +78,7 @@ void relocale() {
   win.menu[1].text = "m_conversations".getLocal;
   win.menu[2].text = "m_music".getLocal;
   win.menu[3].text = "m_settings".getLocal;
+  win.menu[4].text = "m_exit".getLocal;
 }
 
 void parse(ref string[string] storage) {
@@ -186,11 +188,13 @@ void drawMenu() {
 }
 
 void bodyToBuffer() {
-  win.buffer = win.mbody.dup;
-  foreach(i, e; win.buffer) {
-    if (e.text.walkLength.to!int + win.offset+1 > COLS) {
-      win.buffer[i].text = e.text[0..COLS-win.offset-4];
-    } else win.buffer[i].text ~= " ".replicate(COLS - e.text.walkLength - win.offset-1);
+  if (win.mbody.length != 0) {
+    win.buffer = win.mbody[0..LINES-2].dup;
+    foreach(i, e; win.buffer) {
+      if (e.text.walkLength.to!int + win.offset+1 > COLS) {
+        win.buffer[i].text = e.text[0..COLS-win.offset-4];
+      } else win.buffer[i].text ~= " ".replicate(COLS - e.text.walkLength - win.offset-1);
+    }
   }
 }
 
@@ -200,13 +204,15 @@ void drawBuffer() {
     string tempText;
     foreach(i, e; win.buffer) {
       string temp;
+      int cut;
       wmove(stdscr, 2+i.to!int, win.offset+1);
       if (i.to!int == win.active) {
         e.text.selected;
         wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
         tempText = e.link;
-        if (e.link.walkLength > COLS-win.offset-win.mbody[i].text.walkLength-1) {
-          tempText = tempText[0..COLS-win.offset-win.mbody[i].text.walkLength-1];
+        cut = (COLS-win.offset-win.mbody[i].text.walkLength-1).to!int;
+        if (e.link.walkLength > cut) {
+          tempText = tempText[0..cut];
         }
         tempText.gray;
       } else {
@@ -240,7 +246,7 @@ void downEvent() {
   if (win.section == Sections.left) {
     win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
   } else {
-    win.active >= win.mbody.length-1 ? win.active = 0 : win.active++;
+    win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
 
@@ -248,7 +254,7 @@ void upEvent() {
   if (win.section == Sections.left) {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   } else {
-    win.active == 0 ? win.active = win.mbody.length.to!int-1 : win.active--;
+    win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
   }
 }
 
@@ -270,6 +276,10 @@ void backEvent() {
     win.section = Sections.left;
     win.mbody = new ListElement[0];
   }
+}
+
+void exit(ref ListElement le) {
+  win.key = k_q;
 }
 
 void open(ref ListElement le) {
