@@ -281,8 +281,10 @@ void changeColor(ref ListElement le) {
 
 ListElement[] GenerateSettings() {
   return [
+    ListElement(center("display_settings".getLocal, COLS-16, ' '), "", null, null),
     ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeColor, null),
     ListElement("lang".getLocal, "", &changeLang, null),
+    ListElement(center("convers_settings".getLocal, COLS-16, ' '), "", null, null),
   ];
 }
 

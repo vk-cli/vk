@@ -30,6 +30,8 @@ void localize() {
   local["color5"] = lang("Pink", "Розовый");
   local["color6"] = lang("Mint", "Мятный");
   local["lang"] = lang("Language = English", "Язык = Русский");
+  local["display_settings"] = lang("===[ Display Settings ]===", "===[ Настройки отображения ]===");
+  local["convers_settings"] = lang("===[ Conversations Settings ]===", "===[ Настройки диалогов ]===");
 }
 
 void swapLang() {
