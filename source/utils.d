@@ -1,22 +1,28 @@
 module utils;
 
-import std.stdio, std.array, std.file;
+import std.stdio, std.array, std.file, core.thread;
 
 const bool debugMessagesEnabled = false;
-File dbmfile;
-bool dbmfe = false;
+const bool dbmfe = true;
 
-void dbminit() {
-    dbmfile = File("dbg", "w");
+__gshared string dbmlog = "";
+
+private void appendDbg(string app) {
+    thread_enterCriticalRegion();
+    dbmlog ~= app;
+    thread_exitCriticalRegion();
 }
 
-void dbcl() {
-    dbmfile.close();
+void dbmclose() {
+    if(!dbmfe) return;
+    auto ff = File("dbg", "w");
+    ff.write(dbmlog);
+    ff.close();
 }
 
 void dbm(string msg) {
     if(debugMessagesEnabled) writeln("[debug]" ~ msg);
-    if(dbmfe) dbmfile.write(msg ~ "\n");
+    if(dbmfe) appendDbg(msg ~ "\n");
 }
 
 string longpollReplaces(string inp) {
