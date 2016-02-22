@@ -1,6 +1,6 @@
 module localization;
 
-import std.stdio;
+import std.stdio, std.conv;
 
 struct lang {
   string en;
@@ -34,6 +34,10 @@ void localize() {
 
 void swapLang() {
   currentLang = (currentLang == En) ? Ru : En;
+}
+
+string getLang() {
+  return currentLang.to!string;
 }
 
 string getLocal(string id) {

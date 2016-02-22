@@ -15,7 +15,7 @@ Win win;
 const int 
   // keys
   k_q      = 113,
-  k_enter  = 13,
+  k_enter  = 10,
   k_up     = 65,
   k_down   = 66,
   k_left   = 68,
@@ -77,10 +77,21 @@ void relocale() {
   win.menu[3].text = "m_settings".getLocal;
 }
 
+void parse(ref string[string] storage) {
+  if ("color" in storage) win.textcolor = storage["color"].to!int;
+  if ("lang" in storage) if (storage["lang"] == "1") swapLang;
+  relocale;
+}
+
+void update(ref string[string] storage) {
+  storage["lang"] = getLang;
+  storage["color"] = win.textcolor.to!string;
+}
+
 void init() {
   setlocale(LC_CTYPE,"");
-  localize();
-  relocale();
+  localize;
+  relocale;
   initscr;
   setOffset;
 }
@@ -243,7 +254,6 @@ void changeColor(ref ListElement le) {
   le.text = "color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
 }
 
-
 void ticker() {
     while (true) {
         writeln("kappa");
@@ -271,7 +281,7 @@ void test() {
 }
 
 void main(string[] args) {
-  //test();
+  //test;
   init;
   color;
   curs_set(0);
@@ -280,6 +290,8 @@ void main(string[] args) {
   scope(failure) endwin;
 
   auto storage = load;
+  storage.parse;
+
   auto api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   while (!api.isTokenValid) {
     "e_wrong_token".getLocal.print;
@@ -294,5 +306,6 @@ void main(string[] args) {
     refresh;
     controller;
   }
+  storage.update;
   storage.save;
 }
