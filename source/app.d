@@ -221,15 +221,8 @@ void controller() {
     timeout(1050);
     auto ch = getch;
     win.key = ch;
-    if(ch != -1) {
-      dbm("getch key " ~ ch.to!string);
-      break;
-    }
-    if(api.isSomethingUpdated()) {
-      dbm("getch something updated");
-      break;
-    }
-    dbm("getch timeout");
+    if(ch != -1) break;
+    if(api.isSomethingUpdated) break;
   }
   win.key.print;
   if (canFind(kg_down, win.key)) downEvent;
@@ -305,7 +298,7 @@ ListElement[] GetDialogs() {
   ListElement[] listDialogs;
   auto dialogs = api.messagesGetDialogs(LINES-2);
   foreach(e; dialogs) {
-    listDialogs ~= ListElement(e.name ~ ": ", e.lastMessage.replace("\n", " "));
+    listDialogs ~= ListElement(e.name, ": " ~ e.lastMessage.replace("\n", " "));
   }
   win.dialogsOpened = true;
   return listDialogs;
