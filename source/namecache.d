@@ -49,19 +49,29 @@ void addToCache(ref nameCache nc, int id, cachedName name){
 }
 
 cachedName getName(ref nameCache nc, int id) {
-    if(id < 0) {
-        dbm("got community id"); //todo resolve commmunity names
-        return cachedName("community", id.to!string);
-    }
     if(id in nc.cache) {
         return nc.cache[id];
     }
     dbm("got non-cached name!");
     try {
         auto api = new VKapi(nc.apiInfo);
-        auto resp = api.usersGet(id);
-        auto rt = cachedName(resp.first_name, resp.last_name);
-        nc.cache[resp.id] = rt;
+        cachedName rt;
+        int fid;
+        if(id < 0) {
+            dbm("got community id");
+            auto c = api.groupsGetById([ id ]);
+            if(c.length == 0) {
+                return cachedName("community", id.to!string);
+            } else {
+                fid = c[0].id;
+                rt = cachedName(c[0].name, " ");
+            }
+        } else {
+            auto resp = api.usersGet(id);
+            fid = resp.id;
+            rt = cachedName(resp.first_name, resp.last_name);
+        }
+        nc.cache[fid] = rt;
         return rt;
     } catch (ApiErrorException e) {
         if (e.errorCode == 6) {
@@ -98,8 +108,11 @@ void resolveNames(ref nameCache nc) {
             buf = clean[n..up];
             cnt = false;
         }
-        foreach(nm; api.usersGet(buf)) {
+        foreach(nm; api.usersGet( buf.filter!(d => d >= 0).array )) { //users
             nc.cache[nm.id] = cachedName(nm.first_name, nm.last_name);
+        }
+        foreach(cnm; api.groupsGetById( buf.filter!(d => d < 0).array )) { //communities
+            nc.cache[cnm.id] = cachedName(cnm.name, " ");
         }
     }
     nc.order = new int[0];
