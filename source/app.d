@@ -323,6 +323,7 @@ void test() {
 
 void main(string[] args) {
   //test;
+  dbminit;
   init;
   color;
   curs_set(0);
@@ -352,4 +353,5 @@ void main(string[] args) {
   }
   storage.update;
   storage.save;
+  dbcl();
 }

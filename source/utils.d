@@ -3,9 +3,20 @@ module utils;
 import std.stdio, std.array, std.file;
 
 const bool debugMessagesEnabled = false;//true;
+File dbmfile;
+bool dbmfe = true;
+
+void dbminit() {
+    dbmfile = File("dbg", "w");
+}
+
+void dbcl() {
+    dbmfile.close();
+}
 
 void dbm(string msg) {
     if(debugMessagesEnabled) writeln("[debug]" ~ msg);
+    if(dbmfe) dbmfile.write(msg ~ "\n");
 }
 
 string longpollReplaces(string inp) {
