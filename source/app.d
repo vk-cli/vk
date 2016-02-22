@@ -128,9 +128,9 @@ void color() {
     init_pair(i, i, -1);
   }
   for (short i = 1; i < 7; i++) {
-    init_pair((6+i).to!short, 0, i);
+    init_pair((7+i).to!short, i, 0.to!short);
   }
-  //init_pair(12, 0, 6);
+  init_pair(7, -1, 0);
 }
 
 void selected(string text) {
@@ -148,11 +148,13 @@ void regular(string text) {
 }
 
 void gray(string text) {
+  attron(A_REVERSE);
   attron(A_BOLD);
-  attron(COLOR_PAIR(win.textcolor*2));
+  attron(COLOR_PAIR(win.textcolor+7));
   text.print;
   attroff(A_BOLD);
-  attroff(COLOR_PAIR(win.textcolor*2));
+  attroff(A_REVERSE);
+  attroff(COLOR_PAIR(win.textcolor+7));
 }
 
 void statusbar(VKapi api) {
