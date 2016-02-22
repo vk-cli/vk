@@ -258,7 +258,7 @@ void test() {
     }
     //api.startLongpoll();
     auto conv = api.messagesGetDialogs();
-    api.nc.dbmAll();
+    //nc.dbmAll();
     readln();
 }
 
