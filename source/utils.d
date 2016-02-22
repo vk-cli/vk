@@ -2,9 +2,9 @@ module utils;
 
 import std.stdio, std.array, std.file;
 
-const bool debugMessagesEnabled = false;//true;
+const bool debugMessagesEnabled = false;
 File dbmfile;
-bool dbmfe = true;
+bool dbmfe = false;
 
 void dbminit() {
     dbmfile = File("dbg", "w");

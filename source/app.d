@@ -216,8 +216,20 @@ void drawBuffer() {
 }
 
 void controller() {
-  timeout(-1);
-  win.key = getch;
+  while (true) {
+    timeout(1050);
+    auto ch = getch;
+    win.key = ch;
+    if(ch != -1) {
+      dbm("getch key " ~ ch.to!string);
+      break;
+    }
+    if(api.isSomethingUpdated()) {
+      dbm("getch something updated");
+      break;
+    }
+    dbm("getch timeout");
+  }
   win.key.print;
   if (canFind(kg_down, win.key)) downEvent;
   else if (canFind(kg_up, win.key)) upEvent;
@@ -310,7 +322,8 @@ void test() {
         writeln("bad token");
         return;
     }
-    //api.asyncLongpoll();
+    api.asyncLongpoll();
+    readln();
     //auto conv = api.messagesGetDialogs();
     //nc.dbmAll();
     auto fr = api.friendsGet();

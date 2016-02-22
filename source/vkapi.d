@@ -67,6 +67,7 @@ struct apiTransfer {
 struct apiState {
     bool lp80got = true;
     int latestUnreadMsg = 0;
+    bool somethingUpdated = false;
 }
 
 __gshared nameCache nc = nameCache();
@@ -105,6 +106,18 @@ class VKapi {
 
     apiTransfer exportStruct() {
         return apiTransfer(vktoken, isTokenValid, me);
+    }
+
+    bool isSomethingUpdated() {
+        if(ps.somethingUpdated){
+            ps.somethingUpdated = false;
+            return true;
+        }
+        return false;
+    }
+
+    void toggleUpdate() {
+        ps.somethingUpdated = true;
     }
 
     private bool checkToken(string token) {
@@ -350,6 +363,7 @@ class VKapi {
                     case 4: //new message
                         immutable string mbody = u[6].str.longpollReplaces;
                         dbm("longpoll message: " ~ mbody);
+                        //todo toggle update condition
                         break;
                     case 80: //counter update
                         if(return80mc) {
@@ -357,6 +371,7 @@ class VKapi {
                         } else {
                             ps.lp80got = true;
                         }
+                        toggleUpdate();
                         break;
                     default:
                         break;
