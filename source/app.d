@@ -60,7 +60,8 @@ struct Win {
   int
     textcolor = Colors.white,
     counter, active, section,
-    last_active, offset, key;
+    last_active, offset, key,
+    scrollOffset;
   string
     title;
   bool
@@ -189,7 +190,10 @@ void drawMenu() {
 
 void bodyToBuffer() {
   if (win.mbody.length != 0) {
-    win.buffer = win.mbody[0..LINES-2].dup;
+    win.buffer = win.mbody.dup;
+    if (win.mbody.length > LINES) {
+      win.buffer = win.mbody[win.active-win.scrollOffset..win.active+LINES-2];
+    }
     foreach(i, e; win.buffer) {
       if (e.text.walkLength.to!int + win.offset+1 > COLS) {
         win.buffer[i].text = e.text[0..COLS-win.offset-4];
@@ -198,27 +202,30 @@ void bodyToBuffer() {
   }
 }
 
+void onlySelectedMessage() {
+  string tempText;
+  int cut;
+  foreach(i, e; win.buffer) {
+    wmove(stdscr, 2+i.to!int, win.offset+1);
+    if (i.to!int == win.active) {
+      e.text.selected;
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+      tempText = e.link;
+      cut = (COLS-win.offset-win.mbody[i].text.walkLength-1).to!int;
+      if (e.link.walkLength > cut) {
+        tempText = tempText[0..cut];
+      }
+      tempText.gray;
+    } else {
+      e.text.regular;
+    }
+  }
+}
+
 void drawBuffer() {
   bodyToBuffer;
   if (win.dialogsOpened) {
-    string tempText;
-    foreach(i, e; win.buffer) {
-      string temp;
-      int cut;
-      wmove(stdscr, 2+i.to!int, win.offset+1);
-      if (i.to!int == win.active) {
-        e.text.selected;
-        wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-        tempText = e.link;
-        cut = (COLS-win.offset-win.mbody[i].text.walkLength-1).to!int;
-        if (e.link.walkLength > cut) {
-          tempText = tempText[0..cut];
-        }
-        tempText.gray;
-      } else {
-        e.text.regular;
-      }
-    }
+    onlySelectedMessage;
   } else {
     foreach(i, e; win.buffer) {
       wmove(stdscr, 2+i.to!int, win.offset+1);
@@ -246,13 +253,28 @@ void downEvent() {
   if (win.section == Sections.left) {
     win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
   } else {
-    win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
+    if (win.dialogsOpened) {
+      if (win.active == win.mbody.length-1) {
+        ListElement[] listDialogs;
+        auto dialogs = api.messagesGetDialogs(LINES-2, win.mbody.length.to!int);
+        foreach(e; dialogs) {
+          listDialogs ~= ListElement(e.name, ": " ~ e.lastMessage.replace("\n", " "));
+        }
+        win.mbody ~= listDialogs;
+      } else if (win.active > LINES-4) {
+        win.scrollOffset++;
+      }
+      win.active++;
+    } else {
+      win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
+    }
   }
 }
 
 void upEvent() {
   if (win.section == Sections.left) {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
+    if (win.active > LINES-2) win.scrollOffset--;
   } else {
     win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
   }
@@ -275,6 +297,7 @@ void backEvent() {
     win.active = win.last_active;
     win.section = Sections.left;
     win.mbody = new ListElement[0];
+    win.buffer = new ListElement[0];
   }
 }
 
@@ -284,9 +307,9 @@ void exit(ref ListElement le) {
 
 void open(ref ListElement le) {
   win.mbody = le.getter();
-  if (win.buffer.length + 2 < LINES) {
-    win.buffer = win.mbody;
-  }
+  //if (win.buffer.length + 2 < LINES) {
+    //win.buffer = win.mbody;
+  //}
 }
 
 void changeLang(ref ListElement le) {
