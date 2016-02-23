@@ -1,6 +1,6 @@
 module utils;
 
-import std.stdio, std.array, std.file, core.thread;
+import std.stdio, std.array, std.file, core.thread, std.datetime, std.conv;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -25,15 +25,15 @@ void dbm(string msg) {
     if(dbmfe) appendDbg(msg ~ "\n");
 }
 
-string tzr(int inp) {
-    auto r = inp.to!string;
-    if(inp > -1 && inp < 10) return ("0" ~ r);
+string tzr(int inpt) {
+    auto r = inpt.to!string;
+    if(inpt > -1 && inpt < 10) return ("0" ~ r);
     else return r;
 }
 
 string vktime(SysTime ct, long ut) {
     auto t = SysTime(unixTimeToStdTime(ut));
-    return (t.dayOfGregorianCal == ct.dayOfGregorianCal) ? (tzr(t.hour) ~ ":" ~ tzr(t.minute)) : (tzr(t.day() ~ "." ~ tzr(t.month)));
+    return (t.dayOfGregorianCal == ct.dayOfGregorianCal) ? (tzr(t.hour) ~ ":" ~ tzr(t.minute)) : (tzr(t.day) ~ "." ~ tzr(t.month));
 }
 
 string longpollReplaces(string inp) {

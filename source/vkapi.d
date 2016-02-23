@@ -419,7 +419,7 @@ class VKapi {
         return apiFwdIter(rt, cmd);
     }
 
-    vkMessage[] messagesGetHistory(int peer_id, count = -1, offset = 0, int start_message_id = -1, bool rev = false) {
+    vkMessage[] messagesGetHistory(int peer_id, int count = -1, int offset = 0, int start_message_id = -1, bool rev = false) {
         auto ct = Clock.currTime();
         auto params = [ "peer_id": peer_id.to!string ];
         if(count >= 0) params["count"] = count.to!string;
@@ -439,7 +439,7 @@ class VKapi {
             bool rstate = (m["read_state"].integer.to!int == 1);
             bool unr = (outg && !rstate);
 
-            string mbody = m["body"].str.split("\n");
+            string[] mbody = m["body"].str.split("\n");
             string st = vktime(ct, ut);
 
             int fwdp = -1;
