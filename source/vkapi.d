@@ -7,6 +7,8 @@ import std.parallelism, std.concurrency;
 import utils, namecache;
 
 
+const int convStartId = 2000000000;
+
 // ===== API objects =====
 
 struct vkUser {
@@ -21,6 +23,29 @@ struct vkDialog {
     int id;
     bool unread = false;
     string formatted;
+}
+
+struct vkMessage {
+    string author_name; // in format 'First Last'
+    int author_id;
+    int peer_id; // for users: user id, for conversations: 2000000000 + chat id
+    int msg_id;
+    bool outgoing;
+    bool unread;
+    long utime; // unix time
+    string time_str; // HH:MM (M = minutes), if >24 hours ago, then DD.mm (m = month)
+    string[] body_lines; // Message text, splitted in lines (delimiter = '\n')
+    int fwd_depth; // max fwd message deph (-1 if no fwd)
+    vkFwdMessage[] fwd; // forwarded messages
+}
+
+struct vkFwdMessage {
+    int author_id;
+    string author_name;
+    long utime;
+    string time_str;
+    string[] body_lines;
+    vkFwdMessage[] fwd;
 }
 
 struct vkCounters {
@@ -77,6 +102,11 @@ struct apiState {
     bool lp80got = true;
     int latestUnreadMsg = 0;
     bool somethingUpdated = false;
+}
+
+struct apiFwdIter {
+    vkFwdMessage[] fwd;
+    int md;
 }
 
 __gshared nameCache nc = nameCache();
@@ -359,6 +389,75 @@ class VKapi {
 
         foreach(g; resp.array) {
             rt ~= vkGroup(g["id"].integer.to!int * -1, g["name"].str);
+        }
+        return rt;
+    }
+
+    private apiFwdIter digFwd(JSONValue[] fwdp, SysTime ct, int mdp, int cdp) {
+        int cmd = (cdp > mdp) ? cdp : mdp;
+        vkFwdMessage[] rt;
+        foreach(j; fwdp) {
+            int fid = j["user_id"].integer.to!int;
+            long ut = j["date"].integer.to!long;
+
+            vkFwdMessage[] fw;
+            if("fwd_messages" in j) {
+                auto r = digFwd(j["fwd_messages"].array, ct, cmd, cdp+1);
+                if(r.md > cmd) cmd = r.md;
+                fw = r.fwd;
+            }
+
+            vkFwdMessage mm = {
+                author_id: fid,
+                author_name: nc.getName(fid).strName,
+                utime: ut, time_str: vktime(ct, ut),
+                body_lines: j["body"].str.split("\n"),
+                fwd: fw
+            };
+            rt ~= mm;
+        }
+        return apiFwdIter(rt, cmd);
+    }
+
+    vkMessage[] messagesGetHistory(int peer_id, count = -1, offset = 0, int start_message_id = -1, bool rev = false) {
+        auto ct = Clock.currTime();
+        auto params = [ "peer_id": peer_id.to!string ];
+        if(count >= 0) params["count"] = count.to!string;
+        if(offset != 0) params["offset"] = offset.to!string;
+        if(start_message_id > 0) params["start_message_id"] = start_message_id.to!string;
+        if(rev) params["rev"] = "1";
+
+        auto resp = vkget("messages.getHistory", params);
+        auto items = resp["items"].array;
+        vkMessage[] rt;
+        foreach(m; items) {
+            int fid = m["from_id"].integer.to!int;
+            int mid = m["id"].integer.to!int;
+            int pid = ("chat_id" in m) ? (m["chat_id"].integer.to!int + convStartId) : m["user_id"].integer.to!int;
+            long ut = m["date"].integer.to!long;
+            bool outg = (m["out"].integer.to!int == 1);
+            bool rstate = (m["read_state"].integer.to!int == 1);
+            bool unr = (outg && !rstate);
+
+            string mbody = m["body"].str.split("\n");
+            string st = vktime(ct, ut);
+
+            int fwdp = -1;
+            vkFwdMessage[] fw;
+            if("fwd_messages" in m) {
+                auto r = digFwd(m["fwd_messages"].array, ct, 0, 1);
+                fwdp = r.md;
+                fw = r.fwd;
+            }
+
+            vkMessage mo = {
+                msg_id: mid, author_id: fid, peer_id: pid,
+                outgoing: outg, unread: unr, utime: ut,
+                author_name: nc.getName(fid).strName,
+                time_str: st, body_lines: mbody,
+                fwd_depth: fwdp, fwd:fw
+            };
+            rt ~= mo;
         }
         return rt;
     }
