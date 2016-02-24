@@ -188,11 +188,22 @@ void drawMenu() {
   }
 }
 
+string cut(ulong i, ListElement e) {
+  string tempText;
+  int cut;
+  tempText = e.link;
+  cut = (COLS-win.offset-win.mbody[i].text.walkLength-1).to!int;
+  if (e.link.walkLength > cut) {
+    tempText = tempText[0..cut];
+  }
+  return tempText;
+}
+
 void bodyToBuffer() {
   if (win.mbody.length != 0) {
     win.buffer = win.mbody.dup;
     if (win.mbody.length > LINES) {
-      win.buffer = win.mbody[win.active-win.scrollOffset..win.active+LINES-2];
+      win.buffer = win.mbody[win.active-LINES/2..win.active+LINES-5];
     }
     foreach(i, e; win.buffer) {
       if (e.text.walkLength.to!int + win.offset+1 > COLS) {
@@ -203,19 +214,12 @@ void bodyToBuffer() {
 }
 
 void onlySelectedMessage() {
-  string tempText;
-  int cut;
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
-    if (i.to!int == win.active) {
+    if (i.to!int == win.active-win.scrollOffset) {
       e.text.selected;
       wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-      tempText = e.link;
-      cut = (COLS-win.offset-win.mbody[i].text.walkLength-1).to!int;
-      if (e.link.walkLength > cut) {
-        tempText = tempText[0..cut];
-      }
-      tempText.gray;
+      cut(i, e).gray;
     } else {
       e.text.regular;
     }
@@ -261,6 +265,7 @@ void downEvent() {
           listDialogs ~= ListElement(e.name, ": " ~ e.lastMessage.replace("\n", " "));
         }
         win.mbody ~= listDialogs;
+        win.scrollOffset += LINES/2;
       } else if (win.active > LINES-4) {
         win.scrollOffset++;
       }
@@ -274,7 +279,7 @@ void downEvent() {
 void upEvent() {
   if (win.section == Sections.left) {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
-    if (win.active > LINES-2) win.scrollOffset--;
+    if (win.active > LINES-4) win.scrollOffset--;
   } else {
     win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
   }
@@ -405,7 +410,6 @@ void main(string[] args) {
     "e_wrong_token".getLocal.print;
     api = storage.get_token;
   }
-
   api.asyncLongpoll();
 
   while (!canFind(kg_esc, win.key)) {
@@ -417,6 +421,7 @@ void main(string[] args) {
     refresh;
     controller;
   }
+
   storage.update;
   storage.save;
   dbmclose();
