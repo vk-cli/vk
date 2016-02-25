@@ -514,7 +514,7 @@ class VKapi {
             } else {
                 int dl = dt%dialogBlock;
                 db = (dt-dl)/dialogBlock;
-                if(dt > 0) db++;
+                if(dl > 0) db++;
             }
             pb.alldialogs ~= messagesGetDialogs(db*dialogBlock, al);
             return sliceDlg(count, offset);
