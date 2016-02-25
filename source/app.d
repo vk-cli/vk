@@ -203,7 +203,13 @@ void bodyToBuffer() {
   if (win.mbody.length != 0) {
     win.buffer = win.mbody.dup;
     if (win.mbody.length > LINES) {
-      win.buffer = win.mbody[win.active-LINES/2..win.active+LINES-5];
+      if (win.active+LINES/2 <= win.mbody.length) {
+        win.title = "1";
+        win.buffer = win.mbody[win.active-LINES/2..win.active+LINES/2];
+      } else {
+        win.title = win.active.to!string ~ " = " ~ win.scrollOffset.to!string;
+        win.buffer = win.mbody[$-LINES..$];
+      }
     }
     foreach(i, e; win.buffer) {
       if (e.text.walkLength.to!int + win.offset+1 > COLS) {
@@ -266,23 +272,23 @@ void downEvent() {
         }
         win.mbody ~= listDialogs;
         win.scrollOffset += LINES/2;
-      } else if (win.active > LINES-4) {
-        win.scrollOffset++;
-      }
+      } else if (win.scrollOffset > 0 || win.active > LINES-4) win.scrollOffset++;
       win.active++;
     } else {
       win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
     }
   }
+  //win.title = win.active.to!string ~ " = " ~ win.mbody.length.to!string;
 }
 
 void upEvent() {
   if (win.section == Sections.left) {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
-    if (win.active > LINES-4) win.scrollOffset--;
   } else {
+    if (win.scrollOffset > 0 || win.active > LINES-4) win.scrollOffset--;
     win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
   }
+  //win.title = win.active.to!string ~ " = " ~ win.scrollOffset.to!string;
 }
 
 void selectEvent() {
