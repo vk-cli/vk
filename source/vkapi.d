@@ -523,7 +523,7 @@ class VKapi {
 
     private vkDialog[] sliceDlg(int count, int offset) {
         dbm("dbuf: " ~ pb.alldialogs.length.to!string);
-        return pb.alldialogs[offset..(offset+count+1)]; //.map!(d => &d).array;
+        return pb.alldialogs[offset..(offset+count)]; //.map!(d => &d).array;
     }
 
     // ===== longpoll =====
