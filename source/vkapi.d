@@ -3,11 +3,22 @@ module vkapi;
 import std.stdio, std.conv, std.string, std.algorithm, std.array, std.datetime, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
-import std.parallelism, std.concurrency;
+import std.parallelism, std.concurrency, core.thread;
 import utils, namecache;
 
 
+// ===== vkapi const =====
+
 const int convStartId = 2000000000;
+const bool return80mc = true;
+
+// ===== networking const =====
+
+const int connectAttmepts = 3;
+const int mssleepBeforeAttempt = 600;
+const int vkgetCurlTimeout = 3;
+const int longpollCurlTimeout = 27;
+const string timeoutFormat = "seconds";
 
 // ===== API objects =====
 
@@ -173,17 +184,35 @@ class VKapi {
         return true;
     }
 
-    string httpget(string addr) {
-        string content;
+    string httpget(string addr, Duration timeout) {
+        string content = "";
+        auto client = HTTP();
+
+        int tries = 0;
         bool ok = false;
 
         while(!ok){
             try{
-                content = get(addr).to!string; //todo timeouts
+                client.method = HTTP.Method.get;
+                client.url = addr;
+
+                client.dataTimeout = timeout;
+                client.operationTimeout = timeout;
+                client.connectTimeout = timeout;
+
+                client.onReceive = (ubyte[] data) {
+                    auto sz = data.length;
+                    content ~= (cast(immutable(char)*)data)[0..sz];
+                    //dbm("recv content: " ~ content);
+                    return sz;
+                };
+                client.perform();
                 ok = true;
             } catch (CurlException e) {
-                dbm("network error: " ~ e.msg);
-                //todo sleep here
+                ++tries;
+                dbm("[attempt " ~ (tries.to!string) ~ "] network error: " ~ e.msg);
+                if(tries >= connectAttmepts) throw new BackendException("not working - connection failed!   attempts: " ~ tries.to!string ~ ", last curl error: " ~ e.msg);
+                Thread.sleep( dur!"msecs"(mssleepBeforeAttempt) );
             }
         }
         return content;
@@ -198,7 +227,8 @@ class VKapi {
         }
         url ~= "v=" ~ vkver ~ "&access_token=" ~ vktoken;
         dbm("request: " ~ url);
-        JSONValue resp = httpget(url).parseJSON;
+        auto tm = dur!timeoutFormat(vkgetCurlTimeout);
+        JSONValue resp = httpget(url, tm).parseJSON;
 
         if(resp.type == JSON_TYPE.OBJECT) {
             if("error" in resp){
@@ -474,8 +504,6 @@ class VKapi {
         return rt;
     }
 
-    const bool return80mc = true;
-
     vkNextLp parseLongpoll(string resp) {
         JSONValue j = parseJSON(resp);
         vkNextLp rt;
@@ -509,6 +537,7 @@ class VKapi {
     }
 
     void doLongpoll(vkLongpoll start) {
+        auto tm = dur!timeoutFormat(longpollCurlTimeout);
         int cts = start.ts;
         bool ok = true;
         dbm("longpoll works");
@@ -516,7 +545,7 @@ class VKapi {
             try {
                 if(cts < 1) break;
                 string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=2";
-                auto resp = httpget(url);
+                auto resp = httpget(url, tm);
                 immutable auto next = parseLongpoll(resp);
                 if(next.failed == 2 || next.failed == 3) ok = false; //get new server
                 cts = next.ts;
