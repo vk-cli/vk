@@ -361,10 +361,11 @@ void test() {
     }
     //api.asyncLongpoll();
     //readln();
-    auto conv = api.messagesGetDialogs(5);
+    auto conv = api.getBufferedDialogs(5, 0);
     foreach (d; conv) {
         writeln("d " ~ d.name ~ " " ~ d.lastMessage);
     }
+    //dbm("dbuf: " ~ api.pb.alldialogs.length.to!string);
     //nc.dbmAll();
     //auto fr = api.friendsGet();
     //foreach(f; fr) dbm(f.first_name ~ " " ~ f.last_name ~ " " ~ (f.online ? "!" : ""));
