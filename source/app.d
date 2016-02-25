@@ -367,7 +367,10 @@ void test() {
     }
     //api.asyncLongpoll();
     //readln();
-    //auto conv = api.messagesGetDialogs(100);
+    auto conv = api.messagesGetDialogs(5);
+    foreach (d; conv) {
+        writeln("d " ~ d.name ~ " " ~ d.lastMessage);
+    }
     //nc.dbmAll();
     //auto fr = api.friendsGet();
     //foreach(f; fr) dbm(f.first_name ~ " " ~ f.last_name ~ " " ~ (f.online ? "!" : ""));
@@ -375,13 +378,13 @@ void test() {
     //auto aud = api.audioGet(0, 0, 10);
     //foreach(a; aud) dbm(a.artist ~ " - " ~ a.title ~ "  " ~ a.duration_str);
 
-    auto allsh = api.messagesGetHistory(convStartId+23, 25, 0, -1, false);
+    /+auto allsh = api.messagesGetHistory(convStartId+23, 25, 0, -1, false);
     foreach(ww; allsh) {
         writeln(ww.author_name ~ " " ~ ww.time_str);
         foreach(ml; ww.body_lines) writeln(ml);
         writeln("maxdep: " ~ ww.fwd_depth.to!string);
         writeln(digTest(ww.fwd));
-    }
+    }+/
 
     readln();
     //ticker();
