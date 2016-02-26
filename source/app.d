@@ -14,7 +14,12 @@ enum Colors { white, red, green, yellow, blue, pink, mint }
 Win win;
 VKapi api;
 
-const int 
+const int
+  // func keys
+  k_pageup   = 53,
+  k_pagedown = 54,
+  k_home     = 49,
+  k_end      = 52,
   // keys
   k_q      = 113,
   k_enter  = 10,
@@ -263,6 +268,22 @@ void controller() {
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
   else if (canFind(kg_left, win.key)) backEvent;
+  else if (win.key == k_home) {
+    win.active = 0;
+    win.scrollOffset = 0;
+  }
+  else if (win.key == k_end) {
+    win.active = win.mbody.length.to!int;
+    win.scrollOffset = win.mbody.length.to!int;
+  }
+  else if (win.key == k_pagedown) {
+    win.scrollOffset += (LINES-2)/2;
+    win.active += (LINES-2)/2;
+  }
+  else if (win.key == k_pageup) {
+    (win.scrollOffset - (LINES-2)/2) > 0 ? win.scrollOffset -= (LINES-2)/2 : win.scrollOffset = 0;
+    (win.active - (LINES-2)/2) > 0 ? win.active -= (LINES-2)/2 : win.active = 0;
+  }
 }
 
 void downEvent() {
