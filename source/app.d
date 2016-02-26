@@ -11,10 +11,11 @@ import vkapi, cfg, localization, utils, namecache;
 // INIT VARS
 enum Sections { left, right }
 enum Colors { white, red, green, yellow, blue, pink, mint }
+enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 Win win;
 VKapi api;
 
-const int
+const int 
   // func keys
   k_pageup   = 53,
   k_pagedown = 54,
@@ -66,7 +67,7 @@ struct Win {
     textcolor = Colors.white,
     counter, active, section,
     last_active, offset, key,
-    scrollOffset;
+    scrollOffset, msgDrawSetting;
   string
     debugText;
   bool
@@ -89,6 +90,7 @@ void relocale() {
 
 void parse(ref string[string] storage) {
   if ("color" in storage) win.textcolor = storage["color"].to!int;
+  if ("message_setting" in storage) win.msgDrawSetting = storage["message_setting"].to!int;
   if ("lang" in storage) if (storage["lang"] == "1") swapLang;
   relocale;
 }
@@ -96,6 +98,7 @@ void parse(ref string[string] storage) {
 void update(ref string[string] storage) {
   storage["lang"] = getLang;
   storage["color"] = win.textcolor.to!string;
+  storage["message_setting"] = win.msgDrawSetting.to!string;
 }
 
 void init() {
@@ -144,7 +147,7 @@ void color() {
 
 void selected(string text) {
   attron(A_REVERSE);
-  regular(text);
+  text.regular;
   attroff(A_REVERSE);
 }
 
@@ -157,13 +160,21 @@ void regular(string text) {
 }
 
 void gray(string text) {
+  attron(A_BOLD);
+  attron(COLOR_PAIR(0));
+  text.print;
+  attroff(A_BOLD);
+  attroff(COLOR_PAIR(0));
+}
+
+void graySelected(string text) {
   attron(A_REVERSE);
   attron(A_BOLD);
   attron(COLOR_PAIR(win.textcolor+7));
   text.print;
   attroff(A_BOLD);
-  attroff(A_REVERSE);
   attroff(COLOR_PAIR(win.textcolor+7));
+  attroff(A_REVERSE);
 }
 
 void statusbar(VKapi api) {
@@ -230,15 +241,47 @@ void bodyToBuffer() {
   }
 }
 
+void allMessages() {
+  foreach(i, e; win.buffer) {
+    wmove(stdscr, 2+i.to!int, win.offset+1);
+    if (i.to!int == win.active-win.scrollOffset) {
+      e.text.selected;
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+      cut(i, e).graySelected;
+    } else {
+      e.text.regular;
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+      cut(i, e).gray;
+    }
+  }
+}
+
 void onlySelectedMessage() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (i.to!int == win.active-win.scrollOffset) {
       e.text.selected;
       wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-      cut(i, e).gray;
+      cut(i, e).graySelected;
     } else {
       e.text.regular;
+    }
+  }
+}
+
+void onlySelectedMessageAndUnread() {
+  foreach(i, e; win.buffer) {
+    wmove(stdscr, 2+i.to!int, win.offset+1);
+    if (i.to!int == win.active-win.scrollOffset) {
+      e.text.selected;
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+      cut(i, e).graySelected;
+    } else {
+      if (e.text[0..3] == "⚫") {
+        e.text.regular;
+        wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+        cut(i, e).gray;
+      } else e.text.regular;
     }
   }
 }
@@ -246,7 +289,12 @@ void onlySelectedMessage() {
 void drawBuffer() {
   bodyToBuffer;
   if (win.dialogsOpened) {
-    onlySelectedMessage;
+    switch (win.msgDrawSetting) {
+      case DrawSetting.allMessages: allMessages; break;
+      case DrawSetting.onlySelectedMessage: onlySelectedMessage; break;
+      case DrawSetting.onlySelectedMessageAndUnread: onlySelectedMessageAndUnread; break;
+      default: break;
+    }
   } else {
     foreach(i, e; win.buffer) {
       wmove(stdscr, 2+i.to!int, win.offset+1);
@@ -342,9 +390,6 @@ void exit(ref ListElement le) {
 
 void open(ref ListElement le) {
   win.mbody = le.getter();
-  //if (win.buffer.length + 2 < LINES) {
-    //win.buffer = win.mbody;
-  //}
 }
 
 void changeLang(ref ListElement le) {
@@ -358,20 +403,28 @@ void changeColor(ref ListElement le) {
   le.text = "color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
 }
 
+void changeMsgSetting(ref ListElement le) {
+  win.msgDrawSetting = win.msgDrawSetting != 2 ? win.msgDrawSetting+1 : 0;
+  le.text = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
+}
+
 ListElement[] GenerateSettings() {
   return [
     ListElement(center("display_settings".getLocal, COLS-16, ' '), "", null, null),
     ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeColor, null),
     ListElement("lang".getLocal, "", &changeLang, null),
     ListElement(center("convers_settings".getLocal, COLS-16, ' '), "", null, null),
+    ListElement("msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal, "", &changeMsgSetting, null),
   ];
 }
 
 ListElement[] GetDialogs() {
   ListElement[] listDialogs;
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
+  string tempName;
   foreach(e; dialogs) {
-    listDialogs ~= ListElement(e.name, ": " ~ e.lastMessage.replace("\n", " "));
+    tempName = e.unread ? "⚫ " : "  ";
+    listDialogs ~= ListElement(tempName ~ e.name, ": " ~ e.lastMessage.replace("\n", " "));
   }
   win.dialogsOpened = true;
   return listDialogs;

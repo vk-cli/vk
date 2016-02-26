@@ -33,6 +33,10 @@ void localize() {
   local["lang"] = lang("Language = English", "Язык = Русский");
   local["display_settings"] = lang("[ Display Settings ]", "[ Настройки отображения ]");
   local["convers_settings"] = lang("[ Conversations Settings ]", "[ Настройки диалогов ]");
+  local["msg_setting_info"] = lang("How to draw conversations list: ", "Как отображать список диалогов: ");
+  local["msg_setting0"] = lang("show everything", "показывать всё");
+  local["msg_setting1"] = lang("show the selected text only", "текст только выделенного диалога");
+  local["msg_setting2"] = lang("show the selected text and unread ones", "текст выделенного диалога и всех непрочитанных");
 }
 
 void swapLang() {
