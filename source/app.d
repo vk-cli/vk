@@ -173,7 +173,7 @@ void statusbar(VKapi api) {
   }
 }
 
-void Debug(string s) {
+void Debug(string s = "") {
   win.debugText = s;
 }
 
@@ -286,6 +286,7 @@ void downEvent() {
       win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
     }
   }
+  "test".Debug;
 }
 
 void upEvent() {
@@ -295,6 +296,7 @@ void upEvent() {
     if (win.scrollOffset > 0 || win.active > LINES-4) win.scrollOffset--;
     win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
   }
+  Debug;
   //win.title = win.active.to!string ~ " = " ~ win.scrollOffset.to!string;
 }
 
