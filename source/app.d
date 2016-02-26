@@ -63,7 +63,7 @@ struct Win {
     last_active, offset, key,
     scrollOffset;
   string
-    title;
+    debugText;
   bool
     dialogsOpened;
 }
@@ -162,11 +162,19 @@ void gray(string text) {
 }
 
 void statusbar(VKapi api) {
-  string notify = " " ~ win.counter.to!string ~ " ✉ ";
-  notify.selected;
-  center(api.me.first_name~" "~api.me.last_name, COLS+2-notify.length, ' ').selected;
-  "\n".print;
-  win.title.print;
+  if (win.debugText == "") {
+    string notify = " " ~ win.counter.to!string ~ " ✉ ";
+    notify.selected;
+    center(api.me.first_name~" "~api.me.last_name, COLS+2-notify.length, ' ').selected;
+    "\n".print;
+  } else {
+    center(win.debugText, COLS, ' ').selected;
+    "\n".print;
+  }
+}
+
+void Debug(string s) {
+  win.debugText = s;
 }
 
 void setOffset() {
@@ -204,10 +212,10 @@ void bodyToBuffer() {
     win.buffer = win.mbody.dup;
     if (win.mbody.length > LINES) {
       if (win.active+LINES/2 <= win.mbody.length) {
-        win.title = "1";
+        //win.title = "1";
         win.buffer = win.mbody[win.active-LINES/2..win.active+LINES/2];
       } else {
-        win.title = win.active.to!string ~ " = " ~ win.scrollOffset.to!string;
+        //win.title = win.active.to!string ~ " = " ~ win.scrollOffset.to!string;
         win.buffer = win.mbody[$-LINES..$];
       }
     }
@@ -278,7 +286,6 @@ void downEvent() {
       win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
     }
   }
-  //win.title = win.active.to!string ~ " = " ~ win.mbody.length.to!string;
 }
 
 void upEvent() {
