@@ -501,7 +501,7 @@ class VKapi {
     // ===== buffers =====
 
     vkDialog[] getBufferedDialogs(int count, int offset) {
-        const int dialogBlock = 20;
+        const int dialogBlock = 50;
         int db;
         int al = pb.alldialogs.length.to!int;
         int r = al - offset;

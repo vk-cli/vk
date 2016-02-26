@@ -209,14 +209,12 @@ string cut(ulong i, ListElement e) {
 
 void bodyToBuffer() {
   if (win.mbody.length != 0) {
-    win.buffer = win.mbody.dup;
-    if (win.mbody.length > LINES) {
-      if (win.active+LINES/2 <= win.mbody.length) {
-        //win.title = "1";
-        win.buffer = win.mbody[win.active-LINES/2..win.active+LINES/2];
-      } else {
-        //win.title = win.active.to!string ~ " = " ~ win.scrollOffset.to!string;
-        win.buffer = win.mbody[$-LINES..$];
+    if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
+    else {
+      win.buffer = win.mbody.dup;
+      if (win.dialogsOpened) {
+        win.mbody = GetDialogs;
+        win.buffer = win.mbody.dup;
       }
     }
     foreach(i, e; win.buffer) {
@@ -272,15 +270,10 @@ void downEvent() {
     win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
   } else {
     if (win.dialogsOpened) {
-      if (win.active == win.mbody.length-1) {
-        ListElement[] listDialogs;
-        auto dialogs = api.messagesGetDialogs(LINES-2, win.mbody.length.to!int);
-        foreach(e; dialogs) {
-          listDialogs ~= ListElement(e.name, ": " ~ e.lastMessage.replace("\n", " "));
-        }
-        win.mbody ~= listDialogs;
-        win.scrollOffset += LINES/2;
-      } else if (win.scrollOffset > 0 || win.active > LINES-4) win.scrollOffset++;
+      if (win.active-win.scrollOffset == LINES-3) {
+        win.scrollOffset += 1;
+        win.mbody = GetDialogs;
+      }
       win.active++;
     } else {
       win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
@@ -292,10 +285,13 @@ void upEvent() {
   if (win.section == Sections.left) {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   } else {
-    if (win.scrollOffset > 0 || win.active > LINES-4) win.scrollOffset--;
-    win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
+    if (win.dialogsOpened) {
+      win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
+      win.active == 0 ? win.active += 0 : win.active--;
+    } else {   
+      win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
+    }
   }
-  //win.title = win.active.to!string ~ " = " ~ win.scrollOffset.to!string;
 }
 
 void selectEvent() {
@@ -352,7 +348,7 @@ ListElement[] GenerateSettings() {
 
 ListElement[] GetDialogs() {
   ListElement[] listDialogs;
-  auto dialogs = api.messagesGetDialogs(LINES-2);
+  auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   foreach(e; dialogs) {
     listDialogs ~= ListElement(e.name, ": " ~ e.lastMessage.replace("\n", " "));
   }
