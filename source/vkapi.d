@@ -115,6 +115,11 @@ struct apiState {
     bool somethingUpdated = false;
 }
 
+struct apiBuffers {
+    vkMessage[] cdialog;
+    vkDialog[] alldialogs;
+}
+
 struct apiFwdIter {
     vkFwdMessage[] fwd;
     int md;
@@ -122,6 +127,7 @@ struct apiFwdIter {
 
 __gshared nameCache nc = nameCache();
 __gshared apiState ps = apiState();
+__gshared apiBuffers pb = apiBuffers();
 
 class VKapi {
 
@@ -490,6 +496,34 @@ class VKapi {
             rt ~= mo;
         }
         return rt;
+    }
+
+    // ===== buffers =====
+
+    vkDialog[] getBufferedDialogs(int count, int offset) {
+        const int dialogBlock = 20;
+        int db;
+        int al = pb.alldialogs.length.to!int;
+        int r = al - offset;
+        if(r >= count) {
+            return sliceDlg(count, offset);
+        } else {
+            int dt = count -r;
+            if(dt <= dialogBlock) {
+                db = 1;
+            } else {
+                int dl = dt%dialogBlock;
+                db = (dt-dl)/dialogBlock;
+                if(dl > 0) db++;
+            }
+            pb.alldialogs ~= messagesGetDialogs(db*dialogBlock, al);
+            return sliceDlg(count, offset);
+        }
+    }
+
+    private vkDialog[] sliceDlg(int count, int offset) {
+        dbm("dbuf: " ~ pb.alldialogs.length.to!string);
+        return pb.alldialogs[offset..(offset+count)]; //.map!(d => &d).array;
     }
 
     // ===== longpoll =====
