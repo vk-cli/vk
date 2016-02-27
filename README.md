@@ -8,10 +8,14 @@ git clone https://github.com/HaCk3Dq/vk
 dub
 ```
 
-# Navigation
+# How to use
 
-+ arrow keys
-+ w, a, s, d
-+ h, j, k, l
-+ enter
-+ q - to exit
+## Navigation
+
++ Arrow Keys
++ W, A, S, D
++ H, J, K, L
++ Enter
++ PageUp - scroll half screen up
++ PageDown - scroll half screen down
++ Q - to exit
