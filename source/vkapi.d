@@ -302,11 +302,12 @@ class VKapi {
     }
 
 
-    vkDialog[] messagesGetDialogs(int count = 20, int offset = 0) {
+    vkDialog[] messagesGetDialogs(int count , int offset, out int serverCount) {
         string[string] params;
         if(count != 0) params["count"] = count.to!string;
         if(offset != 0) params["offset"] = offset.to!string;
         auto resp = vkget("messages.getDialogs", params);
+        auto dcount = resp["count"].integer.to!int;
         auto respt = resp["items"].array
                                     .map!(q => q["message"]);
 
@@ -345,6 +346,7 @@ class VKapi {
             //dbm(ds.formatted);
         }
 
+        serverCount = dcount;
         return dialogs;
     }
 
@@ -635,7 +637,9 @@ private void asyncLoadBlock(apiTransfer apist, blockType bt, int count, int offs
     auto api = new VKapi(apist);
     switch (bt) {
         case blockType.dialogs:
-            pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset);
+            int sc;
+            pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset, sc);
+            pb.dialogsCount = sc;
             break;
         default: break;
     }
