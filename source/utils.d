@@ -44,3 +44,7 @@ string longpollReplaces(string inp) {
         .replace("&gt;", ">")
         .replace("&amp;", "&");
 }
+
+T[] slice(T)(ref T[] src, int count, int offset) {
+    return src[offset..(offset+count)]; //.map!(d => &d).array;
+}

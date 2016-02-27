@@ -4,7 +4,7 @@ import std.stdio, std.conv, std.string, std.algorithm, std.array, std.datetime, 
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
 import std.parallelism, std.concurrency, core.thread;
-import utils, namecache;
+import utils, namecache, localization;
 
 
 // ===== vkapi const =====
@@ -30,8 +30,8 @@ struct vkUser {
 
 struct vkDialog {
     string name;
-    string lastMessage;
-    int id;
+    string lastMessage = "";
+    int id = -1;
     bool unread = false;
     string formatted;
 }
@@ -115,9 +115,15 @@ struct apiState {
     bool somethingUpdated = false;
 }
 
+enum blockType {
+    dialogs
+}
+
 struct apiBuffers {
-    vkMessage[] cdialog;
-    vkDialog[] alldialogs;
+    vkDialog[] dialogsBuffer;
+    int dialogsCount = -1;
+    bool dialogsForceUpdate = false;
+    bool dialogsLoading = false;
 }
 
 struct apiFwdIter {
@@ -500,30 +506,38 @@ class VKapi {
 
     // ===== buffers =====
 
-    vkDialog[] getBufferedDialogs(int count, int offset) {
-        const int dialogBlock = 50;
-        int db;
-        int al = pb.alldialogs.length.to!int;
-        int r = al - offset;
-        if(r >= count) {
-            return sliceDlg(count, offset);
-        } else {
-            int dt = count -r;
-            if(dt <= dialogBlock) {
-                db = 1;
-            } else {
-                int dl = dt%dialogBlock;
-                db = (dt-dl)/dialogBlock;
-                if(dl > 0) db++;
-            }
-            pb.alldialogs ~= messagesGetDialogs(db*dialogBlock, al);
-            return sliceDlg(count, offset);
-        }
-    }
 
-    private vkDialog[] sliceDlg(int count, int offset) {
-        dbm("dbuf: " ~ pb.alldialogs.length.to!string);
-        return pb.alldialogs[offset..(offset+count)]; //.map!(d => &d).array;
+
+    vkDialog[] getBufferedDialogs(int count, int offset) {
+        const int block = 100;
+        const int upd = 50;
+
+        if(pb.dialogsForceUpdate) pb.dialogsBuffer = new vkDialog[0];
+
+        immutable int cl = pb.dialogsBuffer.length.to!int;
+
+        if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && offset >= (cl+upd))) {
+            spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
+        }
+
+        immutable int needln = count + offset;
+
+        if(needln <= cl) {
+            pb.dialogsLoading = false;
+            return slice!vkDialog(pb.dialogsBuffer, count, offset);
+        } else {
+            pb.dialogsLoading = true;
+            vkDialog ld = {
+                name: getLocal("loading")
+            };
+
+            if((cl - needln) == 1) {
+                return ( slice!vkDialog(pb.dialogsBuffer, count - 1, offset) ~ ld );
+            } else {
+                return [ ld ];
+            }
+
+        }
     }
 
     // ===== longpoll =====
@@ -615,6 +629,16 @@ class VKapi {
 private void asyncLongpollWrapper(apiTransfer apist) {
     auto api = new VKapi(apist);
     api.startLongpoll();
+}
+
+private void asyncLoadBlock(apiTransfer apist, blockType bt, int count, int offset) {
+    auto api = new VKapi(apist);
+    switch (bt) {
+        case blockType.dialogs:
+            pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset);
+            break;
+        default: break;
+    }
 }
 
 // ===== Exceptions =====

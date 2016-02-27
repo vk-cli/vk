@@ -432,6 +432,7 @@ ListElement[] GetDialogs() {
 
 void test() {
     //initFileDbm();
+    localize();
     auto storage = load;
     if("token" !in storage) {
         writeln("cyka");
@@ -444,9 +445,12 @@ void test() {
     }
     //api.asyncLongpoll();
     //readln();
-    auto conv = api.getBufferedDialogs(5, 0);
-    foreach (d; conv) {
-        writeln("d " ~ d.name ~ " " ~ d.lastMessage);
+    while(true) {
+        auto conv = api.getBufferedDialogs(5, 0);
+        foreach (d; conv) {
+            writeln("d " ~ d.name ~ " " ~ d.lastMessage);
+        }
+        readln();
     }
     //dbm("dbuf: " ~ api.pb.alldialogs.length.to!string);
     //nc.dbmAll();
