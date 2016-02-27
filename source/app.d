@@ -468,7 +468,7 @@ void test() {
         writeln(digTest(ww.fwd));
     }+/
 
-    readln();
+    //readln();
     //ticker();
 }
 

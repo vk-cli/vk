@@ -542,6 +542,14 @@ class VKapi {
         }
     }
 
+    bool isScrollAllowed() {
+        return !pb.dialogsLoading;
+    }
+
+    bool isDialogsUpdated() {
+        return false; //todo dialogs biffer longpoll
+    }
+
     // ===== longpoll =====
 
     vkLongpoll getLongpollServer() {
