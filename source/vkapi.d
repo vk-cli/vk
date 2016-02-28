@@ -124,6 +124,7 @@ struct apiBuffers {
     int dialogsCount = -1;
     bool dialogsForceUpdate = false;
     bool dialogsLoading = false;
+    bool dialogsUpdated = false;
 }
 
 struct apiFwdIter {
@@ -547,7 +548,11 @@ class VKapi {
     }
 
     bool isDialogsUpdated() {
-        return false; //todo dialogs biffer longpoll
+        if(pb.dialogsUpdated) {
+            pb.dialogsUpdated = false;
+            return true;
+        }
+        return false;
     }
 
     // ===== longpoll =====
@@ -648,9 +653,11 @@ private void asyncLoadBlock(apiTransfer apist, blockType bt, int count, int offs
             int sc;
             pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset, sc);
             pb.dialogsCount = sc;
+            pb.dialogsUpdated = true;
             break;
         default: break;
     }
+    toggleUpdate();
 }
 
 // ===== Exceptions =====
