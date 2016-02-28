@@ -308,16 +308,8 @@ class VKapi {
         return rt;
     }
 
-
-    string makeMsgMethod(int count, int offset) {
-        return `var m = API.messages.getDialogs({"count":` ~ count.to!string ~ `,"offset":` ~ offset.to!string ~ `});
-                var uids = m.items@.message@.user_id;
-                var onl = API.users.get({"user_ids": uids, "fields": "online"});
-                return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
-    }
-
     vkDialog[] messagesGetDialogs(int count , int offset, out int serverCount) {
-        auto exresp = vkget("execute", [ "code": makeMsgMethod(count, offset) ]);
+        auto exresp = vkget("execute.vkGetDialogs", [ "count": count.to!string, "offset": offset.to!string ]);
         auto resp = exresp["conv"];
         auto dcount = resp["count"].integer.to!int;
         dbm("dialogs count now: " ~ dcount.to!string);
