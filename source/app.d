@@ -312,6 +312,7 @@ void controller() {
     if(api.isSomethingUpdated) break;
   }
   win.key.print;
+  win.active.to!string.Debug;
   if (canFind(kg_down, win.key)) downEvent;
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
@@ -325,12 +326,13 @@ void controller() {
     win.scrollOffset = win.mbody.length.to!int;
   }
   else if (win.key == k_pagedown) {
-    win.scrollOffset += (LINES-2)/2;
-    win.active += (LINES-2)/2;
+    win.scrollOffset += LINES/2;
+    win.active += LINES/2;
   }
   else if (win.key == k_pageup) {
-    (win.scrollOffset - (LINES-2)/2) > 0 ? win.scrollOffset -= (LINES-2)/2 : win.scrollOffset = 0;
-    (win.active - (LINES-2)/2) > 0 ? win.active -= (LINES-2)/2 : win.active = 0;
+    win.scrollOffset -= LINES/2;
+    win.active -= LINES/2;
+    if (win.active < 0) win.active = win.scrollOffset = 0;
   }
 }
 
