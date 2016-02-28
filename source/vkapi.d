@@ -349,7 +349,6 @@ class VKapi {
                 auto uid = msg["user_id"].integer.to!int;
                 ds.id = uid;
                 ds.name = nc.getName(ds.id).strName;
-                dbm("onl parsing uid: " ~ uid.to!string);
                 ds.online = (uid in online) ? online[uid] : false;
             }
             ds.lastMessage = msg["body"].str;
