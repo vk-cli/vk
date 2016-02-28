@@ -37,7 +37,7 @@ void localize() {
   local["msg_setting0"] = lang("show everything", "показывать всё");
   local["msg_setting1"] = lang("show the selected text only", "текст только выделенного диалога");
   local["msg_setting2"] = lang("show the selected text and unread ones", "текст выделенного диалога и всех непрочитанных");
-  local["loading"] = lang("Loading...", "Загрузка...");
+  local["loading"] = lang("Loading", "Загрузка");
 }
 
 void swapLang() {

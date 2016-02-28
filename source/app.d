@@ -325,12 +325,13 @@ void controller() {
     win.scrollOffset = win.mbody.length.to!int;
   }
   else if (win.key == k_pagedown) {
-    win.scrollOffset += (LINES-2)/2;
-    win.active += (LINES-2)/2;
+    win.scrollOffset += LINES/2;
+    win.active += LINES/2;
   }
   else if (win.key == k_pageup) {
-    (win.scrollOffset - (LINES-2)/2) > 0 ? win.scrollOffset -= (LINES-2)/2 : win.scrollOffset = 0;
-    (win.active - (LINES-2)/2) > 0 ? win.active -= (LINES-2)/2 : win.active = 0;
+    win.scrollOffset -= LINES/2;
+    win.active -= LINES/2;
+    if (win.active < 0) win.active = win.scrollOffset = 0;
   }
 }
 
@@ -343,7 +344,7 @@ void downEvent() {
         win.scrollOffset += 1;
         win.mbody = GetDialogs;
       }
-      win.active++;
+      if (api.isScrollAllowed) win.active++;
     } else {
       win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
     }
@@ -378,6 +379,7 @@ void backEvent() {
   if (win.section == Sections.right) {
     if (win.dialogsOpened) win.dialogsOpened = false;
     win.active = win.last_active;
+    win.scrollOffset = 0;
     win.section = Sections.left;
     win.mbody = new ListElement[0];
     win.buffer = new ListElement[0];
