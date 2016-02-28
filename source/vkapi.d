@@ -515,32 +515,46 @@ class VKapi {
         const int block = 100;
         const int upd = 50;
 
-        if(pb.dialogsForceUpdate) pb.dialogsBuffer = new vkDialog[0];
+        vkDialog[] rt;
+        bool spawnLoadBLock = false;
+
+        if(pb.dialogsForceUpdate || pb.dialogsBuffer.length < block) pb.dialogsBuffer = new vkDialog[0];
 
         immutable int cl = pb.dialogsBuffer.length.to!int;
 
-        if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && offset >= (cl+upd))) {
-            spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
+        if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && offset >= (cl-upd))) {
+            spawnLoadBLock = true;
         }
 
-        immutable int needln = count + offset;
+        int needln = count + offset;
+
+        if(pb.dialogsCount != -1 && needln > pb.dialogsCount) {
+            offset = pb.dialogsCount - count;
+            needln = count + offset;
+        }
 
         if(needln <= cl) {
             pb.dialogsLoading = false;
-            return slice!vkDialog(pb.dialogsBuffer, count, offset);
+            rt = slice!vkDialog(pb.dialogsBuffer, count, offset);
         } else {
             pb.dialogsLoading = true;
-            vkDialog ld = {
+            immutable vkDialog ld = {
                 name: getLocal("loading")
             };
 
             if((cl - needln) == 1) {
-                return ( slice!vkDialog(pb.dialogsBuffer, count - 1, offset) ~ ld );
+                rt = ( slice!vkDialog(pb.dialogsBuffer, count - 1, offset) ~ ld );
             } else {
-                return [ ld ];
+                rt = [ ld ];
             }
 
         }
+
+        if(spawnLoadBLock) {
+            spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
+        }
+
+        return rt;
     }
 
     bool isScrollAllowed() {
@@ -657,7 +671,7 @@ private void asyncLoadBlock(apiTransfer apist, blockType bt, int count, int offs
             break;
         default: break;
     }
-    toggleUpdate();
+    api.toggleUpdate();
 }
 
 // ===== Exceptions =====

@@ -445,8 +445,11 @@ void test() {
     }
     //api.asyncLongpoll();
     //readln();
+    int i = 0;
+    const int step = 30;
     while(true) {
-        auto conv = api.getBufferedDialogs(5, 0);
+        auto conv = api.getBufferedDialogs(step, i);
+        if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
         foreach (d; conv) {
             writeln("d " ~ d.name ~ " " ~ d.lastMessage);
         }
