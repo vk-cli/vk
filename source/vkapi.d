@@ -35,7 +35,7 @@ struct vkDialog {
     string lastMessage = "";
     int id = -1;
     bool unread = false;
-    string formatted;
+    bool online;
 }
 
 struct vkMessage {
@@ -309,11 +309,16 @@ class VKapi {
     }
 
 
+    string makeMsgMethod(int count, int offset) {
+        return `var m = API.messages.getDialogs({"count":` ~ count.to!string ~ `,"offset":` ~ offset.to!string ~ `});
+                var uids = m.items@.message@.user_id;
+                var onl = API.users.get({"user_ids": uids, "fields": "online"});
+                return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
+    }
+
     vkDialog[] messagesGetDialogs(int count , int offset, out int serverCount) {
-        string[string] params;
-        if(count != 0) params["count"] = count.to!string;
-        if(offset != 0) params["offset"] = offset.to!string;
-        auto resp = vkget("messages.getDialogs", params);
+        auto exresp = vkget("execute", [ "code": makeMsgMethod(count, offset) ]);
+        auto resp = exresp["conv"];
         auto dcount = resp["count"].integer.to!int;
         dbm("dialogs count now: " ~ dcount.to!string);
         auto respt = resp["items"].array
@@ -336,19 +341,27 @@ class VKapi {
         nc.requestId(convIds);
         nc.resolveNames();
 
+        auto ou = exresp["ou"].array;
+        auto os = exresp["os"].array;
+        bool[int] online;
+        foreach(n; 0..(ou.length)) online[ou[n].integer.to!int] = (os[n].integer == 1);
+
         vkDialog[] dialogs;
         foreach(msg; respt){
             auto ds = vkDialog();
             if("chat_id" in msg){
                 ds.id = msg["chat_id"].integer.to!int;
                 ds.name = msg["title"].str;
+                ds.online = false;
             } else {
-                ds.id = msg["user_id"].integer.to!int;
+                auto uid = msg["user_id"].integer.to!int;
+                ds.id = uid;
                 ds.name = nc.getName(ds.id).strName;
+                dbm("onl parsing uid: " ~ uid.to!string);
+                ds.online = (uid in online) ? online[uid] : false;
             }
             ds.lastMessage = msg["body"].str;
             if(msg["out"].integer == 0 && msg["read_state"].integer == 0) ds.unread = true;
-            ds.formatted = (ds.unread ? "+ " : "  ") ~ ds.lastMessage;
             dialogs ~= ds;
             //dbm(ds.id.to!string ~ " " ~ ds.unread.to!string ~ "   " ~ ds.name ~ " " ~ ds.lastMessage);
             //dbm(ds.formatted);
