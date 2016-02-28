@@ -712,6 +712,14 @@ class loadBlockThread : Thread {
         api.toggleUpdate();
     }
 
+    private void run() {
+        try {
+            asyncLoadBlock();
+        } catch (Exception e) {
+            dbm("Catched at asyncLoadBlock thread: " ~ e.msg);
+        }
+    }
+
 }
 
 // ===== Exceptions =====
