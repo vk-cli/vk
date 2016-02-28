@@ -312,7 +312,6 @@ void controller() {
     if(api.isSomethingUpdated) break;
   }
   win.key.print;
-  win.active.to!string.Debug;
   if (canFind(kg_down, win.key)) downEvent;
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
