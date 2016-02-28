@@ -302,6 +302,11 @@ void drawBuffer() {
   }
 }
 
+void jumpToEnd() {
+  win.active = api.getDialogsCount-1;
+  win.scrollOffset = api.getDialogsCount-LINES+2;
+}
+
 void controller() {
   while (true) {
     timeout(1050);
@@ -319,10 +324,7 @@ void controller() {
     win.active = 0;
     win.scrollOffset = 0;
   }
-  else if (win.key == k_end && api.isScrollAllowed) {
-    win.active = api.getDialogsCount-1;
-    win.scrollOffset = api.getDialogsCount-LINES+2;
-  }
+  else if (win.key == k_end && api.isScrollAllowed) jumpToEnd;
   else if (win.key == k_pagedown && api.isScrollAllowed) {
     win.scrollOffset += LINES/2;
     win.active += LINES/2;
@@ -336,11 +338,7 @@ void controller() {
 }
 
 void checkBounds() {
-  (win.active.to!string ~ " " ~ api.getDialogsCount.to!string).Debug;
-  if (win.dialogsOpened && api.getDialogsCount > 0 && win.active > api.getDialogsCount-1) {
-    win.active = api.getDialogsCount-1;
-    win.scrollOffset = api.getDialogsCount;
-  }
+  if (win.dialogsOpened && api.getDialogsCount > 0 && win.active > api.getDialogsCount-1) jumpToEnd;
 }
 
 void downEvent() {
