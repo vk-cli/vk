@@ -10,6 +10,7 @@ import utils, namecache, localization;
 // ===== vkapi const =====
 
 const int convStartId = 2000000000;
+const int mailStartId = convStartId*-1;
 const bool return80mc = true;
 
 // ===== networking const =====

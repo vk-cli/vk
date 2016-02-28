@@ -108,10 +108,10 @@ void resolveNames(ref nameCache nc) {
             buf = clean[n..up];
             cnt = false;
         }
-        foreach(nm; api.usersGet( buf.filter!(d => d >= 0).array )) { //users
+        foreach(nm; api.usersGet( buf.filter!(d => d > 0 || d < mailStartId).array )) { //users
             nc.cache[nm.id] = cachedName(nm.first_name, nm.last_name);
         }
-        foreach(cnm; api.groupsGetById( buf.filter!(d => d < 0).array )) { //communities
+        foreach(cnm; api.groupsGetById( buf.filter!(d => d < 0 && d > mailStartId).array )) { //communities
             nc.cache[cnm.id] = cachedName(cnm.name, " ");
         }
     }
