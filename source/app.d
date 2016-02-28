@@ -344,7 +344,7 @@ void downEvent() {
         win.scrollOffset += 1;
         win.mbody = GetDialogs;
       }
-      win.active++;
+      if (api.isScrollAllowed) win.active++;
     } else {
       win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
     }
