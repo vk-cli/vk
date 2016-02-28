@@ -243,8 +243,9 @@ class VKapi {
             auto val = params[key];
             url ~= key ~ "=" ~ val.encode ~ "&";
         }
-        url ~= "v=" ~ vkver ~ "&access_token=" ~ vktoken;
-        dbm("request: " ~ url);
+        url ~= "v=" ~ vkver ~ "&access_token=";
+        dbm("request: " ~ url ~ "***");
+        url ~= vktoken;
         auto tm = dur!timeoutFormat(vkgetCurlTimeout);
         JSONValue resp = httpget(url, tm).parseJSON;
 
