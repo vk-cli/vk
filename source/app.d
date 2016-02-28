@@ -379,6 +379,7 @@ void backEvent() {
   if (win.section == Sections.right) {
     if (win.dialogsOpened) win.dialogsOpened = false;
     win.active = win.last_active;
+    win.scrollOffset = 0;
     win.section = Sections.left;
     win.mbody = new ListElement[0];
     win.buffer = new ListElement[0];
