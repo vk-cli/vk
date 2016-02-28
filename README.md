@@ -18,4 +18,6 @@ dub
 + Enter
 + PageUp - scroll half screen up
 + PageDown - scroll half screen down
++ Home - first entry 
++ End - last entry
 + Q - to exit
