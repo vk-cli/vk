@@ -125,6 +125,7 @@ struct apiBuffers {
     bool dialogsForceUpdate = false;
     bool dialogsLoading = false;
     bool dialogsUpdated = false;
+    bool dialogsBusy = false;
 }
 
 struct apiFwdIter {
@@ -516,14 +517,14 @@ class VKapi {
         const int upd = 50;
 
         vkDialog[] rt;
-        bool spawnLoadBLock = false;
+        bool spawnLoadBlock = false;
 
         if(pb.dialogsForceUpdate || pb.dialogsBuffer.length < block) pb.dialogsBuffer = new vkDialog[0];
 
         immutable int cl = pb.dialogsBuffer.length.to!int;
 
         if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && offset >= (cl-upd))) {
-            spawnLoadBLock = true;
+            spawnLoadBlock = true;
         }
 
         int needln = count + offset;
@@ -550,7 +551,7 @@ class VKapi {
 
         }
 
-        if(spawnLoadBLock) {
+        if(spawnLoadBlock && !pb.dialogsBusy) {
             spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
         }
 
@@ -664,10 +665,12 @@ private void asyncLoadBlock(apiTransfer apist, blockType bt, int count, int offs
     auto api = new VKapi(apist);
     switch (bt) {
         case blockType.dialogs:
+            pb.dialogsBusy = true;
             int sc;
             pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset, sc);
             pb.dialogsCount = sc;
             pb.dialogsUpdated = true;
+            pb.dialogsBusy = false;
             break;
         default: break;
     }
