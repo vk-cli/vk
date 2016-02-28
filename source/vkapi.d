@@ -531,7 +531,8 @@ class VKapi {
 
         if(pb.dialogsForceUpdate || pb.dialogsBuffer.length < block) pb.dialogsBuffer = new vkDialog[0];
 
-        immutable int cl = (pb.dialogsThread.isRunning) ? pb.dialogsLatCL : pb.dialogsBuffer.length.to!int;
+        //immutable int cl = (pb.dialogsThread.isRunning) ? pb.dialogsLatCL : pb.dialogsBuffer.length.to!int;
+        immutable int cl = pb.dialogsBuffer.length.to!int;
         int needln = count + offset;
 
         if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && offset >= (cl-upd))) {
@@ -550,6 +551,7 @@ class VKapi {
             rt = slice!vkDialog(pb.dialogsBuffer, count, offset);
         } else {
             dbm("catched LOADING state at offset " ~ offset.to!string);
+            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ pb.dialogsThread.isRunning.to!string);
             pb.dialogsLoading = true;
             immutable vkDialog ld = {
                 name: getLocal("loading")
@@ -699,6 +701,7 @@ class loadBlockThread : Thread {
     }
 
     private void asyncLoadBlock() {
+        dbm("asyncLoadBlock start");
         auto api = new VKapi(apist);
         switch (bt) {
             case blockType.dialogs:
@@ -710,6 +713,7 @@ class loadBlockThread : Thread {
             default: break;
         }
         api.toggleUpdate();
+        dbm("asyncLoadBlock end");
     }
 
     private void run() {
