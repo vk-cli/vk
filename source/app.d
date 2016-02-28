@@ -449,10 +449,11 @@ void test() {
     int i = 0;
     const int step = 30;
     while(true) {
-        auto conv = api.getBufferedDialogs(step, i);
-        if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
+        int huj;
+        auto conv = api.messagesGetDialogs(step, i, huj);
+        //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
         foreach (d; conv) {
-            writeln("d " ~ d.name ~ " " ~ d.lastMessage);
+            writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
         }
         readln();
     }
