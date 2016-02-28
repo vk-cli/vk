@@ -526,6 +526,8 @@ class VKapi {
         const int block = 100;
         const int upd = 50;
 
+        //dbm("called getBufferedDialogs, count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
+
         vkDialog[] rt;
         bool spawnLoadBlock = false;
 
@@ -535,7 +537,7 @@ class VKapi {
         immutable int cl = pb.dialogsBuffer.length.to!int;
         int needln = count + offset;
 
-        if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && offset >= (cl-upd))) {
+        if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && needln >= (cl-upd))) {
             dbm("called UPD at offset " ~ offset.to!string ~ ", with current trigger " ~ (cl-upd).to!string);
             dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ pb.dialogsThread.isRunning.to!string);
             spawnLoadBlock = true;
@@ -567,7 +569,7 @@ class VKapi {
 
         if(spawnLoadBlock && !pb.dialogsThread.isRunning) {
             //auto tid = spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
-            pb.dialogsLatCL = cl;
+            //pb.dialogsLatCL = cl;
             pb.dialogsThread.setParams(this.exportStruct(), blockType.dialogs, block, cl);
             pb.dialogsThread.start();
         }
