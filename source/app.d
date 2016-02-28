@@ -320,27 +320,27 @@ void controller() {
     win.scrollOffset = 0;
   }
   else if (win.key == k_end && api.isScrollAllowed) {
-    win.active = api.getDialogsCount-LINES/2;
-    win.scrollOffset = api.getDialogsCount-LINES;
+    win.active = api.getDialogsCount-1;
+    win.scrollOffset = api.getDialogsCount-LINES+2;
   }
   else if (win.key == k_pagedown && api.isScrollAllowed) {
-    changeScrollOffset(LINES/2);
+    win.scrollOffset += LINES/2;
     win.active += LINES/2;
   }
   else if (win.key == k_pageup && api.isScrollAllowed) {
-    changeScrollOffset(-LINES/2);
+    win.scrollOffset -= LINES/2;
     win.active -= LINES/2;
     if (win.active < 0) win.active = win.scrollOffset = 0;
   }
+  checkBounds;
 }
 
-void changeScrollOffset(int amount = 1) {
-  win.scrollOffset += amount;
-  (win.active.to!string ~ " " ~ (win.scrollOffset+LINES-3).to!string).Debug;
-  //if (win.dialogsOpened && win.scrollOffset > api.getDialogsCount-1) {
-    //win.scrollOffset = api.getDialogsCount;
-    //win.active = api.getDialogsCount;
-  //}
+void checkBounds() {
+  (win.active.to!string ~ " " ~ api.getDialogsCount.to!string).Debug;
+  if (win.dialogsOpened && api.getDialogsCount > 0 && win.active > api.getDialogsCount-1) {
+    win.active = api.getDialogsCount-1;
+    win.scrollOffset = api.getDialogsCount;
+  }
 }
 
 void downEvent() {
@@ -348,7 +348,7 @@ void downEvent() {
     win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
   } else {
     if (win.buffer.length != 0) {
-      if (win.active-win.scrollOffset == LINES-3) changeScrollOffset;
+      if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
       if (api.isScrollAllowed) win.active++;
     } else {
       win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
@@ -361,7 +361,7 @@ void upEvent() {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   } else {
     if (win.buffer.length != 0 && api.isScrollAllowed) {
-      win.scrollOffset > 0 ? changeScrollOffset(-1) : changeScrollOffset(0);
+      win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
       win.active == 0 ? win.active += 0 : win.active--;
     } else {
       if (api.isScrollAllowed) win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
