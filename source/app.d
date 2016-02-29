@@ -327,6 +327,7 @@ void controller() {
     win.scrollOffset -= LINES/2;
     win.active -= LINES/2;
     if (win.active < 0) win.active = win.scrollOffset = 0;
+    if (win.scrollOffset < 0) win.scrollOffset = 0;
   }
   checkBounds;
 }
