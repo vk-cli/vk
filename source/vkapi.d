@@ -121,14 +121,17 @@ enum blockType {
     dialogs
 }
 
+struct apiBufferData {
+    int serverCount = -1;
+    bool forceUpdate = false;
+    bool loading = false;
+    bool updated = false;
+
+}
+
 struct apiBuffers {
     vkDialog[] dialogsBuffer;
-    int dialogsCount = -1;
-    bool dialogsForceUpdate = false;
-    bool dialogsLoading = false;
-    bool dialogsUpdated = false;
-    loadBlockThread dialogsThread;
-    int dialogsLatCL;
+    apiBufferData dialogsData;
 }
 
 struct apiFwdIter {
@@ -138,7 +141,9 @@ struct apiFwdIter {
 
 __gshared nameCache nc = nameCache();
 __gshared apiState ps = apiState();
+
 __gshared apiBuffers pb = apiBuffers();
+loadBlockThread lbThread;
 
 class VKapi {
 
@@ -169,7 +174,7 @@ class VKapi {
     void tokenInit(string token) {
         vktoken = token;
         isTokenValid = checkToken(token);
-        pb.dialogsThread = new loadBlockThread();
+        pb.dialogsThread = new loadBlockThread(this);
     }
 
     apiTransfer exportStruct() {
@@ -521,76 +526,75 @@ class VKapi {
     // ===== buffers =====
 
 
-
-    vkDialog[] getBufferedDialogs(int count, int offset) {
-        const int block = 100;
-        const int upd = 50;
-
-        //dbm("called getBufferedDialogs, count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
-
-        vkDialog[] rt;
+    private T[] getBuffered(T)(int block, int upd, int count, int offset, blockType blocktp, ref apiBufferData bufd, ref T[] buf, out bool retLoading) {
+        T[] rt;
         bool spawnLoadBlock = false;
 
-        if(pb.dialogsForceUpdate || pb.dialogsBuffer.length < block) pb.dialogsBuffer = new vkDialog[0];
+        if(bufd.forceUpdate || buf.length < block) buf = new vkDialog[0];
 
-        //immutable int cl = (pb.dialogsThread.isRunning) ? pb.dialogsLatCL : pb.dialogsBuffer.length.to!int;
-        immutable int cl = pb.dialogsBuffer.length.to!int;
+        immutable int cl = buf.length.to!int;
         int needln = count + offset;
 
-        if (pb.dialogsCount == -1 || cl == 0 || (cl < pb.dialogsCount && needln >= (cl-upd))) {
+        if (bufd.serverCount == -1 || cl == 0 || (cl < bufd.serverCount && needln >= (cl-upd))) {
             dbm("called UPD at offset " ~ offset.to!string ~ ", with current trigger " ~ (cl-upd).to!string);
-            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ pb.dialogsThread.isRunning.to!string);
+            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string);
             spawnLoadBlock = true;
         }
 
-        if(pb.dialogsCount != -1 && needln > pb.dialogsCount) {
-            offset = pb.dialogsCount - count;
+        if(bufd.serverCount != -1 && needln > bufd.serverCount) {
+            offset = bufd.serverCount - count;
             needln = count + offset;
         }
 
         if(needln <= cl) {
-            pb.dialogsLoading = false;
-            rt = slice!vkDialog(pb.dialogsBuffer, count, offset);
+            bufd.loading = false;
+            retLoading = false;
+            rt = slice!T(buf, count, offset);
         } else {
             dbm("catched LOADING state at offset " ~ offset.to!string);
-            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ pb.dialogsThread.isRunning.to!string);
-            pb.dialogsLoading = true;
-            immutable vkDialog ld = {
-                name: getLocal("loading")
-            };
-
-            if((cl - needln) == 1) {
-                rt = ( slice!vkDialog(pb.dialogsBuffer, count - 1, offset) ~ ld );
-            } else {
-                rt = [ ld ];
-            }
-
+            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string);
+            bufd.loading = true;
+            retLoading = true;
         }
 
-        if(spawnLoadBlock && !pb.dialogsThread.isRunning) {
+        if(spawnLoadBlock && !lbThread.isRunning) {
             //auto tid = spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
             //pb.dialogsLatCL = cl;
-            pb.dialogsThread.setParams(this.exportStruct(), blockType.dialogs, block, cl);
-            pb.dialogsThread.start();
+            lbThread.loadBlock(blockType.dialogs, block, cl);
         }
 
         return rt;
     }
 
+
+    vkDialog[] getBufferedDialogs(int count, int offset) {
+        const int block = 100;
+        const int upd = 50;
+
+        bool outload;
+        auto rt = getBuffered!vkDialog(block, upd, count, offset, blockType.dialogs, pb.dialogsData, pb.dialogsBuffer, outload);
+
+        immutable vkDialog ld = {
+            name: getLocal("loading")
+        };
+
+        return outload ? [ ld ] : rt;
+    }
+
     bool isScrollAllowed() {
-        return !pb.dialogsLoading;
+        return !pb.dialogsData.loading;
     }
 
     bool isDialogsUpdated() {
-        if(pb.dialogsUpdated) {
-            pb.dialogsUpdated = false;
+        if(pb.dialogsData.updated) {
+            pb.dialogsData.updated = false;
             return true;
         }
         return false;
     }
 
     int getDialogsCount() {
-        return pb.dialogsCount;
+        return pb.dialogsData.serverCount;
     }
 
     // ===== longpoll =====
@@ -686,31 +690,32 @@ private void asyncLongpollWrapper(apiTransfer apist) {
 
 class loadBlockThread : Thread {
 
-    apiTransfer apist;
+    VKapi api;
     blockType bt;
     int count;
     int offset;
 
-    this() {
-        super(&asyncLoadBlock);
+    this(VKapi api) {
+        this.api = api;
+        //super(&asyncLoadBlock);
+        super(&run);
     }
 
-    void setParams(apiTransfer apist, blockType bt, int count, int offset) {
-        this.apist = apist;
+    void loadBlock(blockType bt, int count, int offset) {
         this.bt = bt;
         this.count = count;
         this.offset = offset;
+        this.start();
     }
 
     private void asyncLoadBlock() {
         dbm("asyncLoadBlock start");
-        auto api = new VKapi(apist);
         switch (bt) {
             case blockType.dialogs:
                 int sc;
                 pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset, sc);
-                pb.dialogsCount = sc;
-                pb.dialogsUpdated = true;
+                pb.dialogsData.serverCount = sc;
+                pb.dialogsData.updated = true;
                 break;
             default: break;
         }

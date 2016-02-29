@@ -46,11 +46,10 @@ string longpollReplaces(string inp) {
 }
 
 T[] slice(T)(ref T[] src, int count, int offset) {
-    auto callm = "utils slice count: " ~ count.to!string ~ ", offset: " ~ offset.to!string;
-    dbm(callm);
     try {
         return src[offset..(offset+count)]; //.map!(d => &d).array;
     } catch (RangeError e) {
+        dbm("utils slice count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
         dbm("catched slice ex: " ~ e.msg);
         return [];
     }
