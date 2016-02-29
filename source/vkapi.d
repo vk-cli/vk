@@ -105,12 +105,6 @@ struct vkNextLp {
 
 // === API state and meta =====
 
-struct apiTransfer {
-    string token;
-    bool tokenvalid;
-    vkUser user;
-}
-
 struct apiState {
     bool lp80got = true;
     int latestUnreadMsg = 0;
@@ -150,6 +144,7 @@ __gshared apiState ps = apiState();
 
 __gshared apiBuffers pb = apiBuffers();
 loadBlockThread lbThread;
+longpollThread lpThread;
 
 class VKapi {
 
@@ -167,12 +162,6 @@ class VKapi {
         addMeNC();
     }
 
-    this(apiTransfer st) {
-        vktoken = st.token;
-        isTokenValid = st.tokenvalid;
-        me = st.user;
-    }
-
     void addMeNC() {
         nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
     }
@@ -181,10 +170,7 @@ class VKapi {
         vktoken = token;
         isTokenValid = checkToken(token);
         lbThread = new loadBlockThread(this);
-    }
-
-    apiTransfer exportStruct() {
-        return apiTransfer(vktoken, isTokenValid, me);
+        lpThread = new longpollThread(this);
     }
 
     bool isSomethingUpdated() {
@@ -712,18 +698,26 @@ class VKapi {
     }
 
     void asyncLongpoll() {
-        //auto task = task!(this.startLongpoll)();
-        //task.executeInNewThread();
-        spawn(&asyncLongpollWrapper, this.exportStruct());
+        lpThread.start();
     }
 
 }
 
 // ===== async =====
 
-private void asyncLongpollWrapper(apiTransfer apist) {
-    auto api = new VKapi(apist);
-    api.startLongpoll();
+class longpollThread : Thread {
+
+    VKapi api;
+
+    this(VKapi api) {
+        this.api = api;
+        super(&longpoll);
+    }
+
+    private void longpoll() {
+        api.startLongpoll();
+    }
+
 }
 
 class loadBlockThread : Thread {
