@@ -150,6 +150,7 @@ __gshared apiState ps = apiState();
 
 __gshared apiBuffers pb = apiBuffers();
 loadBlockThread lbThread;
+longpollThread lpThread;
 
 class VKapi {
 
@@ -181,6 +182,7 @@ class VKapi {
         vktoken = token;
         isTokenValid = checkToken(token);
         lbThread = new loadBlockThread(this);
+        lpThread = new longpollThread(this);
     }
 
     apiTransfer exportStruct() {
@@ -712,18 +714,26 @@ class VKapi {
     }
 
     void asyncLongpoll() {
-        //auto task = task!(this.startLongpoll)();
-        //task.executeInNewThread();
-        spawn(&asyncLongpollWrapper, this.exportStruct());
+        lpThread.start();
     }
 
 }
 
 // ===== async =====
 
-private void asyncLongpollWrapper(apiTransfer apist) {
-    auto api = new VKapi(apist);
-    api.startLongpoll();
+class longpollThread : Thread {
+
+    VKapi api;
+
+    this(VKapi api) {
+        this.api = api;
+        super(&longpoll);
+    }
+
+    private void longpoll() {
+        api.startLongpoll();
+    }
+
 }
 
 class loadBlockThread : Thread {
