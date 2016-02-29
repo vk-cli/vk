@@ -118,7 +118,9 @@ struct apiState {
 }
 
 enum blockType {
-    dialogs
+    dialogs,
+    music,
+    friends
 }
 
 struct apiBufferData {
@@ -132,6 +134,10 @@ struct apiBufferData {
 struct apiBuffers {
     vkDialog[] dialogsBuffer;
     apiBufferData dialogsData;
+    vkFriend[] friendsBuffer;
+    apiBufferData friendsData;
+    vkAudio[] audioBuffer;
+    apiBufferData audioData;
 }
 
 struct apiFwdIter {
@@ -566,6 +572,41 @@ class VKapi {
         return rt;
     }
 
+    bool isScrollAllowed() {
+        return !pb.dialogsData.loading;
+    }
+
+    vkDialog[] getBufferedFriends(int count, int offset) {
+        const int block = 100;
+        const int upd = 50;
+
+        bool outload;
+        auto rt = getBuffered!vkFriend(block, upd, count, offset, blockType.friends, pb.friendsData, pb.friendsBuffer, outload);
+
+        immutable vkFriend ld = {
+            first_name: getLocal("loading"),
+            last_name: ""
+        };
+
+        if(outload) rt = [ ld ];
+        return rt;
+    }
+
+    vkDialog[] getBufferedFriends(int count, int offset) {
+        const int block = 100;
+        const int upd = 50;
+
+        bool outload;
+        auto rt = getBuffered!vkAudio(block, upd, count, offset, blockType.music, pb.audioData, pb.audioBuffer, outload);
+
+        immutable vkAudio ld = {
+            artist: getLocal("loading"),
+            titile: ""
+        };
+
+        if(outload) rt = [ ld ];
+        return rt;
+    }
 
     vkDialog[] getBufferedDialogs(int count, int offset) {
         const int block = 100;
@@ -580,10 +621,6 @@ class VKapi {
 
         if(outload) rt = [ ld ];
         return rt;
-    }
-
-    bool isScrollAllowed() {
-        return !pb.dialogsData.loading;
     }
 
     bool isDialogsUpdated() {
@@ -717,6 +754,18 @@ class loadBlockThread : Thread {
                 pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset, sc);
                 pb.dialogsData.serverCount = sc;
                 pb.dialogsData.updated = true;
+                break;
+            case blockType.music:
+                int sc;
+                pb.audioBuffer ~= api.audioGet(count, offset, sc);
+                pb.audioData.serverCount = sc;
+                pb.audioData.updated = true;
+                break;
+            case blockType.friends:
+                int sc;
+                pb.friendsBuffer ~= api.friendsGet(count, offset, sc);
+                pb.friendsData.serverCount = sc;
+                pb.friendsData.updated = true;
                 break;
             default: break;
         }
