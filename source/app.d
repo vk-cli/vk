@@ -241,7 +241,7 @@ void bodyToBuffer() {
   }
 }
 
-void allMessages() {
+void drawDialogsList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (i.to!int == win.active-win.scrollOffset) {
@@ -249,53 +249,41 @@ void allMessages() {
       wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
       cut(i, e).graySelected;
     } else {
-      e.flag ? e.text.gray : e.text.regular;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-      cut(i, e).gray;
+      switch (win.msgDrawSetting) {
+        case DrawSetting.allMessages:
+          allMessages(e, i); break;
+        case DrawSetting.onlySelectedMessage:
+          onlySelectedMessage(e, i); break;
+        case DrawSetting.onlySelectedMessageAndUnread:
+          onlySelectedMessageAndUnread(e, i); break;
+        default: break;
+      }
     }
   }
 }
 
-void onlySelectedMessage() {
-  foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, win.offset+1);
-    if (i.to!int == win.active-win.scrollOffset) {
-      e.text.selected;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-      cut(i, e).graySelected;
-    } else {
-      e.flag ? e.text.gray : e.text.regular;
-    }
-  }
+void allMessages(ListElement e, ulong i) {
+  e.flag ? e.text.gray : e.text.regular;
+  wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+  cut(i, e).gray;
 }
 
-void onlySelectedMessageAndUnread() {
-  foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, win.offset+1);
-    if (i.to!int == win.active-win.scrollOffset) {
-      e.text.selected;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-      cut(i, e).graySelected;
-    } else {
-      if (e.text[0..3] == "⚫") {
-        e.flag ? e.text.gray : e.text.regular;
-        wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-        cut(i, e).gray;
-      } else e.flag ? e.text.gray : e.text.regular;
-    }
-  }
+void onlySelectedMessage(ListElement e, ulong i) {
+  e.flag ? e.text.gray : e.text.regular;
+}
+
+void onlySelectedMessageAndUnread(ListElement e, ulong i) {
+  if (e.text[0..3] == "⚫") {
+    e.flag ? e.text.gray : e.text.regular;
+    wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+    cut(i, e).gray;
+  } else e.flag ? e.text.gray : e.text.regular;
 }
 
 void drawBuffer() {
   bodyToBuffer;
-  if (win.dialogsOpened) {
-    switch (win.msgDrawSetting) {
-      case DrawSetting.allMessages: allMessages; break;
-      case DrawSetting.onlySelectedMessage: onlySelectedMessage; break;
-      case DrawSetting.onlySelectedMessageAndUnread: onlySelectedMessageAndUnread; break;
-      default: break;
-    }
-  } else {
+  if (win.dialogsOpened) drawDialogsList;
+  else {
     foreach(i, e; win.buffer) {
       wmove(stdscr, 2+i.to!int, win.offset+1);
       i.to!int == win.active ? e.text.selected : e.text.regular;
