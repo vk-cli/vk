@@ -174,7 +174,7 @@ class VKapi {
     void tokenInit(string token) {
         vktoken = token;
         isTokenValid = checkToken(token);
-        pb.dialogsThread = new loadBlockThread(this);
+        lbThread = new loadBlockThread(this);
     }
 
     apiTransfer exportStruct() {
@@ -578,7 +578,8 @@ class VKapi {
             name: getLocal("loading")
         };
 
-        return outload ? [ ld ] : rt;
+        if(outload) rt = [ ld ];
+        return rt;
     }
 
     bool isScrollAllowed() {
