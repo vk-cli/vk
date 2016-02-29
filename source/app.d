@@ -177,7 +177,7 @@ void graySelected(string text) {
   attroff(A_REVERSE);
 }
 
-void statusbar(VKapi api) {
+void statusbar() {
   if (win.debugText == "") {
     string notify = " " ~ win.counter.to!string ~ " ✉ ";
     notify.selected;
@@ -227,11 +227,8 @@ void bodyToBuffer() {
   if (win.mbody.length != 0) {
     if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
     else {
+      if (win.dialogsOpened) win.mbody = GetDialogs;
       win.buffer = win.mbody.dup;
-      if (win.dialogsOpened) {
-        win.mbody = GetDialogs;
-        win.buffer = win.mbody.dup;
-      }
     }
     foreach(i, e; win.buffer) {
       if (e.text.walkLength.to!int + win.offset+1 > COLS) {
@@ -281,7 +278,6 @@ void onlySelectedMessageAndUnread(ListElement e, ulong i) {
 }
 
 void drawBuffer() {
-  bodyToBuffer;
   if (win.dialogsOpened) drawDialogsList;
   else {
     foreach(i, e; win.buffer) {
@@ -292,8 +288,10 @@ void drawBuffer() {
 }
 
 void jumpToEnd() {
-  win.active = api.getDialogsCount-1;
-  win.scrollOffset = api.getDialogsCount-LINES+2;
+  if (win.dialogsOpened) {
+    win.active = api.getDialogsCount-1;
+    win.scrollOffset = api.getDialogsCount-LINES+2;
+  }
 }
 
 void controller() {
@@ -309,14 +307,12 @@ void controller() {
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
   else if (canFind(kg_left, win.key)) backEvent;
-  else if (win.key == k_home && api.isScrollAllowed) {
-    win.active = 0;
-    win.scrollOffset = 0;
-  }
+  else if (win.key == k_home && api.isScrollAllowed) { win.active = 0; win.scrollOffset = 0; }
   else if (win.key == k_end && api.isScrollAllowed) jumpToEnd;
   else if (win.key == k_pagedown && api.isScrollAllowed) {
     win.scrollOffset += LINES/2;
     win.active += LINES/2;
+    if (win.active > win.buffer.length) win.active = win.scrollOffset = (win.buffer.length-1).to!int;
   }
   else if (win.key == k_pageup && api.isScrollAllowed) {
     win.scrollOffset -= LINES/2;
@@ -331,28 +327,22 @@ void checkBounds() {
 }
 
 void downEvent() {
-  if (win.section == Sections.left) {
-    win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
-  } else {
+  if (win.section == Sections.left) win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
+  else {
     if (win.dialogsOpened) {
       if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
       if (api.isScrollAllowed) win.active++;
-    } else {
-      win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
-    }
+    } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
 
 void upEvent() {
-  if (win.section == Sections.left) {
-    win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
-  } else {
+  if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
+  else {
     if (win.dialogsOpened && api.isScrollAllowed) {
       win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
       win.active == 0 ? win.active += 0 : win.active--;
-    } else {
-      win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
-    }
+    } else win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
   }
 }
 
@@ -504,8 +494,9 @@ void main(string[] args) {
   while (!canFind(kg_esc, win.key)) {
     clear;
     win.counter = api.messagesCounter();
-    api.statusbar;
+    statusbar;
     drawMenu;
+    bodyToBuffer;
     drawBuffer;
     refresh;
     controller;
