@@ -536,7 +536,7 @@ class VKapi {
         T[] rt;
         bool spawnLoadBlock = false;
 
-        if(bufd.forceUpdate || buf.length < block) buf = new vkDialog[0];
+        if(bufd.forceUpdate || buf.length < block) buf = new T[0];
 
         immutable int cl = buf.length.to!int;
         int needln = count + offset;
@@ -576,7 +576,7 @@ class VKapi {
         return !pb.dialogsData.loading;
     }
 
-    vkDialog[] getBufferedFriends(int count, int offset) {
+    vkFriend[] getBufferedFriends(int count, int offset) {
         const int block = 100;
         const int upd = 50;
 
@@ -592,7 +592,7 @@ class VKapi {
         return rt;
     }
 
-    vkDialog[] getBufferedFriends(int count, int offset) {
+    vkAudio[] getBufferedFriends(int count, int offset) {
         const int block = 100;
         const int upd = 50;
 
@@ -601,7 +601,7 @@ class VKapi {
 
         immutable vkAudio ld = {
             artist: getLocal("loading"),
-            titile: ""
+            title: ""
         };
 
         if(outload) rt = [ ld ];
