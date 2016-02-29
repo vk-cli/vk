@@ -344,7 +344,7 @@ class VKapi {
             if("chat_id" in msg){
                 ds.id = msg["chat_id"].integer.to!int;
                 ds.name = msg["title"].str;
-                ds.online = false;
+                ds.online = true;
             } else {
                 auto uid = msg["user_id"].integer.to!int;
                 ds.id = uid;

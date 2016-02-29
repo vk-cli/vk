@@ -1,6 +1,6 @@
 module utils;
 
-import std.stdio, std.array, std.file, core.thread, std.datetime, std.conv;
+import std.stdio, std.array, std.file, core.thread, core.exception, std.datetime, std.conv;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -46,5 +46,12 @@ string longpollReplaces(string inp) {
 }
 
 T[] slice(T)(ref T[] src, int count, int offset) {
-    return src[offset..(offset+count)]; //.map!(d => &d).array;
+    auto callm = "utils slice count: " ~ count.to!string ~ ", offset: " ~ offset.to!string;
+    dbm(callm);
+    try {
+        return src[offset..(offset+count)]; //.map!(d => &d).array;
+    } catch (RangeError e) {
+        dbm("catched slice ex: " ~ e.msg);
+        return [];
+    }
 }
