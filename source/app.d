@@ -74,9 +74,10 @@ struct Win {
 }
 
 struct ListElement {
-  string text = "", link;
+  string text, link;
   void function(ref ListElement) callback;
   ListElement[] function() getter;
+  bool flag;
 }
 
 void relocale() {
@@ -248,7 +249,7 @@ void allMessages() {
       wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
       cut(i, e).graySelected;
     } else {
-      e.text.regular;
+      e.flag ? e.text.gray : e.text.regular;
       wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
       cut(i, e).gray;
     }
@@ -263,7 +264,7 @@ void onlySelectedMessage() {
       wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
       cut(i, e).graySelected;
     } else {
-      e.text.regular;
+      e.flag ? e.text.gray : e.text.regular;
     }
   }
 }
@@ -277,10 +278,10 @@ void onlySelectedMessageAndUnread() {
       cut(i, e).graySelected;
     } else {
       if (e.text[0..3] == "⚫") {
-        e.text.regular;
+        e.flag ? e.text.gray : e.text.regular;
         wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
         cut(i, e).gray;
-      } else e.text.regular;
+      } else e.flag ? e.text.gray : e.text.regular;
     }
   }
 }
@@ -345,7 +346,7 @@ void downEvent() {
   if (win.section == Sections.left) {
     win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
   } else {
-    if (win.buffer.length != 0) {
+    if (win.dialogsOpened) {
       if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
       if (api.isScrollAllowed) win.active++;
     } else {
@@ -358,11 +359,11 @@ void upEvent() {
   if (win.section == Sections.left) {
     win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   } else {
-    if (win.buffer.length != 0 && api.isScrollAllowed) {
+    if (win.dialogsOpened && api.isScrollAllowed) {
       win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
       win.active == 0 ? win.active += 0 : win.active--;
     } else {
-      if (api.isScrollAllowed) win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
+      win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
     }
   }
 }
@@ -426,10 +427,10 @@ ListElement[] GenerateSettings() {
 ListElement[] GetDialogs() {
   ListElement[] listDialogs;
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
-  string tempName;
+  string newMsg;
   foreach(e; dialogs) {
-    tempName = e.unread ? "⚫ " : "  ";
-    listDialogs ~= ListElement(tempName ~ e.name, ": " ~ e.lastMessage.replace("\n", " "));
+    newMsg = e.unread ? "⚫ " : "  ";
+    listDialogs ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), null, null, e.online);
   }
   win.dialogsOpened = true;
   return listDialogs;
