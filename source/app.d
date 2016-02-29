@@ -140,9 +140,10 @@ void color() {
     init_pair(i, i, -1);
   }
   for (short i = 1; i < Colors.max+1; i++) {
-    init_pair((Colors.max+1+i).to!short, i, 0.to!short);
+    init_pair((Colors.max+1+i).to!short, i, -1.to!short);
   }
   init_pair(Colors.max+1, -1, 0);
+  init_pair(22, 0, -1);
 }
 
 void selected(string text) {
@@ -160,6 +161,14 @@ void regular(string text) {
 }
 
 void gray(string text) {
+  attron(A_BOLD);
+  attron(COLOR_PAIR(22));
+  text.print;
+  attroff(A_BOLD);
+  attroff(COLOR_PAIR(22));
+}
+
+void white(string text) {
   attron(A_BOLD);
   attron(COLOR_PAIR(0));
   text.print;
@@ -260,21 +269,21 @@ void drawDialogsList() {
 }
 
 void allMessages(ListElement e, ulong i) {
-  e.flag ? e.text.gray : e.text.regular;
+  e.flag ? e.text.regular : e.text.gray;
   wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-  cut(i, e).gray;
+  cut(i, e).white;
 }
 
 void onlySelectedMessage(ListElement e, ulong i) {
-  e.flag ? e.text.gray : e.text.regular;
+  e.flag ? e.text.regular : e.text.gray;
 }
 
 void onlySelectedMessageAndUnread(ListElement e, ulong i) {
   if (e.text[0..3] == "⚫") {
-    e.flag ? e.text.gray : e.text.regular;
+    e.flag ? e.text.regular : e.text.gray;
     wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
-    cut(i, e).gray;
-  } else e.flag ? e.text.gray : e.text.regular;
+    cut(i, e).white;
+  } else e.flag ? e.text.regular : e.text.gray;
 }
 
 void drawBuffer() {
@@ -307,14 +316,14 @@ void controller() {
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
   else if (canFind(kg_left, win.key)) backEvent;
-  else if (win.key == k_home && api.isScrollAllowed) { win.active = 0; win.scrollOffset = 0; }
-  else if (win.key == k_end && api.isScrollAllowed) jumpToEnd;
-  else if (win.key == k_pagedown && api.isScrollAllowed) {
+  else if (win.key == k_home && api.isScrollAllowed && win.section == Sections.right) { win.active = 0; win.scrollOffset = 0; }
+  else if (win.key == k_end && api.isScrollAllowed && win.section == Sections.right) jumpToEnd;
+  else if (win.key == k_pagedown && api.isScrollAllowed && win.section == Sections.right) {
     win.scrollOffset += LINES/2;
     win.active += LINES/2;
     if (win.active > win.buffer.length) win.active = win.scrollOffset = (win.buffer.length-1).to!int;
   }
-  else if (win.key == k_pageup && api.isScrollAllowed) {
+  else if (win.key == k_pageup && api.isScrollAllowed && win.section == Sections.right) {
     win.scrollOffset -= LINES/2;
     win.active -= LINES/2;
     if (win.active < 0) win.active = win.scrollOffset = 0;
@@ -493,7 +502,7 @@ void main(string[] args) {
 
   while (!canFind(kg_esc, win.key)) {
     clear;
-    win.counter = api.messagesCounter();
+    win.counter = api.messagesCounter;
     statusbar;
     drawMenu;
     bodyToBuffer;
@@ -504,7 +513,7 @@ void main(string[] args) {
 
   storage.update;
   storage.save;
-  dbmclose();
+  dbmclose;
   endwin;
   exit(0);
 }
