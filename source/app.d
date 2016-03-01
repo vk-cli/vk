@@ -55,7 +55,7 @@ const int[]
 struct Win {
   ListElement[]
   menu = [
-    {},
+    {callback:&open, getter: &GetFriends},
     {callback:&open, getter: &GetDialogs},
     {},
     {callback:&open, getter: &GenerateSettings},
@@ -71,7 +71,7 @@ struct Win {
   string
     debugText;
   bool
-    dialogsOpened;
+    dialogsOpened, friendsOpened;
 }
 
 struct ListElement {
@@ -290,8 +290,16 @@ void onlySelectedMessageAndUnread(ListElement e, ulong i) {
   } else e.flag ? e.name.regular : e.name.secondColor;
 }
 
+void drawFriendsList() {
+  foreach(i, e; win.buffer) {
+    wmove(stdscr, 2+i.to!int, win.offset+1);
+    i.to!int == win.active ? e.name.selected : e.name.regular;
+  }
+}
+
 void drawBuffer() {
   if (win.dialogsOpened) drawDialogsList;
+  else if (win.friendsOpened) drawFriendsList;
   else {
     foreach(i, e; win.buffer) {
       wmove(stdscr, 2+i.to!int, win.offset+1);
@@ -423,15 +431,25 @@ ListElement[] GenerateSettings() {
 }
 
 ListElement[] GetDialogs() {
-  ListElement[] listDialogs;
+  ListElement[] list;
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   string newMsg;
   foreach(e; dialogs) {
     newMsg = e.unread ? "⚫ " : "  ";
-    listDialogs ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), null, null, e.online);
+    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), null, null, e.online);
   }
   win.dialogsOpened = true;
-  return listDialogs;
+  return list;
+}
+
+ListElement[] GetFriends() {
+  ListElement[] list;
+  auto friends = api.getBufferedFriends(LINES-2, win.scrollOffset);
+  foreach(e; friends) {
+    list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.id.to!string, null, null, e.online);
+  }
+  win.friendsOpened = true;
+  return list;
 }
 
 void test() {

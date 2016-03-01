@@ -594,7 +594,7 @@ class VKapi {
         return rt;
     }
 
-    vkAudio[] getBufferedAudio(int count, int offset) {
+    vkAudio[] getBufferedMusic(int count, int offset) {
         const int block = 100;
         const int upd = 50;
 
