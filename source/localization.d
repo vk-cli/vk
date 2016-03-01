@@ -22,7 +22,8 @@ void localize() {
   local["m_music"] = lang("Music", "Музыка");
   local["m_settings"] = lang("Settings", "Настройки");
   local["m_exit"] = lang("Exit", "Выход");
-  local["color"] = lang("Color = ", "Цвет = ");
+  local["main_color"] = lang("Main color = ", "Основной цвет = ");
+  local["second_color"] = lang("Second color = ", "Дополнительный цвет = ");
   local["color0"] = lang("White", "Белый");
   local["color1"] = lang("Red", "Красный");
   local["color2"] = lang("Green", "Зеленый");
@@ -30,6 +31,7 @@ void localize() {
   local["color4"] = lang("Blue", "Синий");
   local["color5"] = lang("Pink", "Розовый");
   local["color6"] = lang("Mint", "Мятный");
+  local["color7"] = lang("Gray", "Серый");
   local["lang"] = lang("Language = English", "Язык = Русский");
   local["display_settings"] = lang("[ Display Settings ]", "[ Настройки отображения ]");
   local["convers_settings"] = lang("[ Conversations Settings ]", "[ Настройки диалогов ]");

@@ -9,7 +9,7 @@ import vkapi, cfg, localization, utils, namecache;
 
 // INIT VARS
 enum Sections { left, right }
-enum Colors { white, red, green, yellow, blue, pink, mint }
+enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 Win win;
 VKapi api;
@@ -63,7 +63,8 @@ struct Win {
   ], 
   buffer, mbody;
   int
-    textcolor = Colors.white,
+    namecolor = Colors.white,
+    textcolor = Colors.gray,
     counter, active, section,
     last_active, offset, key,
     scrollOffset, msgDrawSetting;
@@ -74,22 +75,23 @@ struct Win {
 }
 
 struct ListElement {
-  string text, link;
+  string name, text;
   void function(ref ListElement) callback;
   ListElement[] function() getter;
   bool flag;
 }
 
 void relocale() {
-  win.menu[0].text = "m_friends".getLocal;
-  win.menu[1].text = "m_conversations".getLocal;
-  win.menu[2].text = "m_music".getLocal;
-  win.menu[3].text = "m_settings".getLocal;
-  win.menu[4].text = "m_exit".getLocal;
+  win.menu[0].name = "m_friends".getLocal;
+  win.menu[1].name = "m_conversations".getLocal;
+  win.menu[2].name = "m_music".getLocal;
+  win.menu[3].name = "m_settings".getLocal;
+  win.menu[4].name = "m_exit".getLocal;
 }
 
 void parse(ref string[string] storage) {
-  if ("color" in storage) win.textcolor = storage["color"].to!int;
+  if ("main_color" in storage) win.namecolor = storage["main_color"].to!int;
+  if ("second_color" in storage) win.textcolor = storage["second_color"].to!int;
   if ("message_setting" in storage) win.msgDrawSetting = storage["message_setting"].to!int;
   if ("lang" in storage) if (storage["lang"] == "1") swapLang;
   relocale;
@@ -97,7 +99,8 @@ void parse(ref string[string] storage) {
 
 void update(ref string[string] storage) {
   storage["lang"] = getLang;
-  storage["color"] = win.textcolor.to!string;
+  storage["main_color"] = win.namecolor.to!string;
+  storage["second_color"] = win.textcolor.to!string;
   storage["message_setting"] = win.msgDrawSetting.to!string;
 }
 
@@ -136,54 +139,55 @@ void color() {
   }
   start_color;
   use_default_colors;
-  for (short i = 1; i < Colors.max+1; i++) {
+  for (short i = 0; i < Colors.max; i++) {
     init_pair(i, i, -1);
   }
   for (short i = 1; i < Colors.max+1; i++) {
     init_pair((Colors.max+1+i).to!short, i, -1.to!short);
   }
-  init_pair(Colors.max+1, -1, 0);
-  init_pair(22, 0, -1);
+  init_pair(Colors.max, 0, -1);
+  init_pair(Colors.max+1, -1, -1);
+  init_pair(Colors.max*2+1, 0, -1);
 }
 
-void selected(string text) {
+void selected(string name) {
   attron(A_REVERSE);
-  text.regular;
+  name.regular;
   attroff(A_REVERSE);
 }
 
-void regular(string text) {
+void regular(string name) {
   attron(A_BOLD);
-  attron(COLOR_PAIR(win.textcolor));
-  text.print;
+  attron(COLOR_PAIR(win.namecolor));
+  name.print;
   attroff(A_BOLD);
-  attroff(COLOR_PAIR(win.textcolor));
+  attroff(COLOR_PAIR(win.namecolor));
 }
 
-void gray(string text) {
+void secondColor(string name) {
   attron(A_BOLD);
-  attron(COLOR_PAIR(22));
-  text.print;
+  attron(COLOR_PAIR(win.textcolor+Colors.max+1));
+  name.print;
   attroff(A_BOLD);
-  attroff(COLOR_PAIR(22));
+  attroff(COLOR_PAIR(win.textcolor+Colors.max+1));
 }
 
-void white(string text) {
+void graySelected(string name) {
+  attron(A_REVERSE);
+  attron(A_BOLD);
+  attron(COLOR_PAIR(win.namecolor+Colors.max+1));
+  name.print;
+  attroff(A_BOLD);
+  attroff(COLOR_PAIR(win.namecolor+Colors.max+1));
+  attroff(A_REVERSE);
+}
+
+void white(string name) {
   attron(A_BOLD);
   attron(COLOR_PAIR(0));
-  text.print;
+  name.print;
   attroff(A_BOLD);
   attroff(COLOR_PAIR(0));
-}
-
-void graySelected(string text) {
-  attron(A_REVERSE);
-  attron(A_BOLD);
-  attron(COLOR_PAIR(win.textcolor+7));
-  text.print;
-  attroff(A_BOLD);
-  attroff(COLOR_PAIR(win.textcolor+7));
-  attroff(A_REVERSE);
 }
 
 void statusbar() {
@@ -204,19 +208,19 @@ void Debug(string s = "") {
 
 void setOffset() {
   foreach(le; win.menu) {
-    win.offset = le.text.walkLength.to!int > win.offset ? le.text.walkLength.to!int : win.offset;
+    win.offset = le.name.walkLength.to!int > win.offset ? le.name.walkLength.to!int : win.offset;
   }
   win.offset++;
 }
 
 void drawMenu() {
   foreach(i, le; win.menu) {
-    auto space = (le.text.walkLength < win.offset) ? " ".replicate(win.offset-le.text.walkLength) : "";
-    auto text = le.text ~ space ~ "\n";
+    auto space = (le.name.walkLength < win.offset) ? " ".replicate(win.offset-le.name.walkLength) : "";
+    auto name = le.name ~ space ~ "\n";
     if (win.section == Sections.left) {
-      i == win.active ? text.selected : text.regular;
+      i == win.active ? name.selected : name.regular;
     } else {
-      i == win.last_active ? text.selected : text.regular;
+      i == win.last_active ? name.selected : name.regular;
     }
   }
 }
@@ -224,9 +228,9 @@ void drawMenu() {
 string cut(ulong i, ListElement e) {
   string tempText;
   int cut;
-  tempText = e.link;
-  cut = (COLS-win.offset-win.mbody[i].text.walkLength-1).to!int;
-  if (e.link.walkLength > cut) {
+  tempText = e.text;
+  cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
+  if (e.text.walkLength > cut) {
     tempText = tempText[0..cut];
   }
   return tempText;
@@ -240,9 +244,9 @@ void bodyToBuffer() {
       win.buffer = win.mbody.dup;
     }
     foreach(i, e; win.buffer) {
-      if (e.text.walkLength.to!int + win.offset+1 > COLS) {
-        win.buffer[i].text = e.text[0..COLS-win.offset-4];
-      } else win.buffer[i].text ~= " ".replicate(COLS - e.text.walkLength - win.offset-1);
+      if (e.name.walkLength.to!int + win.offset+1 > COLS) {
+        win.buffer[i].name = e.name[0..COLS-win.offset-4];
+      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.walkLength - win.offset-1);
     }
   }
 }
@@ -251,8 +255,8 @@ void drawDialogsList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (i.to!int == win.active-win.scrollOffset) {
-      e.text.selected;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+      e.name.selected;
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.walkLength.to!int+1);
       cut(i, e).graySelected;
     } else {
       switch (win.msgDrawSetting) {
@@ -269,21 +273,21 @@ void drawDialogsList() {
 }
 
 void allMessages(ListElement e, ulong i) {
-  e.flag ? e.text.regular : e.text.gray;
-  wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+  e.flag ? e.name.regular : e.name.secondColor;
+  wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.walkLength.to!int+1);
   cut(i, e).white;
 }
 
 void onlySelectedMessage(ListElement e, ulong i) {
-  e.flag ? e.text.regular : e.text.gray;
+  e.flag ? e.name.regular : e.name.secondColor;
 }
 
 void onlySelectedMessageAndUnread(ListElement e, ulong i) {
-  if (e.text[0..3] == "⚫") {
-    e.flag ? e.text.regular : e.text.gray;
-    wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].text.walkLength.to!int+1);
+  if (e.name[0..3] == "⚫") {
+    e.flag ? e.name.regular : e.name.secondColor;
+    wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.walkLength.to!int+1);
     cut(i, e).white;
-  } else e.flag ? e.text.regular : e.text.gray;
+  } else e.flag ? e.name.regular : e.name.secondColor;
 }
 
 void drawBuffer() {
@@ -291,7 +295,7 @@ void drawBuffer() {
   else {
     foreach(i, e; win.buffer) {
       wmove(stdscr, 2+i.to!int, win.offset+1);
-      i.to!int == win.active ? e.text.selected : e.text.regular;
+      i.to!int == win.active ? e.name.selected : e.name.regular;
     }
   }
 }
@@ -392,23 +396,29 @@ void changeLang(ref ListElement le) {
   relocale;
 }
 
-void changeColor(ref ListElement le) {
-  win.textcolor == 6 ? win.textcolor = 0 : win.textcolor++;
-  le.text = "color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
+void changeMainColor(ref ListElement le) {
+  win.namecolor == Colors.max ? win.namecolor = 0 : win.namecolor++;
+  le.name = "main_color".getLocal ~ ("color"~win.namecolor.to!string).getLocal;
+}
+
+void changeSecondColor(ref ListElement le) {
+  win.textcolor == Colors.max ? win.textcolor = 0 : win.textcolor++;
+  le.name = "second_color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
 }
 
 void changeMsgSetting(ref ListElement le) {
   win.msgDrawSetting = win.msgDrawSetting != 2 ? win.msgDrawSetting+1 : 0;
-  le.text = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
+  le.name = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
 }
 
 ListElement[] GenerateSettings() {
   return [
-    ListElement(center("display_settings".getLocal, COLS-16, ' '), "", null, null),
-    ListElement("color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeColor, null),
+    ListElement(center("display_settings".getLocal, COLS-16, ' ')),
+    ListElement("main_color".getLocal ~ ("color"~win.namecolor.to!string).getLocal, "", &changeMainColor),
+    ListElement("second_color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeSecondColor),
     ListElement("lang".getLocal, "", &changeLang, null),
-    ListElement(center("convers_settings".getLocal, COLS-16, ' '), "", null, null),
-    ListElement("msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal, "", &changeMsgSetting, null),
+    ListElement(center("convers_settings".getLocal, COLS-16, ' ')),
+    ListElement("msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal, "", &changeMsgSetting),
   ];
 }
 
