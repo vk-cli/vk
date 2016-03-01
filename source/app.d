@@ -468,13 +468,14 @@ void test() {
     //api.asyncLongpoll();
     //readln();
     int i = 0;
-    const int step = 30;
+    const int step = 71;
     while(true) {
         int huj;
-        auto conv = api.messagesGetDialogs(step, i, huj);
+        auto conv = api.getBufferedFriends(step, i);
         //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
         foreach (d; conv) {
-            writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
+            //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
+            writeln("f " ~ d.first_name ~ " " ~ d.last_name ~ " id" ~ d.id.to!string ~ " " ~ (d.online ? " +" : ""));
         }
         readln();
     }

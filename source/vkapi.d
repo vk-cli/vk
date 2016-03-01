@@ -402,14 +402,15 @@ class VKapi {
         return u;
     }
 
-    vkFriend[] friendsGet(int user_id = 0, int count = 0, int offset = 0) {
+    vkFriend[] friendsGet(int count, int offset, out int serverCount, int user_id = 0) {
         auto params = [ "fields": "online" ];
         if(user_id != 0) params["user_id"] = user_id.to!string;
         if(count != 0) params["count"] = count.to!string;
         if(offset != 0) params["offset"] = offset.to!string;
 
         auto resp = vkget("friends.get", params);
-        //resp.toPrettyString().dbm;
+        serverCount = resp["count"].integer.to!int;
+
         vkFriend[] rt;
         foreach(f; resp["items"].array) {
             rt ~= vkFriend(
@@ -420,7 +421,7 @@ class VKapi {
         return rt;
     }
 
-    vkAudio[] audioGet(int owner_id = 0, int album_id = 0, int count = 0, int offset = 0) {
+    vkAudio[] audioGet(int count, int offset, out int serverCount, int owner_id = 0, int album_id = 0) {
         string[string] params;
         if(owner_id != 0) params["owner_id"] = owner_id.to!string;
         if(album_id != 0) params["album_id"] = album_id.to!string;
@@ -428,6 +429,8 @@ class VKapi {
         if(offset != 0) params["offset"] = offset.to!string;
 
         auto resp = vkget("audio.get", params);
+        serverCount = resp["count"].integer.to!int;
+
         vkAudio[] rt;
         foreach(a; resp["items"].array) {
             int ad = a["duration"].integer.to!int;
@@ -538,20 +541,26 @@ class VKapi {
         T[] rt;
         bool spawnLoadBlock = false;
 
-        if(bufd.forceUpdate || buf.length < block) buf = new T[0];
+        dbm("getbuffered count: " ~ count.to!string ~ ", offset: " ~ offset.to!string ~ ", blocktp: " ~ blocktp.to!string);
+
+        if(bufd.forceUpdate){
+             buf = new T[0];
+             dbm(blocktp.to!string ~ " buffer empty now, fc: " ~ bufd.forceUpdate.to!string);
+        }
 
         immutable int cl = buf.length.to!int;
         int needln = count + offset;
 
         if (bufd.serverCount == -1 || cl == 0 || (cl < bufd.serverCount && needln >= (cl-upd))) {
             dbm("called UPD at offset " ~ offset.to!string ~ ", with current trigger " ~ (cl-upd).to!string);
-            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string);
+            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
             spawnLoadBlock = true;
         }
 
         if(bufd.serverCount != -1 && needln > bufd.serverCount) {
-            offset = bufd.serverCount - count;
+            count = bufd.serverCount - offset;
             needln = count + offset;
+            dbm("needln greater than sc, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", needln: " ~ needln.to!string);
         }
 
         if(needln <= cl) {
@@ -560,7 +569,7 @@ class VKapi {
             rt = slice!T(buf, count, offset);
         } else {
             dbm("catched LOADING state at offset " ~ offset.to!string);
-            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string);
+            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
             bufd.loading = true;
             retLoading = true;
         }
@@ -568,7 +577,7 @@ class VKapi {
         if(spawnLoadBlock && !lbThread.isRunning) {
             //auto tid = spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
             //pb.dialogsLatCL = cl;
-            lbThread.loadBlock(blockType.dialogs, block, cl);
+            lbThread.loadBlock(blocktp, block, cl);
         }
 
         return rt;
@@ -760,22 +769,26 @@ class loadBlockThread : Thread {
         dbm("asyncLoadBlock start");
         switch (bt) {
             case blockType.dialogs:
+                dbm("asyncLoadBlock switched dialogs");
                 int sc;
                 pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset, sc);
                 pb.dialogsData.serverCount = sc;
                 pb.dialogsData.updated = true;
                 break;
             case blockType.music:
+                dbm("asyncLoadBlock switched music");
                 int sc;
                 pb.audioBuffer ~= api.audioGet(count, offset, sc);
                 pb.audioData.serverCount = sc;
                 pb.audioData.updated = true;
                 break;
             case blockType.friends:
+                dbm("asyncLoadBlock switched friends");
                 int sc;
                 pb.friendsBuffer ~= api.friendsGet(count, offset, sc);
                 pb.friendsData.serverCount = sc;
                 pb.friendsData.updated = true;
+                dbm("friends info bufl: " ~ pb.friendsBuffer.length.to!string ~ ", sc: " ~ sc.to!string ~ ", strctsc: " ~ pb.friendsData.serverCount.to!string);
                 break;
             default: break;
         }
