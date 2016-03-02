@@ -321,8 +321,8 @@ void drawBuffer() {
 
 void jumpToEnd() {
   if (win.dialogsOpened) {
-    win.active = api.getDialogsCount-1;
-    win.scrollOffset = api.getDialogsCount-LINES+2;
+    win.active = api.getServerCount(blockType.dialogs)-1;
+    win.scrollOffset = api.getServerCount(blockType.dialogs)-LINES+2;
   }
 }
 
@@ -339,14 +339,14 @@ void controller() {
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
   else if (canFind(kg_left, win.key)) backEvent;
-  else if (win.key == k_home && api.isScrollAllowed && win.section == Sections.right) { win.active = 0; win.scrollOffset = 0; }
-  else if (win.key == k_end && api.isScrollAllowed && win.section == Sections.right) jumpToEnd;
-  else if (win.key == k_pagedown && api.isScrollAllowed && win.section == Sections.right) {
+  else if (win.key == k_home && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) { win.active = 0; win.scrollOffset = 0; }
+  else if (win.key == k_end && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) jumpToEnd;
+  else if (win.key == k_pagedown && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) {
     win.scrollOffset += LINES/2;
     win.active += LINES/2;
     if (win.active > win.buffer.length) win.active = win.scrollOffset = (win.buffer.length-1).to!int;
   }
-  else if (win.key == k_pageup && api.isScrollAllowed && win.section == Sections.right) {
+  else if (win.key == k_pageup && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) {
     win.scrollOffset -= LINES/2;
     win.active -= LINES/2;
     if (win.active < 0) win.active = win.scrollOffset = 0;
@@ -356,7 +356,7 @@ void controller() {
 }
 
 void checkBounds() {
-  if (win.dialogsOpened && api.getDialogsCount > 0 && win.active > api.getDialogsCount-1) jumpToEnd;
+  if (win.dialogsOpened && api.getServerCount(blockType.dialogs) > 0 && win.active > api.getServerCount(blockType.dialogs)-1) jumpToEnd;
 }
 
 void downEvent() {
@@ -364,7 +364,7 @@ void downEvent() {
   else {
     if (win.dialogsOpened) {
       if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
-      if (api.isScrollAllowed) win.active++;
+      if (api.isScrollAllowed(blockType.dialogs)) win.active++;
     } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
@@ -372,7 +372,7 @@ void downEvent() {
 void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
-    if (win.dialogsOpened && api.isScrollAllowed) {
+    if (win.dialogsOpened && api.isScrollAllowed(blockType.dialogs)) {
       win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
       win.active == 0 ? win.active += 0 : win.active--;
     } else win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
