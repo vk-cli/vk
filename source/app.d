@@ -218,11 +218,8 @@ void drawMenu() {
   foreach(i, le; win.menu) {
     auto space = (le.name.walkLength < win.offset) ? " ".replicate(win.offset-le.name.walkLength) : "";
     auto name = le.name ~ space ~ "\n";
-    if (win.section == Sections.left) {
-      i == win.active ? name.selected : name.regular;
-    } else {
-      i == win.last_active ? name.selected : name.regular;
-    }
+    if (win.section == Sections.left) i == win.active ? name.selected : name.regular;
+    else i == win.last_active ? name.selected : name.regular;
   }
 }
 
@@ -339,18 +336,20 @@ void controller() {
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
   else if (canFind(kg_left, win.key)) backEvent;
-  else if (win.key == k_home && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) { win.active = 0; win.scrollOffset = 0; }
-  else if (win.key == k_end && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) jumpToEnd;
-  else if (win.key == k_pagedown && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) {
-    win.scrollOffset += LINES/2;
-    win.active += LINES/2;
-    if (win.active > win.buffer.length) win.active = win.scrollOffset = (win.buffer.length-1).to!int;
-  }
-  else if (win.key == k_pageup && api.isScrollAllowed(blockType.dialogs) && win.section == Sections.right) {
-    win.scrollOffset -= LINES/2;
-    win.active -= LINES/2;
-    if (win.active < 0) win.active = win.scrollOffset = 0;
-    if (win.scrollOffset < 0) win.scrollOffset = 0;
+  else if (win.section == Sections.right) {
+    if (win.key == k_home && api.isScrollAllowed(blockType.dialogs)) { win.active = 0; win.scrollOffset = 0; }
+    else if (win.key == k_end && api.isScrollAllowed(blockType.dialogs)) jumpToEnd;
+    else if (win.key == k_pagedown && api.isScrollAllowed(blockType.dialogs)) {
+      win.scrollOffset += LINES/2;
+      win.active += LINES/2;
+      if (win.active > win.buffer.length) win.active = win.scrollOffset = (win.buffer.length-1).to!int;
+    }
+    else if (win.key == k_pageup && api.isScrollAllowed(blockType.dialogs)) {
+      win.scrollOffset -= LINES/2;
+      win.active -= LINES/2;
+      if (win.active < 0) win.active = win.scrollOffset = 0;
+      if (win.scrollOffset < 0) win.scrollOffset = 0;
+    }
   }
   checkBounds;
 }
@@ -362,10 +361,9 @@ void checkBounds() {
 void downEvent() {
   if (win.section == Sections.left) win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
   else {
-    if (win.dialogsOpened) {
-      if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
-      if (api.isScrollAllowed(blockType.dialogs)) win.active++;
-    } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
+    if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
+    if (win.dialogsOpened && api.isScrollAllowed(blockType.dialogs)) win.active++;
+    if (!win.dialogsOpened) win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
 
