@@ -223,12 +223,38 @@ void drawMenu() {
   }
 }
 
+struct kr {
+  ulong start;
+  ulong end;
+  int spaces;
+}
+
+auto kranges = [kr(19968, 40959, 1), kr(12288, 12351, 1), kr(11904, 12031, 1), kr(13312, 19903, 1), kr(63744, 64255, 1), kr(12800, 13055, 1), kr(13056, 13311, 1), kr(12736, 12783, 1)];
+
+ulong kLength(string inp) {
+  return kLength(inp.to!wstring);
+}
+
+ulong kLength(wstring inp) {
+  ulong s = inp.walkLength;
+  foreach(w; inp) {
+    auto c = (cast(ulong)w);
+    foreach(r; kranges) {
+      if(c >= r.start && c <= r.end) {
+        s += r.spaces;
+        break;
+      }
+    }
+  }
+  return s;
+}
+
 string cut(ulong i, ListElement e) {
   string tempText;
   int cut;
   tempText = e.text;
-  cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
-  if (e.text.walkLength > cut) {
+  cut = (COLS-win.offset-win.mbody[i].name.kLength-1).to!int;
+  if (e.text.kLength > cut) {
     tempText = tempText[0..cut];
   }
   return tempText;
@@ -490,6 +516,13 @@ void test() {
         writeln("bad token");
         return;
     }
+
+    string unc = "abc @ 昭夫 菊池";
+    writeln(unc);
+    writeln("def: " ~ unc.length.to!string);
+    writeln("walk: " ~ walkLength(unc).to!string);
+    writeln("kl: " ~ unc.kLength.to!string);
+
     //api.asyncLongpoll();
     //readln();
     //int i = 0;
@@ -520,7 +553,7 @@ void test() {
         writeln(digTest(ww.fwd));
     }+/
 
-    //readln();
+    readln();
     //ticker();
 }
 
