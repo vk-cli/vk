@@ -1,6 +1,6 @@
 module vkapi;
 
-import std.stdio, std.conv, std.string, std.algorithm, std.array, std.datetime, core.time;
+import std.stdio, std.conv, std.string, std.regex, std.algorithm, std.array, std.datetime, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
 import std.parallelism, std.concurrency, core.thread;
@@ -355,8 +355,12 @@ class VKapi {
         foreach(msg; respt){
             auto ds = vkDialog();
             if("chat_id" in msg){
-                ds.id = msg["chat_id"].integer.to!int;
-                ds.name = msg["title"].str;
+                auto ctitle = msg["title"].str;
+                auto cid = msg["chat_id"].integer.to!int + convStartId;
+                nc.addToCache(cid, cachedName(ctitle, ""));
+
+                ds.id = cid;
+                ds.name = ctitle;
                 ds.online = true;
             } else {
                 auto uid = msg["user_id"].integer.to!int;
@@ -541,7 +545,7 @@ class VKapi {
         T[] rt;
         bool spawnLoadBlock = false;
 
-        dbm("getbuffered count: " ~ count.to!string ~ ", offset: " ~ offset.to!string ~ ", blocktp: " ~ blocktp.to!string);
+        //dbm("getbuffered count: " ~ count.to!string ~ ", offset: " ~ offset.to!string ~ ", blocktp: " ~ blocktp.to!string);
 
         if(bufd.forceUpdate){
              buf = new T[0];
@@ -668,6 +672,50 @@ class VKapi {
         return rt;
     }
 
+    void triggerNewMessage(JSONValue u) {
+        auto mid = u[1].integer.to!int;
+        auto flags = u[2].integer.to!int;
+        auto peer = u[3].integer.to!int;
+        auto utime = u[4].integer.to!long;
+        auto msg = u[6].str.longpollReplaces;
+        auto att = u[7];
+
+        bool outbox = (flags & 2) == 2;
+        bool unread = (flags & 1) == 1;
+        bool hasattaches = att.object.keys.map!(a => (a == "fwd") || a.matchAll(r"attach.*")).any!"a";
+
+        auto conv = (peer > convStartId);
+        auto from = conv ? att["from"].str.to!int : ( outbox ? me.id : peer );
+        auto title = conv ? u[5].str : nc.getName(peer).strName;
+
+        vkDialog nd = {
+            name: title, lastMessage: msg,
+            id: peer, online: true, //todo resolve online
+            unread: unread
+        };
+
+        if(pb.dialogsBuffer[0].id == peer) {
+            pb.dialogsBuffer[0] = nd;
+            dbm("nm trigger first dlg");
+        } else {
+
+            auto old = pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
+            if(old != -1) {
+                pb.dialogsBuffer = nd ~ pb.dialogsBuffer[0..old] ~ pb.dialogsBuffer[(old+1)..pb.dialogsBuffer.length];
+                dbm("nm trigger found old");
+            } else {
+                pb.dialogsBuffer = nd ~ pb.dialogsBuffer;
+            }
+
+            dbm("nm trigger added dlg");
+        }
+
+        toggleUpdate();
+        dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
+        dbm("db peers: " ~ pb.dialogsBuffer[0..7].map!(q => q.id.to!string).join(", ") );
+
+    }
+
     vkNextLp parseLongpoll(string resp) {
         JSONValue j = parseJSON(resp);
         vkNextLp rt;
@@ -678,9 +726,8 @@ class VKapi {
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
                     case 4: //new message
-                        immutable string mbody = u[6].str.longpollReplaces;
-                        dbm("longpoll message: " ~ mbody);
-                        //todo toggle update condition
+                        dbm("new lp: " ~ j.toPrettyString());
+                        triggerNewMessage(u);
                         break;
                     case 80: //counter update
                         if(return80mc) {

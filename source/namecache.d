@@ -9,7 +9,10 @@ struct cachedName {
 }
 
 string strName(cachedName inp) {
-    return inp.first_name ~ " " ~ inp.last_name;
+    auto ln = inp.last_name;
+    auto rt = inp.first_name;
+    if(ln.length != 0) rt ~= " " ~ ln;
+    return rt;
 }
 
 struct nameCache {
