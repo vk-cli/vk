@@ -403,7 +403,7 @@ class VKapi {
     }
 
     vkFriend[] friendsGet(int count, int offset, out int serverCount, int user_id = 0) {
-        auto params = [ "fields": "online", "order": "hint"];
+        auto params = [ "fields": "online", "order": "hints"];
         if(user_id != 0) params["user_id"] = user_id.to!string;
         if(count != 0) params["count"] = count.to!string;
         if(offset != 0) params["offset"] = offset.to!string;
