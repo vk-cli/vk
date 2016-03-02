@@ -583,10 +583,6 @@ class VKapi {
         return rt;
     }
 
-    bool isScrollAllowed() {
-        return !pb.dialogsData.loading;
-    }
-
     vkFriend[] getBufferedFriends(int count, int offset) {
         const int block = 100;
         const int upd = 50;
@@ -634,16 +630,30 @@ class VKapi {
         return rt;
     }
 
-    bool isDialogsUpdated() {
-        if(pb.dialogsData.updated) {
-            pb.dialogsData.updated = false;
+    private apiBufferData* getData(blockType tp) {
+        switch(tp){
+            case blockType.dialogs: return &pb.dialogsData;
+            case blockType.friends: return &pb.friendsData;
+            case blockType.music: return &pb.audioData;
+            default: assert(0);
+        }
+    }
+
+    int getServerCount(blockType tp) {
+        return getData(tp).serverCount;
+    }
+
+    bool isScrollAllowed(blockType tp) {
+        return !getData(tp).loading;
+    }
+
+    bool isUpdated(blockType tp) {
+        auto data = getData(tp);
+        if(data.updated) {
+            data.updated = false;
             return true;
         }
         return false;
-    }
-
-    int getDialogsCount() {
-        return pb.dialogsData.serverCount;
     }
 
     // ===== longpoll =====
