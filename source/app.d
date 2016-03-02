@@ -241,6 +241,7 @@ void bodyToBuffer() {
     if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
     else {
       if (win.dialogsOpened) win.mbody = GetDialogs;
+      if (win.friendsOpened) win.mbody = GetFriends;
       win.buffer = win.mbody.dup;
     }
     foreach(i, e; win.buffer) {
