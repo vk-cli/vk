@@ -293,7 +293,7 @@ void onlySelectedMessageAndUnread(ListElement e, ulong i) {
 void drawFriendsList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
-    i.to!int == win.active ? e.name.selected : e.name.regular;
+    i.to!int == win.active ? e.name.selected : e.flag ? e.name.regular : e.name.secondColor;
   }
 }
 
@@ -467,18 +467,18 @@ void test() {
     }
     //api.asyncLongpoll();
     //readln();
-    int i = 0;
-    const int step = 71;
-    while(true) {
-        int huj;
-        auto conv = api.getBufferedFriends(step, i);
-        //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
-        foreach (d; conv) {
-            //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
-            writeln("f " ~ d.first_name ~ " " ~ d.last_name ~ " id" ~ d.id.to!string ~ " " ~ (d.online ? " +" : ""));
-        }
-        readln();
-    }
+    //int i = 0;
+    //const int step = 71;
+    //while(true) {
+    //    int huj;
+    //    auto conv = api.getBufferedFriends(step, i);
+    //    //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
+    //    foreach (d; conv) {
+    //        //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
+    //        writeln("f " ~ d.first_name ~ " " ~ d.last_name ~ " id" ~ d.id.to!string ~ " " ~ (d.online ? " +" : ""));
+    //    }
+    //    readln();
+    //}
     //dbm("dbuf: " ~ api.pb.alldialogs.length.to!string);
     //nc.dbmAll();
     //auto fr = api.friendsGet();
