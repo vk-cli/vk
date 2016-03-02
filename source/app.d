@@ -57,7 +57,7 @@ struct Win {
   menu = [
     {callback:&open, getter: &GetFriends},
     {callback:&open, getter: &GetDialogs},
-    {},
+    {callback:&open, getter: &GetMusic},
     {callback:&open, getter: &GenerateSettings},
     {callback:&exit}
   ], 
@@ -71,7 +71,8 @@ struct Win {
   string
     debugText;
   bool
-    dialogsOpened, friendsOpened;
+    dialogsOpened, friendsOpened,
+    musicOpened;
 }
 
 struct ListElement {
@@ -242,6 +243,7 @@ void bodyToBuffer() {
     else {
       if (win.dialogsOpened) win.mbody = GetDialogs;
       if (win.friendsOpened) win.mbody = GetFriends;
+      if (win.musicOpened) win.mbody = GetMusic;
       win.buffer = win.mbody.dup;
     }
     foreach(i, e; win.buffer) {
@@ -298,9 +300,17 @@ void drawFriendsList() {
   }
 }
 
+void drawMusicList() {
+  foreach(i, e; win.buffer) {
+    wmove(stdscr, 2+i.to!int, win.offset+1);
+    i.to!int == win.active ? e.name.selected : e.name.regular;
+  }
+}
+
 void drawBuffer() {
   if (win.dialogsOpened) drawDialogsList;
   else if (win.friendsOpened) drawFriendsList;
+  else if (win.musicOpened) drawMusicList;
   else {
     foreach(i, e; win.buffer) {
       wmove(stdscr, 2+i.to!int, win.offset+1);
@@ -382,7 +392,9 @@ void selectEvent() {
 
 void backEvent() {
   if (win.section == Sections.right) {
-    if (win.dialogsOpened) win.dialogsOpened = false;
+    win.dialogsOpened = false;
+    win.friendsOpened = false;
+    win.musicOpened = false;
     win.active = win.last_active;
     win.scrollOffset = 0;
     win.section = Sections.left;
@@ -450,6 +462,20 @@ ListElement[] GetFriends() {
     list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.id.to!string, null, null, e.online);
   }
   win.friendsOpened = true;
+  return list;
+}
+
+ListElement[] GetMusic() {
+  ListElement[] list;
+  auto music = api.getBufferedMusic(LINES-2, win.scrollOffset);
+  string space;
+  int amount;
+  foreach(e; music) {
+    amount = COLS - 5 - win.offset - e.artist.walkLength.to!int - e.title.walkLength.to!int - e.duration_str.length.to!int;
+    space = " ".replicate(amount);
+    list ~= ListElement(e.artist ~ " - " ~ e.title ~ space ~ e.duration_str, e.url);
+  }
+  win.musicOpened = true;
   return list;
 }
 
