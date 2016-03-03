@@ -701,7 +701,7 @@ class VKapi {
         vkDialog nd = {
             name: title, lastMessage: msg,
             id: peer, online: true,
-            unread: unread
+            unread: (unread && !outbox)
         };
 
         if(first) {
