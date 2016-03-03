@@ -52,6 +52,23 @@ const int[]
   kg_left  = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
+const kranges = [
+  kr(19968, 40959, 1),
+  kr(12288, 12351, 1),
+  kr(11904, 12031, 1),
+  kr(13312, 19903, 1),
+  kr(63744, 64255, 1),
+  kr(12800, 13055, 1),
+  kr(13056, 13311, 1),
+  kr(12736, 12783, 1),
+  ];
+
+struct kr {
+  ulong 
+    start, end;
+  int spaces;
+}
+
 struct Win {
   ListElement[]
   menu = [
@@ -223,27 +240,13 @@ void drawMenu() {
   }
 }
 
-struct kr {
-  ulong start;
-  ulong end;
-  int spaces;
-}
-
-auto kranges = [kr(19968, 40959, 1), kr(12288, 12351, 1), kr(11904, 12031, 1), kr(13312, 19903, 1), kr(63744, 64255, 1), kr(12800, 13055, 1), kr(13056, 13311, 1), kr(12736, 12783, 1)];
-
 ulong kLength(string inp) {
-  return kLength(inp.to!wstring);
-}
-
-ulong kLength(wstring inp) {
-  ulong s = inp.walkLength;
-  foreach(w; inp) {
+  auto wstrInput = inp.to!wstring;
+  ulong s = wstrInput.walkLength;
+  foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
     foreach(r; kranges) {
-      if(c >= r.start && c <= r.end) {
-        s += r.spaces;
-        break;
-      }
+      if(c >= r.start && c <= r.end) s += r.spaces; break;
     }
   }
   return s;
@@ -253,8 +256,8 @@ string cut(ulong i, ListElement e) {
   string tempText;
   int cut;
   tempText = e.text;
-  cut = (COLS-win.offset-win.mbody[i].name.kLength-1).to!int;
-  if (e.text.kLength > cut) {
+  cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
+  if (e.text.walkLength > cut) {
     tempText = tempText[0..cut];
   }
   return tempText;
@@ -272,7 +275,7 @@ void bodyToBuffer() {
     foreach(i, e; win.buffer) {
       if (e.name.walkLength.to!int + win.offset+1 > COLS) {
         win.buffer[i].name = e.name[0..COLS-win.offset-4];
-      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.walkLength - win.offset-1);
+      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.kLength - win.offset-1);
     }
   }
 }
@@ -282,7 +285,7 @@ void drawDialogsList() {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (i.to!int == win.active-win.scrollOffset) {
       e.name.selected;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.walkLength.to!int+1);
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.kLength.to!int+1);
       cut(i, e).graySelected;
     } else {
       switch (win.msgDrawSetting) {
