@@ -62,6 +62,10 @@ const utfranges = [
   utf(12800, 13055, 1),
   utf(13056, 13311, 1),
   utf(12736, 12783, 1),
+  utf(12448, 12543, 1),
+  utf(12352, 12447, 1),
+  utf(110592, 110847, 1),
+  utf(65280, 65519, 1)
   ];
 
 struct utf {
@@ -247,7 +251,10 @@ ulong utfLength(string inp) {
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
     foreach(r; utfranges) {
-      if(c >= r.start && c <= r.end) s += r.spaces; break;
+      if(c >= r.start && c <= r.end) {
+        s += r.spaces;
+        break;
+      }
     }
   }
   return s;
@@ -546,7 +553,7 @@ void test() {
         return;
     }
 
-    string unc = "abc @ 昭夫 菊池";
+    string unc = "TsuShiMaMiRe – ニンゲン・コーティング";
     writeln(unc);
     writeln("def: " ~ unc.length.to!string);
     writeln("walk: " ~ walkLength(unc).to!string);
