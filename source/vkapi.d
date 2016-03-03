@@ -34,6 +34,7 @@ struct vkUser {
 struct vkDialog {
     string name;
     string lastMessage = "";
+    int lastmid;
     int id = -1;
     bool unread = false;
     bool online;
@@ -373,6 +374,7 @@ class VKapi {
                 ds.online = (uid in online) ? online[uid] : false;
             }
             ds.lastMessage = msg["body"].str;
+            ds.lastmid = msg["id"].integer.to!int;
             if(msg["out"].integer == 0 && msg["read_state"].integer == 0) ds.unread = true;
             dialogs ~= ds;
             //dbm(ds.id.to!string ~ " " ~ ds.unread.to!string ~ "   " ~ ds.name ~ " " ~ ds.lastMessage);
@@ -699,7 +701,7 @@ class VKapi {
         auto title = conv ? u[5].str : ( oldfound ? nc.getName(peer).strName : "" );
 
         vkDialog nd = {
-            name: title, lastMessage: msg,
+            name: title, lastMessage: msg, lastmid: mid,
             id: peer, online: true,
             unread: (unread && !outbox)
         };
@@ -730,6 +732,21 @@ class VKapi {
 
     }
 
+    void triggerRead(JSONValue u) {
+        auto peer = u[1].integer.to!int;
+        auto mid = u[2].integer.to!int;
+
+        auto dc = pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
+        if(dc == -1) return;
+
+        if(pb.dialogsBuffer[dc].lastmid == mid) {
+            pb.dialogsBuffer[dc].unread = false;
+        }
+
+        toggleUpdate();
+
+    }
+
     vkNextLp parseLongpoll(string resp) {
         JSONValue j = parseJSON(resp);
         vkNextLp rt;
@@ -750,6 +767,9 @@ class VKapi {
                             ps.lp80got = true;
                         }
                         toggleUpdate();
+                        break;
+                    case 6: //inbox read
+                        triggerRead(u);
                         break;
                     default:
                         break;
