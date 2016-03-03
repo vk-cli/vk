@@ -93,8 +93,8 @@ struct Win {
     activeBuffer;
   string
     debugText;
-  //bool
-    //dialogsOpened;
+  bool
+    dialogsOpened;
 }
 
 struct ListElement {
