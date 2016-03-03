@@ -53,18 +53,18 @@ const int[]
   kg_left  = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
-const kranges = [
-  kr(19968, 40959, 1),
-  kr(12288, 12351, 1),
-  kr(11904, 12031, 1),
-  kr(13312, 19903, 1),
-  kr(63744, 64255, 1),
-  kr(12800, 13055, 1),
-  kr(13056, 13311, 1),
-  kr(12736, 12783, 1),
+const utfranges = [
+  utf(19968, 40959, 1),
+  utf(12288, 12351, 1),
+  utf(11904, 12031, 1),
+  utf(13312, 19903, 1),
+  utf(63744, 64255, 1),
+  utf(12800, 13055, 1),
+  utf(13056, 13311, 1),
+  utf(12736, 12783, 1),
   ];
 
-struct kr {
+struct utf {
   ulong 
     start, end;
   int spaces;
@@ -241,7 +241,7 @@ void drawMenu() {
   }
 }
 
-ulong kLength(string inp) {
+ulong utfLength(string inp) {
   auto wstrInput = inp.to!wstring;
   ulong s = wstrInput.walkLength;
   foreach(w; wstrInput) {
@@ -277,9 +277,9 @@ void bodyToBuffer() {
       win.buffer = win.mbody.dup;
     }
     foreach(i, e; win.buffer) {
-      if (e.name.kLength.to!int + win.offset+1 > COLS) {
+      if (e.name.utfLength.to!int + win.offset+1 > COLS) {
         win.buffer[i].name = e.name[0..COLS-win.offset-4];
-      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.kLength - win.offset-1);
+      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.offset-1);
     }
   }
 }
@@ -289,7 +289,7 @@ void drawDialogsList() {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (i.to!int == win.active-win.scrollOffset) {
       e.name.selected;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.kLength.to!int+1);
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.utfLength.to!int+1);
       cut(i, e).graySelected;
     } else {
       switch (win.msgDrawSetting) {
@@ -523,7 +523,7 @@ ListElement[] GetMusic() {
   string space;
   int amount;
   foreach(e; music) {
-    amount = COLS - 5 - win.offset - e.artist.kLength.to!int - e.title.kLength.to!int - e.duration_str.length.to!int;
+    amount = COLS - 5 - win.offset - e.artist.utfLength.to!int - e.title.utfLength.to!int - e.duration_str.length.to!int;
     space = " ".replicate(amount);
     list ~= ListElement(e.artist ~ " - " ~ e.title ~ space ~ e.duration_str, e.url);
   }
@@ -549,7 +549,7 @@ void test() {
     writeln(unc);
     writeln("def: " ~ unc.length.to!string);
     writeln("walk: " ~ walkLength(unc).to!string);
-    writeln("kl: " ~ unc.kLength.to!string);
+    writeln("kl: " ~ unc.utfLength.to!string);
 
     //api.asyncLongpoll();
     //readln();
