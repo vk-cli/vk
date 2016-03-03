@@ -28,11 +28,13 @@ struct vkUser {
     string first_name;
     string last_name;
     int id;
+    bool online;
 }
 
 struct vkDialog {
     string name;
     string lastMessage = "";
+    int lastmid;
     int id = -1;
     bool unread = false;
     bool online;
@@ -125,7 +127,7 @@ enum blockType {
 
 struct apiBufferData {
     int serverCount = -1;
-    bool forceUpdate = false;
+    bool forceUpdate = true;
     bool loading = false;
     bool updated = false;
 
@@ -299,6 +301,9 @@ class VKapi {
             first_name:resp["first_name"].str,
             last_name:resp["last_name"].str
         };
+
+        if("online" in resp) rt.online = (resp["online"].integer == 1);
+
         return rt;
     }
 
@@ -369,6 +374,7 @@ class VKapi {
                 ds.online = (uid in online) ? online[uid] : false;
             }
             ds.lastMessage = msg["body"].str;
+            ds.lastmid = msg["id"].integer.to!int;
             if(msg["out"].integer == 0 && msg["read_state"].integer == 0) ds.unread = true;
             dialogs ~= ds;
             //dbm(ds.id.to!string ~ " " ~ ds.unread.to!string ~ "   " ~ ds.name ~ " " ~ ds.lastMessage);
@@ -549,6 +555,7 @@ class VKapi {
 
         if(bufd.forceUpdate){
              buf = new T[0];
+             bufd.forceUpdate = false;
              dbm(blocktp.to!string ~ " buffer empty now, fc: " ~ bufd.forceUpdate.to!string);
         }
 
@@ -673,6 +680,8 @@ class VKapi {
     }
 
     void triggerNewMessage(JSONValue u) {
+        if(pb.dialogsData.forceUpdate) return;
+
         auto mid = u[1].integer.to!int;
         auto flags = u[2].integer.to!int;
         auto peer = u[3].integer.to!int;
@@ -686,33 +695,83 @@ class VKapi {
 
         auto conv = (peer > convStartId);
         auto from = conv ? att["from"].str.to!int : ( outbox ? me.id : peer );
-        auto title = conv ? u[5].str : nc.getName(peer).strName;
+        auto first = (pb.dialogsBuffer[0].id == peer);
+        auto old = first ? 0 : pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
+        auto oldfound = (old != -1);
+        auto title = conv ? u[5].str : ( oldfound ? nc.getName(peer).strName : "" );
 
         vkDialog nd = {
-            name: title, lastMessage: msg,
-            id: peer, online: true, //todo resolve online
-            unread: unread
+            name: title, lastMessage: msg, lastmid: mid,
+            id: peer, online: true,
+            unread: (unread && !outbox)
         };
 
-        if(pb.dialogsBuffer[0].id == peer) {
+        if(first) {
             pb.dialogsBuffer[0] = nd;
-            dbm("nm trigger first dlg");
         } else {
 
-            auto old = pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
-            if(old != -1) {
+            if(oldfound) {
+                if(!conv) nd.online = pb.dialogsBuffer[old].online;
                 pb.dialogsBuffer = nd ~ pb.dialogsBuffer[0..old] ~ pb.dialogsBuffer[(old+1)..pb.dialogsBuffer.length];
-                dbm("nm trigger found old");
             } else {
+                if (!conv) {
+                    auto peerinfo = usersGet(peer, "online");
+                    auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
+                    nc.addToCache(peerinfo.id, peername);
+                    nd.name = peername.strName;
+                    nd.online = peerinfo.online;
+                }
                 pb.dialogsBuffer = nd ~ pb.dialogsBuffer;
             }
 
-            dbm("nm trigger added dlg");
         }
 
         toggleUpdate();
         dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
         dbm("db peers: " ~ pb.dialogsBuffer[0..7].map!(q => q.id.to!string).join(", ") );
+
+    }
+
+    void triggerRead(JSONValue u) {
+        auto peer = u[1].integer.to!int;
+        auto mid = u[2].integer.to!int;
+
+        auto dc = pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
+        if(dc == -1) return;
+
+        if(pb.dialogsBuffer[dc].lastmid == mid) {
+            pb.dialogsBuffer[dc].unread = false;
+        }
+
+        toggleUpdate();
+
+    }
+
+    void triggerOnline(JSONValue u) {
+        auto uid = u[1].integer.to!int * -1;
+        auto flags = u[2].integer.to!int;
+        auto event = u[0].integer.to!int;
+        bool exit = (event == 9);
+        if(!exit && event != 8) return;
+        dbm("trigger online event: " ~ event.to!string ~ ", uid: " ~ uid.to!string);
+
+        auto dc = (pb.dialogsData.forceUpdate) ? -1 : pb.dialogsBuffer.map!(q => q.id == uid).countUntil(true);
+        auto fc = (pb.friendsData.forceUpdate) ? -1 : pb.friendsBuffer.map!(q => q.id == uid).countUntil(true);
+        bool upd = false;
+
+        if(dc != -1) {
+            pb.dialogsBuffer[dc].online = !exit;
+            dbm("trigger online dc");
+            upd = true;
+        }
+
+        if(fc != -1) {
+            pb.friendsBuffer[fc].online = !exit;
+            dbm("trigger online fc");
+            upd = true;
+        }
+
+        if(upd) toggleUpdate();
 
     }
 
@@ -723,10 +782,10 @@ class VKapi {
         auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
         if(failed == -1) {
             auto upd = j["updates"].array;
+            dbm("new lp: " ~ j.toPrettyString());
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
                     case 4: //new message
-                        dbm("new lp: " ~ j.toPrettyString());
                         triggerNewMessage(u);
                         break;
                     case 80: //counter update
@@ -736,6 +795,15 @@ class VKapi {
                             ps.lp80got = true;
                         }
                         toggleUpdate();
+                        break;
+                    case 6: //inbox read
+                        triggerRead(u);
+                        break;
+                    case 8:
+                        triggerOnline(u);
+                        break;
+                    case 9:
+                        triggerOnline(u);
                         break;
                     default:
                         break;
