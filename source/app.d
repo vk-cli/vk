@@ -324,14 +324,14 @@ void onlySelectedMessageAndUnread(ListElement e, ulong i) {
 void drawFriendsList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
-    i.to!int == win.active ? e.name.selected : e.flag ? e.name.regular : e.name.secondColor;
+    i.to!int == win.active-win.scrollOffset ? e.name.selected : e.flag ? e.name.regular : e.name.secondColor;
   }
 }
 
 void drawMusicList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
-    i.to!int == win.active ? e.name.selected : e.name.regular;
+    i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
   }
 }
 
@@ -518,12 +518,16 @@ ListElement[] GetFriends() {
 ListElement[] GetMusic() {
   ListElement[] list;
   auto music = api.getBufferedMusic(LINES-2, win.scrollOffset);
-  string space;
+  string space, artistAndSong;
   int amount;
   foreach(e; music) {
-    amount = COLS - 5 - win.offset - e.artist.utfLength.to!int - e.title.utfLength.to!int - e.duration_str.length.to!int;
+    artistAndSong = e.artist ~ " - " ~ e.title;
+    if (artistAndSong.utfLength > COLS-5-win.offset-e.duration_str.length.to!int) {
+      artistAndSong = artistAndSong[0..COLS-5-win.offset-e.duration_str.length.to!int];
+      amount = COLS-6-win.offset-artistAndSong.utfLength.to!int;
+    } else amount = COLS - 5 - win.offset - e.artist.utfLength.to!int - e.title.utfLength.to!int - e.duration_str.length.to!int;
     space = " ".replicate(amount);
-    list ~= ListElement(e.artist ~ " - " ~ e.title ~ space ~ e.duration_str, e.url);
+    list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url);
   }
   win.activeBuffer = Buffers.music;
   return list;
