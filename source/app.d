@@ -277,7 +277,7 @@ void bodyToBuffer() {
       win.buffer = win.mbody.dup;
     }
     foreach(i, e; win.buffer) {
-      if (e.name.walkLength.to!int + win.offset+1 > COLS) {
+      if (e.name.kLength.to!int + win.offset+1 > COLS) {
         win.buffer[i].name = e.name[0..COLS-win.offset-4];
       } else win.buffer[i].name ~= " ".replicate(COLS - e.name.kLength - win.offset-1);
     }
@@ -523,7 +523,7 @@ ListElement[] GetMusic() {
   string space;
   int amount;
   foreach(e; music) {
-    amount = COLS - 5 - win.offset - e.artist.walkLength.to!int - e.title.walkLength.to!int - e.duration_str.length.to!int;
+    amount = COLS - 5 - win.offset - e.artist.kLength.to!int - e.title.kLength.to!int - e.duration_str.length.to!int;
     space = " ".replicate(amount);
     list ~= ListElement(e.artist ~ " - " ~ e.title ~ space ~ e.duration_str, e.url);
   }
