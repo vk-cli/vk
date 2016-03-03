@@ -395,7 +395,6 @@ void controller() {
     else if (win.key == k_pagedown) {
       win.scrollOffset += LINES/2;
       win.active += LINES/2;
-      if (win.active > win.buffer.length) win.active = win.scrollOffset = (win.buffer.length-1).to!int;
     }
     else if (win.key == k_pageup) {
       win.scrollOffset -= LINES/2;
