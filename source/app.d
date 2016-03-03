@@ -265,9 +265,7 @@ string cut(ulong i, ListElement e) {
   int cut;
   tempText = e.text;
   cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
-  if (e.text.walkLength > cut) {
-    tempText = tempText[0..cut];
-  }
+  if (e.text.walkLength > cut) tempText = tempText[0..cut];
   return tempText;
 }
 
@@ -443,9 +441,7 @@ void selectEvent() {
     win.last_active = win.active;
     win.active = 0;
     win.section = Sections.right;
-  } else {
-    if (win.mbody[win.active].callback) win.mbody[win.active].callback(win.mbody[win.active]);
-  }
+  } else if (win.mbody[win.active].callback) win.mbody[win.active].callback(win.mbody[win.active]);
 }
 
 void backEvent() {
