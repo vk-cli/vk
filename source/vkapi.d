@@ -126,7 +126,7 @@ enum blockType {
 
 struct apiBufferData {
     int serverCount = -1;
-    bool forceUpdate = false;
+    bool forceUpdate = true;
     bool loading = false;
     bool updated = false;
 
@@ -553,6 +553,7 @@ class VKapi {
 
         if(bufd.forceUpdate){
              buf = new T[0];
+             bufd.forceUpdate = false;
              dbm(blocktp.to!string ~ " buffer empty now, fc: " ~ bufd.forceUpdate.to!string);
         }
 
@@ -677,6 +678,8 @@ class VKapi {
     }
 
     void triggerNewMessage(JSONValue u) {
+        if(pb.dialogsData.forceUpdate) return;
+
         auto mid = u[1].integer.to!int;
         auto flags = u[2].integer.to!int;
         auto peer = u[3].integer.to!int;
