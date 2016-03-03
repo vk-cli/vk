@@ -747,6 +747,34 @@ class VKapi {
 
     }
 
+    void triggerOnline(JSONValue u) {
+        auto uid = u[1].integer.to!int * -1;
+        auto flags = u[2].integer.to!int;
+        auto event = u[0].integer.to!int;
+        bool exit = (event == 9);
+        if(!exit && event != 8) return;
+        dbm("trigger online event: " ~ event.to!string ~ ", uid: " ~ uid.to!string);
+
+        auto dc = (pb.dialogsData.forceUpdate) ? -1 : pb.dialogsBuffer.map!(q => q.id == uid).countUntil(true);
+        auto fc = (pb.friendsData.forceUpdate) ? -1 : pb.friendsBuffer.map!(q => q.id == uid).countUntil(true);
+        bool upd = false;
+
+        if(dc != -1) {
+            pb.dialogsBuffer[dc].online = !exit;
+            dbm("trigger online dc");
+            upd = true;
+        }
+
+        if(fc != -1) {
+            pb.friendsBuffer[fc].online = !exit;
+            dbm("trigger online fc");
+            upd = true;
+        }
+
+        if(upd) toggleUpdate();
+
+    }
+
     vkNextLp parseLongpoll(string resp) {
         JSONValue j = parseJSON(resp);
         vkNextLp rt;
@@ -754,10 +782,10 @@ class VKapi {
         auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
         if(failed == -1) {
             auto upd = j["updates"].array;
+            dbm("new lp: " ~ j.toPrettyString());
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
                     case 4: //new message
-                        dbm("new lp: " ~ j.toPrettyString());
                         triggerNewMessage(u);
                         break;
                     case 80: //counter update
@@ -770,6 +798,12 @@ class VKapi {
                         break;
                     case 6: //inbox read
                         triggerRead(u);
+                        break;
+                    case 8:
+                        triggerOnline(u);
+                        break;
+                    case 9:
+                        triggerOnline(u);
                         break;
                     default:
                         break;
