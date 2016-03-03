@@ -246,7 +246,7 @@ ulong utfLength(string inp) {
   ulong s = wstrInput.walkLength;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
-    foreach(r; kranges) {
+    foreach(r; utfranges) {
       if(c >= r.start && c <= r.end) s += r.spaces; break;
     }
   }
@@ -266,16 +266,14 @@ string cut(ulong i, ListElement e) {
 
 void bodyToBuffer() {
   if (win.mbody.length != 0) {
-    if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
-    else {
-      switch (win.activeBuffer) {
-        case Buffers.dialogs: win.mbody = GetDialogs; break;
-        case Buffers.friends: win.mbody = GetFriends; break;
-        case Buffers.music: win.mbody = GetMusic; break;
-        default: break;
-      }
-      win.buffer = win.mbody.dup;
+    switch (win.activeBuffer) {
+      case Buffers.dialogs: win.mbody = GetDialogs; break;
+      case Buffers.friends: win.mbody = GetFriends; break;
+      case Buffers.music: win.mbody = GetMusic; break;
+      default: break;
     }
+    if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
+    else win.buffer = win.mbody.dup;
     foreach(i, e; win.buffer) {
       if (e.name.utfLength.to!int + win.offset+1 > COLS) {
         win.buffer[i].name = e.name[0..COLS-win.offset-4];
