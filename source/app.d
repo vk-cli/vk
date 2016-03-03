@@ -9,6 +9,7 @@ import vkapi, cfg, localization, utils, namecache;
 
 // INIT VARS
 enum Sections { left, right }
+enum Buffers { none, friends, dialogs, music }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 Win win;
@@ -52,6 +53,23 @@ const int[]
   kg_left  = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
+const kranges = [
+  kr(19968, 40959, 1),
+  kr(12288, 12351, 1),
+  kr(11904, 12031, 1),
+  kr(13312, 19903, 1),
+  kr(63744, 64255, 1),
+  kr(12800, 13055, 1),
+  kr(13056, 13311, 1),
+  kr(12736, 12783, 1),
+  ];
+
+struct kr {
+  ulong 
+    start, end;
+  int spaces;
+}
+
 struct Win {
   ListElement[]
   menu = [
@@ -67,12 +85,12 @@ struct Win {
     textcolor = Colors.gray,
     counter, active, section,
     last_active, offset, key,
-    scrollOffset, msgDrawSetting;
+    scrollOffset, msgDrawSetting,
+    activeBuffer;
   string
     debugText;
-  bool
-    dialogsOpened, friendsOpened,
-    musicOpened;
+  //bool
+    //dialogsOpened;
 }
 
 struct ListElement {
@@ -223,27 +241,13 @@ void drawMenu() {
   }
 }
 
-struct kr {
-  ulong start;
-  ulong end;
-  int spaces;
-}
-
-auto kranges = [kr(19968, 40959, 1), kr(12288, 12351, 1), kr(11904, 12031, 1), kr(13312, 19903, 1), kr(63744, 64255, 1), kr(12800, 13055, 1), kr(13056, 13311, 1), kr(12736, 12783, 1)];
-
 ulong kLength(string inp) {
-  return kLength(inp.to!wstring);
-}
-
-ulong kLength(wstring inp) {
-  ulong s = inp.walkLength;
-  foreach(w; inp) {
+  auto wstrInput = inp.to!wstring;
+  ulong s = wstrInput.walkLength;
+  foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
     foreach(r; kranges) {
-      if(c >= r.start && c <= r.end) {
-        s += r.spaces;
-        break;
-      }
+      if(c >= r.start && c <= r.end) s += r.spaces; break;
     }
   }
   return s;
@@ -253,8 +257,8 @@ string cut(ulong i, ListElement e) {
   string tempText;
   int cut;
   tempText = e.text;
-  cut = (COLS-win.offset-win.mbody[i].name.kLength-1).to!int;
-  if (e.text.kLength > cut) {
+  cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
+  if (e.text.walkLength > cut) {
     tempText = tempText[0..cut];
   }
   return tempText;
@@ -264,15 +268,18 @@ void bodyToBuffer() {
   if (win.mbody.length != 0) {
     if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
     else {
-      if (win.dialogsOpened) win.mbody = GetDialogs;
-      if (win.friendsOpened) win.mbody = GetFriends;
-      if (win.musicOpened) win.mbody = GetMusic;
+      switch (win.activeBuffer) {
+        case Buffers.dialogs: win.mbody = GetDialogs; break;
+        case Buffers.friends: win.mbody = GetFriends; break;
+        case Buffers.music: win.mbody = GetMusic; break;
+        default: break;
+      }
       win.buffer = win.mbody.dup;
     }
     foreach(i, e; win.buffer) {
       if (e.name.walkLength.to!int + win.offset+1 > COLS) {
         win.buffer[i].name = e.name[0..COLS-win.offset-4];
-      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.walkLength - win.offset-1);
+      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.kLength - win.offset-1);
     }
   }
 }
@@ -282,7 +289,7 @@ void drawDialogsList() {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (i.to!int == win.active-win.scrollOffset) {
       e.name.selected;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.walkLength.to!int+1);
+      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.kLength.to!int+1);
       cut(i, e).graySelected;
     } else {
       switch (win.msgDrawSetting) {
@@ -331,21 +338,43 @@ void drawMusicList() {
 }
 
 void drawBuffer() {
-  if (win.dialogsOpened) drawDialogsList;
-  else if (win.friendsOpened) drawFriendsList;
-  else if (win.musicOpened) drawMusicList;
-  else {
-    foreach(i, e; win.buffer) {
-      wmove(stdscr, 2+i.to!int, win.offset+1);
-      i.to!int == win.active ? e.name.selected : e.name.regular;
+  switch (win.activeBuffer) {
+    case Buffers.dialogs: drawDialogsList; break;
+    case Buffers.friends: drawFriendsList; break;
+    case Buffers.music: drawMusicList; break;
+    case Buffers.none: {
+      foreach(i, e; win.buffer) {
+        wmove(stdscr, 2+i.to!int, win.offset+1);
+        i.to!int == win.active ? e.name.selected : e.name.regular;
+      }
+      break;
     }
+    default: break;
+  }
+}
+
+int activeBufferLen() {
+  switch (win.activeBuffer) {
+    case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
+    case Buffers.friends: return api.getServerCount(blockType.friends);
+    case Buffers.music: return api.getServerCount(blockType.music);
+    default: return 0;
+  }
+}
+
+bool activeBufferScrollAllowed() { 
+  switch (win.activeBuffer) {
+    case Buffers.dialogs: return api.isScrollAllowed(blockType.dialogs);
+    case Buffers.friends: return api.isScrollAllowed(blockType.friends);
+    case Buffers.music: return api.isScrollAllowed(blockType.music);
+    default: return false;
   }
 }
 
 void jumpToEnd() {
-  if (win.dialogsOpened) {
-    win.active = api.getServerCount(blockType.dialogs)-1;
-    win.scrollOffset = api.getServerCount(blockType.dialogs)-LINES+2;
+  if (win.activeBuffer != Buffers.none) {
+    win.active = activeBufferLen-1;
+    win.scrollOffset = activeBufferLen-LINES+2;
   }
 }
 
@@ -362,15 +391,15 @@ void controller() {
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
   else if (canFind(kg_left, win.key)) backEvent;
-  else if (win.section == Sections.right) {
-    if (win.key == k_home && api.isScrollAllowed(blockType.dialogs)) { win.active = 0; win.scrollOffset = 0; }
-    else if (win.key == k_end && api.isScrollAllowed(blockType.dialogs)) jumpToEnd;
-    else if (win.key == k_pagedown && api.isScrollAllowed(blockType.dialogs)) {
+  else if (win.section == Sections.right && activeBufferScrollAllowed) {
+    if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
+    else if (win.key == k_end) jumpToEnd;
+    else if (win.key == k_pagedown) {
       win.scrollOffset += LINES/2;
       win.active += LINES/2;
       if (win.active > win.buffer.length) win.active = win.scrollOffset = (win.buffer.length-1).to!int;
     }
-    else if (win.key == k_pageup && api.isScrollAllowed(blockType.dialogs)) {
+    else if (win.key == k_pageup) {
       win.scrollOffset -= LINES/2;
       win.active -= LINES/2;
       if (win.active < 0) win.active = win.scrollOffset = 0;
@@ -381,22 +410,23 @@ void controller() {
 }
 
 void checkBounds() {
-  if (win.dialogsOpened && api.getServerCount(blockType.dialogs) > 0 && win.active > api.getServerCount(blockType.dialogs)-1) jumpToEnd;
+  if (win.activeBuffer != Buffers.none && activeBufferLen > 0 && win.active > activeBufferLen-1) jumpToEnd;
 }
 
 void downEvent() {
   if (win.section == Sections.left) win.active >= win.menu.length-1 ? win.active = 0 : win.active++;
   else {
     if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
-    if (win.dialogsOpened && api.isScrollAllowed(blockType.dialogs)) win.active++;
-    if (!win.dialogsOpened) win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
+    if (win.activeBuffer != Buffers.none) {
+      if (activeBufferScrollAllowed) win.active++; 
+    } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
 
 void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
-    if (win.dialogsOpened && api.isScrollAllowed(blockType.dialogs)) {
+    if (win.activeBuffer != Buffers.none && activeBufferScrollAllowed) {
       win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
       win.active == 0 ? win.active += 0 : win.active--;
     } else win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
@@ -416,9 +446,7 @@ void selectEvent() {
 
 void backEvent() {
   if (win.section == Sections.right) {
-    win.dialogsOpened = false;
-    win.friendsOpened = false;
-    win.musicOpened = false;
+    win.activeBuffer = Buffers.none;
     win.active = win.last_active;
     win.scrollOffset = 0;
     win.section = Sections.left;
@@ -475,7 +503,7 @@ ListElement[] GetDialogs() {
     newMsg = e.unread ? "⚫ " : "  ";
     list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), null, null, e.online);
   }
-  win.dialogsOpened = true;
+  win.activeBuffer = Buffers.dialogs;
   return list;
 }
 
@@ -485,7 +513,7 @@ ListElement[] GetFriends() {
   foreach(e; friends) {
     list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.id.to!string, null, null, e.online);
   }
-  win.friendsOpened = true;
+  win.activeBuffer = Buffers.friends;
   return list;
 }
 
@@ -499,7 +527,7 @@ ListElement[] GetMusic() {
     space = " ".replicate(amount);
     list ~= ListElement(e.artist ~ " - " ~ e.title ~ space ~ e.duration_str, e.url);
   }
-  win.musicOpened = true;
+  win.activeBuffer = Buffers.music;
   return list;
 }
 
