@@ -28,6 +28,7 @@ struct vkUser {
     string first_name;
     string last_name;
     int id;
+    bool online;
 }
 
 struct vkDialog {
@@ -299,6 +300,9 @@ class VKapi {
             first_name:resp["first_name"].str,
             last_name:resp["last_name"].str
         };
+
+        if("online" in resp) rt.online = (resp["online"].integer == 1);
+
         return rt;
     }
 
@@ -686,28 +690,35 @@ class VKapi {
 
         auto conv = (peer > convStartId);
         auto from = conv ? att["from"].str.to!int : ( outbox ? me.id : peer );
-        auto title = conv ? u[5].str : nc.getName(peer).strName;
+        auto first = (pb.dialogsBuffer[0].id == peer);
+        auto old = first ? 0 : pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
+        auto oldfound = (old != -1);
+        auto title = conv ? u[5].str : ( oldfound ? nc.getName(peer).strName : "" );
 
         vkDialog nd = {
             name: title, lastMessage: msg,
-            id: peer, online: true, //todo resolve online
+            id: peer, online: true,
             unread: unread
         };
 
-        if(pb.dialogsBuffer[0].id == peer) {
+        if(first) {
             pb.dialogsBuffer[0] = nd;
-            dbm("nm trigger first dlg");
         } else {
 
-            auto old = pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
-            if(old != -1) {
+            if(oldfound) {
+                if(!conv) nd.online = pb.dialogsBuffer[old].online;
                 pb.dialogsBuffer = nd ~ pb.dialogsBuffer[0..old] ~ pb.dialogsBuffer[(old+1)..pb.dialogsBuffer.length];
-                dbm("nm trigger found old");
             } else {
+                if (!conv) {
+                    auto peerinfo = usersGet(peer, "online");
+                    auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
+                    nc.addToCache(peerinfo.id, peername);
+                    nd.name = peername.strName;
+                    nd.online = peerinfo.online;
+                }
                 pb.dialogsBuffer = nd ~ pb.dialogsBuffer;
             }
 
-            dbm("nm trigger added dlg");
         }
 
         toggleUpdate();
