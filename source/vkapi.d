@@ -446,12 +446,11 @@ class VKapi {
             int ad = a["duration"].integer.to!int;
             auto adm = ad.convert!("seconds", "minutes");
             auto ads = ad - (60*adm);
-            auto ads_str = (ads < 10 ? "0" : "") ~ ads.to!string;
 
             vkAudio aud = {
                 id: a["id"].integer.to!int, owner: a["owner_id"].integer.to!int,
                 artist: a["artist"].str, title: a["title"].str, url: a["url"].str,
-                duration_sec: ad, duration_str: (adm.to!string ~ ":" ~ ads_str)
+                duration_sec: ad, duration_str: (adm.to!string ~ ":" ~ tzr(ads.to!int))
             };
             rt ~= aud;
         }
