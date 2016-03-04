@@ -194,7 +194,7 @@ class VKapi {
     void tokenInit(string token) {
         vktoken = token;
         isTokenValid = checkToken(token);
-        lbThread = new loadBlockThread(this);
+        lbThread = new loadBlockThread();
         lpThread = new longpollThread(this);
     }
 
@@ -565,7 +565,7 @@ class VKapi {
     // ===== buffers =====
 
 
-    private T[] getBuffered(T)(int block, int upd, int count, int offset, blockType blocktp, ref apiBufferData bufd, ref T[] buf, out bool retLoading) {
+    private T[] getBuffered(T)(int block, int upd, int count, int offset, blockType blocktp, void delegate(int count, int offset) download, ref apiBufferData bufd, ref T[] buf, out bool retLoading) {
         T[] rt;
         bool spawnLoadBlock = false;
 
@@ -604,9 +604,8 @@ class VKapi {
         }
 
         if(spawnLoadBlock && !lbThread.isRunning) {
-            //auto tid = spawn(&asyncLoadBlock, this.exportStruct(), blockType.dialogs, block, cl);
-            //pb.dialogsLatCL = cl;
-            lbThread.loadBlock(blocktp, block, cl);
+            //lbThread.loadBlock(blocktp, block, cl);
+            lbThread.func(download, block, cl);
         }
 
         return rt;
@@ -616,13 +615,21 @@ class VKapi {
         const int block = 100;
         const int upd = 50;
 
-        bool outload;
-        auto rt = getBuffered!vkFriend(block, upd, count, offset, blockType.friends, pb.friendsData, pb.friendsBuffer, outload);
-
         immutable vkFriend ld = {
             first_name: getLocal("loading"),
             last_name: ""
         };
+
+        void dw(int c, int off) {
+            int sc;
+            pb.friendsBuffer ~= friendsGet(c, off, sc);
+            pb.friendsData.serverCount = sc;
+            pb.friendsData.updated = true;
+            toggleUpdate();
+        }
+
+        bool outload;
+        auto rt = getBuffered!vkFriend(block, upd, count, offset, blockType.friends, &dw, pb.friendsData, pb.friendsBuffer, outload);
 
         if(outload) rt = [ ld ];
         return rt;
@@ -632,13 +639,21 @@ class VKapi {
         const int block = 100;
         const int upd = 50;
 
-        bool outload;
-        auto rt = getBuffered!vkAudio(block, upd, count, offset, blockType.music, pb.audioData, pb.audioBuffer, outload);
-
         immutable vkAudio ld = {
             artist: getLocal("loading"),
             title: ""
         };
+
+        void dw(int c, int off) {
+            int sc;
+            pb.audioBuffer ~= audioGet(c, off, sc);
+            pb.audioData.serverCount = sc;
+            pb.audioData.updated = true;
+            toggleUpdate();
+        }
+
+        bool outload;
+        auto rt = getBuffered!vkAudio(block, upd, count, offset, blockType.music, &dw, pb.audioData, pb.audioBuffer, outload);
 
         if(outload) rt = [ ld ];
         return rt;
@@ -648,12 +663,20 @@ class VKapi {
         const int block = 100;
         const int upd = 50;
 
-        bool outload;
-        auto rt = getBuffered!vkDialog(block, upd, count, offset, blockType.dialogs, pb.dialogsData, pb.dialogsBuffer, outload);
-
         immutable vkDialog ld = {
             name: getLocal("loading")
         };
+
+        void dw(int c, int off) {
+            int sc;
+            pb.dialogsBuffer ~= messagesGetDialogs(c, off, sc);
+            pb.dialogsData.serverCount = sc;
+            pb.dialogsData.updated = true;
+            toggleUpdate();
+        }
+
+        bool outload;
+        auto rt = getBuffered!vkDialog(block, upd, count, offset, blockType.dialogs, &dw, pb.dialogsData, pb.dialogsBuffer, outload);
 
         if(outload) rt = [ ld ];
         return rt;
@@ -889,59 +912,25 @@ class longpollThread : Thread {
 }
 
 class loadBlockThread : Thread {
-
-    VKapi api;
-    blockType bt;
     int count;
     int offset;
 
-    this(VKapi api) {
-        this.api = api;
-        //super(&asyncLoadBlock);
+    void delegate(int count, int offset) dg;
+
+    this() {
         super(&run);
     }
 
-    void loadBlock(blockType bt, int count, int offset) {
-        this.bt = bt;
+    void func(void delegate(int count, int offset) r, int count, int offset) {
         this.count = count;
         this.offset = offset;
+        dg = r;
         this.start();
-    }
-
-    private void asyncLoadBlock() {
-        dbm("asyncLoadBlock start");
-        switch (bt) {
-            case blockType.dialogs:
-                dbm("asyncLoadBlock switched dialogs");
-                int sc;
-                pb.dialogsBuffer ~= api.messagesGetDialogs(count, offset, sc);
-                pb.dialogsData.serverCount = sc;
-                pb.dialogsData.updated = true;
-                break;
-            case blockType.music:
-                dbm("asyncLoadBlock switched music");
-                int sc;
-                pb.audioBuffer ~= api.audioGet(count, offset, sc);
-                pb.audioData.serverCount = sc;
-                pb.audioData.updated = true;
-                break;
-            case blockType.friends:
-                dbm("asyncLoadBlock switched friends");
-                int sc;
-                pb.friendsBuffer ~= api.friendsGet(count, offset, sc);
-                pb.friendsData.serverCount = sc;
-                pb.friendsData.updated = true;
-                dbm("friends info bufl: " ~ pb.friendsBuffer.length.to!string ~ ", sc: " ~ sc.to!string ~ ", strctsc: " ~ pb.friendsData.serverCount.to!string);
-                break;
-            default: break;
-        }
-        api.toggleUpdate();
-        dbm("asyncLoadBlock end");
     }
 
     private void run() {
         try {
-            asyncLoadBlock();
+            dg(count, offset);
         } catch (Exception e) {
             dbm("Catched at asyncLoadBlock thread: " ~ e.msg);
         }
