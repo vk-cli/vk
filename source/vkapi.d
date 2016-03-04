@@ -13,6 +13,7 @@ import utils, namecache, localization;
 const int convStartId = 2000000000;
 const int mailStartId = convStartId*-1;
 const bool return80mc = true;
+const long needNameMaxDelta = 180; //seconds, 3 min
 
 // ===== networking const =====
 
@@ -47,6 +48,7 @@ struct vkMessage {
     int msg_id;
     bool outgoing;
     bool unread;
+    bool needName;
     long utime; // unix time
     string time_str; // HH:MM (M = minutes), if >24 hours ago, then DD.mm (m = month)
     string[] body_lines; // Message text, splitted in lines (delimiter = '\n')
@@ -133,13 +135,22 @@ struct apiBufferData {
 
 }
 
+struct apiChatBuffer {
+    vkMessage[] buffer;
+    apiBufferData data;
+}
+
 struct apiBuffers {
     vkDialog[] dialogsBuffer;
     apiBufferData dialogsData;
+
     vkFriend[] friendsBuffer;
     apiBufferData friendsData;
+
     vkAudio[] audioBuffer;
     apiBufferData audioData;
+
+    apiChatBuffer[int] chatBuffer;
 }
 
 struct apiFwdIter {
@@ -510,6 +521,9 @@ class VKapi {
 
         auto resp = vkget("messages.getHistory", params);
         auto items = resp["items"].array;
+
+        int last_fid;
+        long last_date;
         vkMessage[] rt;
         foreach(m; items) {
             int fid = m["from_id"].integer.to!int;
@@ -518,7 +532,8 @@ class VKapi {
             long ut = m["date"].integer.to!long;
             bool outg = (m["out"].integer.to!int == 1);
             bool rstate = (m["read_state"].integer.to!int == 1);
-            bool unr = (outg && !rstate);
+            //bool unr = (outg && !rstate);
+            bool unr = !rstate;
 
             string[] mbody = m["body"].str.split("\n");
             string st = vktime(ct, ut);
@@ -531,12 +546,16 @@ class VKapi {
                 fw = r.fwd;
             }
 
+            auto tdelta = ut - last_date;
+            bool neednm = (tdelta > needNameMaxDelta) || (fid != last_fid);
+            last_date = ut;
+
             vkMessage mo = {
                 msg_id: mid, author_id: fid, peer_id: pid,
                 outgoing: outg, unread: unr, utime: ut,
                 author_name: nc.getName(fid).strName,
                 time_str: st, body_lines: mbody,
-                fwd_depth: fwdp, fwd:fw
+                fwd_depth: fwdp, fwd:fw, needName:neednm
             };
             rt ~= mo;
         }
