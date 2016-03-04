@@ -56,6 +56,8 @@ struct vkMessage {
     vkFwdMessage[] fwd; // forwarded messages
 }
 
+auto emptyVkMessage = vkMessage();
+
 struct vkFwdMessage {
     int author_id;
     string author_name;
@@ -124,7 +126,8 @@ struct apiState {
 enum blockType {
     dialogs,
     music,
-    friends
+    friends,
+    chat
 }
 
 struct apiBufferData {
@@ -511,7 +514,7 @@ class VKapi {
         return apiFwdIter(rt, cmd);
     }
 
-    vkMessage[] messagesGetHistory(int peer_id, int count = -1, int offset = 0, int start_message_id = -1, bool rev = false) {
+    vkMessage[] messagesGetHistory(int peer_id, int count, int offset, out int servercount, int start_message_id = -1, bool rev = false) {
         auto ct = Clock.currTime();
         auto params = [ "peer_id": peer_id.to!string ];
         if(count >= 0) params["count"] = count.to!string;
@@ -521,6 +524,8 @@ class VKapi {
 
         auto resp = vkget("messages.getHistory", params);
         auto items = resp["items"].array;
+
+        servercount = resp["count"].integer.to!int;
 
         int last_fid;
         long last_date;
@@ -680,6 +685,41 @@ class VKapi {
 
         if(outload) rt = [ ld ];
         return rt;
+    }
+
+    vkMessage[] getBufferedChat(int count, int offset, int peer) {
+        const int block = 100;
+        const int upd = 50;
+
+        vkMessage ld = {
+            author_name: getLocal("loading"),
+            needName: true
+        };
+
+        vkMessage[] defaultrt = [ ld ];
+
+        void dw(int c, int off) {
+            int sc;
+            pb.chatBuffer[peer].buffer ~= messagesGetHistory(peer, c, off, sc);
+            pb.chatBuffer[peer].data.serverCount = sc;
+            pb.chatBuffer[peer].data.updated = true;
+            toggleUpdate();
+        }
+
+        if(peer !in pb.chatBuffer) pb.chatBuffer[peer] = apiChatBuffer();
+
+        bool outload;
+        auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload);
+
+        if(outload) return defaultrt;
+        reverse(rt);
+        return rt;
+    }
+
+    ref vkMessage lastMessage(ref vkMessage[] buf) {
+        auto bufl = buf.length;
+        if(bufl == 0) return emptyVkMessage;
+        return buf[bufl-1];
     }
 
     private apiBufferData* getData(blockType tp) {
