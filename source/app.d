@@ -557,19 +557,19 @@ void test() {
 
     //api.asyncLongpoll();
     //readln();
-    //int i = 0;
-    //const int step = 71;
-    //while(true) {
-    //    int huj;
-    //    auto conv = api.getBufferedFriends(step, i);
-    //    //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
-    //    foreach (d; conv) {
-    //        //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
-    //        writeln("f " ~ d.first_name ~ " " ~ d.last_name ~ " id" ~ d.id.to!string ~ " " ~ (d.online ? " +" : ""));
-    //    }
-    //    readln();
-    //}
-    //dbm("dbuf: " ~ api.pb.alldialogs.length.to!string);
+    int i = 0;
+    const int step = 30;
+    while(true) {
+        int huj;
+        auto conv = api.getBufferedChat(step, i, 180544873);
+        //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
+        foreach (d; conv) {
+            //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
+            writeln("m " ~ d.author_name ~ ": " ~ d.body_lines.join ~ " " ~ d.time_str);
+        }
+        readln();
+    }
+    //dbm("cbuf: " ~ api.pb.alldialogs.length.to!string);
     //nc.dbmAll();
     //auto fr = api.friendsGet();
     //foreach(f; fr) dbm(f.first_name ~ " " ~ f.last_name ~ " " ~ (f.online ? "!" : ""));
@@ -584,6 +584,8 @@ void test() {
         writeln("maxdep: " ~ ww.fwd_depth.to!string);
         writeln(digTest(ww.fwd));
     }+/
+
+
 
     readln();
     //ticker();
@@ -602,7 +604,7 @@ string digTest(vkFwdMessage[] huj) {
 }
 
 void main(string[] args) {
-  //test;
+  test;
   init;
   color;
   curs_set(0);

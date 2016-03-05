@@ -712,8 +712,9 @@ class VKapi {
         auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload);
 
         if(outload) return defaultrt;
-        reverse(rt);
-        return rt;
+        auto rvrt = rt.dup;
+        reverse(rvrt);
+        return rvrt;
     }
 
     ref vkMessage lastMessage(ref vkMessage[] buf) {
