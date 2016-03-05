@@ -761,7 +761,7 @@ class VKapi {
         return rt;
     }
 
-    void triggerNewMessage(JSONValue u) {
+    void triggerNewMessage(JSONValue u, SysTime ct) {
         if(pb.dialogsData.forceUpdate) return;
 
         auto mid = u[1].integer.to!int;
@@ -781,11 +781,22 @@ class VKapi {
         auto old = first ? 0 : pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
         auto oldfound = (old != -1);
         auto title = conv ? u[5].str : ( oldfound ? nc.getName(peer).strName : "" );
+        auto haspeer = (peer in pb.chatBuffer);
+        auto neednm = haspeer ? (utime - lastMessage(pb.chatBuffer[peer].buffer).utime) > needNameMaxDelta : true;
 
         vkDialog nd = {
             name: title, lastMessage: msg, lastmid: mid,
             id: peer, online: true,
             unread: (unread && !outbox)
+        };
+
+        vkMessage nm = {
+            author_id: from, peer_id: peer, msg_id: mid,
+            outgoing: outbox, unread: unread, needName: neednm,
+            utime: utime, time_str: vktime(ct, utime),
+            author_name: nc.getName(from).strName,
+            body_lines: msg.split("\n"),
+            fwd_depth: -1
         };
 
         if(first) {
@@ -807,6 +818,10 @@ class VKapi {
             }
 
         }
+
+        if(!haspeer) pb.chatBuffer[peer] = apiChatBuffer();
+        auto cb = &(pb.chatBuffer[peer]);
+        cb.buffer = nm ~ cb.buffer;
 
         toggleUpdate();
         dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
@@ -860,6 +875,7 @@ class VKapi {
     vkNextLp parseLongpoll(string resp) {
         JSONValue j = parseJSON(resp);
         vkNextLp rt;
+        auto ct = Clock.currTime();
         auto failed = ("failed" in j ? j["failed"].integer.to!int : -1 );
         auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
         if(failed == -1) {
@@ -868,7 +884,7 @@ class VKapi {
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
                     case 4: //new message
-                        triggerNewMessage(u);
+                        triggerNewMessage(u, ct);
                         break;
                     case 80: //counter update
                         if(return80mc) {

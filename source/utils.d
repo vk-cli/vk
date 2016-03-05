@@ -2,7 +2,7 @@ module utils;
 
 import std.stdio, std.array, std.file, core.thread, core.exception, std.datetime, std.conv;
 
-const bool debugMessagesEnabled = false;
+const bool debugMessagesEnabled = true;
 const bool dbmfe = true;
 
 __gshared string dbmlog = "";

@@ -555,17 +555,18 @@ void test() {
     writeln("walk: " ~ walkLength(unc).to!string);
     writeln("kl: " ~ unc.utfLength.to!string);
 
-    //api.asyncLongpoll();
+    api.asyncLongpoll();
     //readln();
+    auto dlgg = api.getBufferedDialogs(10, 0);
     int i = 0;
     const int step = 30;
     while(true) {
         int huj;
-        auto conv = api.getBufferedChat(step, i, 180544873);
+        auto conv = api.getBufferedChat(step, i, convStartId + 12);
         //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
         foreach (d; conv) {
             //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
-            writeln("m " ~ d.author_name ~ ": " ~ d.body_lines.join ~ " " ~ d.time_str);
+            writeln("m " ~ d.author_name ~ ": " ~ d.body_lines.join ~ " " ~ d.time_str ~ " nm:" ~ d.needName.to!string);
         }
         readln();
     }
