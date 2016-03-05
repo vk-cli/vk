@@ -20,6 +20,7 @@ void localize() {
   local["m_friends"] = lang("Friends", "Друзья");
   local["m_conversations"] = lang("Conversations", "Диалоги");
   local["m_music"] = lang("Music", "Музыка");
+  local["m_help"] = lang("Help", "Помощь");
   local["m_settings"] = lang("Settings", "Настройки");
   local["m_exit"] = lang("Exit", "Выход");
   local["main_color"] = lang("Main color = ", "Основной цвет = ");

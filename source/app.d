@@ -80,6 +80,7 @@ struct Win {
     {callback:&open, getter: &GetFriends},
     {callback:&open, getter: &GetDialogs},
     {callback:&open, getter: &GetMusic},
+    {callback:&open, getter: &GenerateHelp},
     {callback:&open, getter: &GenerateSettings},
     {callback:&exit}
   ], 
@@ -108,8 +109,9 @@ void relocale() {
   win.menu[0].name = "m_friends".getLocal;
   win.menu[1].name = "m_conversations".getLocal;
   win.menu[2].name = "m_music".getLocal;
-  win.menu[3].name = "m_settings".getLocal;
-  win.menu[4].name = "m_exit".getLocal;
+  win.menu[3].name = "m_help".getLocal;
+  win.menu[4].name = "m_settings".getLocal;
+  win.menu[5].name = "m_exit".getLocal;
 }
 
 void parse(ref string[string] storage) {
@@ -217,7 +219,7 @@ void statusbar() {
   if (win.debugText == "") {
     string notify = " " ~ win.counter.to!string ~ " ✉ ";
     notify.selected;
-    center(api.me.first_name~" "~api.me.last_name, COLS+2-notify.length, ' ').selected;
+    center("Some User: o, ebat' notify v statusbare", COLS+2-notify.length, ' ').selected;
     "\n".print;
   } else {
     center(win.debugText, COLS, ' ').selected;
@@ -484,6 +486,12 @@ void changeMsgSetting(ref ListElement le) {
   le.name = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
 }
 
+ListElement[] GenerateHelp() {
+  return [
+    ListElement("help"),
+  ];
+}
+
 ListElement[] GenerateSettings() {
   return [
     ListElement(center("display_settings".getLocal, COLS-16, ' ')),
@@ -517,11 +525,24 @@ ListElement[] GetFriends() {
   return list;
 }
 
+ListElement[] MusicPlayer() {
+  ListElement[] mplayer;
+  mplayer ~= ListElement(center("Bassnectar", COLS-16, ' ')); 
+  mplayer ~= ListElement(center("Voodoo (Ill.Gates Remix)", COLS-16, ' '));
+  mplayer ~= ListElement(center("3:13 / 4:27", COLS-16, ' '));
+  mplayer ~= ListElement(center("[========================|==========]", COLS-16, ' '));
+  return mplayer;
+}
+
 ListElement[] GetMusic() {
   ListElement[] list;
-  auto music = api.getBufferedMusic(LINES-2, win.scrollOffset);
+  auto music = api.getBufferedMusic(LINES-6, win.scrollOffset);
   string space, artistAndSong;
   int amount;
+  
+  list ~= MusicPlayer;
+
+  list ~= ListElement("");
   foreach(e; music) {
     artistAndSong = e.artist ~ " - " ~ e.title;
     if (artistAndSong.utfLength > COLS-5-win.offset-e.duration_str.length.to!int) {
