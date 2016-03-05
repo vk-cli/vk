@@ -527,8 +527,6 @@ class VKapi {
 
         servercount = resp["count"].integer.to!int;
 
-        int last_fid;
-        long last_date;
         vkMessage[] rt;
         foreach(m; items) {
             int fid = m["from_id"].integer.to!int;
@@ -551,16 +549,12 @@ class VKapi {
                 fw = r.fwd;
             }
 
-            auto tdelta = ut - last_date;
-            bool neednm = (tdelta > needNameMaxDelta) || (fid != last_fid);
-            last_date = ut;
-
             vkMessage mo = {
                 msg_id: mid, author_id: fid, peer_id: pid,
                 outgoing: outg, unread: unr, utime: ut,
                 author_name: nc.getName(fid).strName,
                 time_str: st, body_lines: mbody,
-                fwd_depth: fwdp, fwd:fw, needName:neednm
+                fwd_depth: fwdp, fwd:fw
             };
             rt ~= mo;
         }
@@ -712,9 +706,24 @@ class VKapi {
         auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload);
 
         if(outload) return defaultrt;
+
         auto rvrt = rt.dup;
         reverse(rvrt);
+        resolvenm(rvrt);
+
         return rvrt;
+    }
+
+    void resolvenm(ref vkMessage[] bf) {
+        int last_fid;
+        long last_date;
+        foreach(ref m; bf) {
+            auto tdelta = m.utime - last_date;
+            bool neednm = (tdelta > needNameMaxDelta) || (m.author_id != last_fid);
+            last_date = m.utime;
+            last_fid = m.author_id;
+            m.needName = neednm;
+        }
     }
 
     ref vkMessage lastMessage(ref vkMessage[] buf) {
@@ -782,7 +791,6 @@ class VKapi {
         auto oldfound = (old != -1);
         auto title = conv ? u[5].str : ( oldfound ? nc.getName(peer).strName : "" );
         auto haspeer = (peer in pb.chatBuffer);
-        auto neednm = haspeer ? (utime - lastMessage(pb.chatBuffer[peer].buffer).utime) > needNameMaxDelta : true;
 
         vkDialog nd = {
             name: title, lastMessage: msg, lastmid: mid,
@@ -792,7 +800,7 @@ class VKapi {
 
         vkMessage nm = {
             author_id: from, peer_id: peer, msg_id: mid,
-            outgoing: outbox, unread: unread, needName: neednm,
+            outgoing: outbox, unread: unread,
             utime: utime, time_str: vktime(ct, utime),
             author_name: nc.getName(from).strName,
             body_lines: msg.split("\n"),
