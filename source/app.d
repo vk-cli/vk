@@ -558,15 +558,16 @@ void test() {
     api.asyncLongpoll();
     //readln();
     auto dlgg = api.getBufferedDialogs(10, 0);
-    int i = 0;
-    const int step = 30;
+    int i = 18;
+    const int step = 48;
     while(true) {
         int huj;
-        auto conv = api.getBufferedChat(step, i, convStartId + 12);
+        auto conv = api.getBufferedChatLines(step, i, convStartId + 12);
         //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
         foreach (d; conv) {
             //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
-            writeln("m " ~ d.author_name ~ ": " ~ d.body_lines.join ~ " " ~ d.time_str ~ " nm:" ~ d.needName.to!string);
+            //writeln("m " ~ d.author_name ~ ": " ~ d.body_lines.join ~ " " ~ d.time_str ~ " nm:" ~ d.needName.to!string);
+            writeln(d.text ~ " " ~ d.time);
         }
         readln();
     }
@@ -605,7 +606,7 @@ string digTest(vkFwdMessage[] huj) {
 }
 
 void main(string[] args) {
-  //test;
+  test;
   init;
   color;
   curs_set(0);

@@ -1,8 +1,9 @@
 module vkapi;
 
-import std.stdio, std.conv, std.string, std.regex, std.algorithm, std.array, std.datetime, core.time;
+import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
+import std.algorithm, std.experimental.ndslice;
 import std.parallelism, std.concurrency, core.thread;
 import utils, namecache, localization;
 
@@ -49,11 +50,22 @@ struct vkMessage {
     bool outgoing;
     bool unread;
     bool needName;
+    bool nmresolved;
     long utime; // unix time
     string time_str; // HH:MM (M = minutes), if >24 hours ago, then DD.mm (m = month)
     string[] body_lines; // Message text, splitted in lines (delimiter = '\n')
     int fwd_depth; // max fwd message deph (-1 if no fwd)
     vkFwdMessage[] fwd; // forwarded messages
+    bool isLoading;
+    int lineCount = -1;
+}
+
+struct vkMessageLine {
+    string text;
+    string time;
+    bool unread;
+    bool isName;
+    bool isSpacing;
 }
 
 auto emptyVkMessage = vkMessage();
@@ -528,6 +540,7 @@ class VKapi {
         servercount = resp["count"].integer.to!int;
 
         vkMessage[] rt;
+        int i = 0;
         foreach(m; items) {
             int fid = m["from_id"].integer.to!int;
             int mid = m["id"].integer.to!int;
@@ -554,11 +567,21 @@ class VKapi {
                 outgoing: outg, unread: unr, utime: ut,
                 author_name: nc.getName(fid).strName,
                 time_str: st, body_lines: mbody,
-                fwd_depth: fwdp, fwd:fw
+                fwd_depth: fwdp, fwd:fw, needName: true
             };
             rt ~= mo;
+            ++i;
         }
         return rt;
+    }
+
+    private bool isNeedName(vkMessage lm, long ut, int fid) {
+        bool neednm = true;
+            //auto lm = buf[buf.length-1];
+            auto d = ut-lm.utime;
+            if(lm.author_id == fid && d <= needNameMaxDelta) neednm = false;
+            //dbm("isneedname lmm: " ~ lm.body_lines[0] ~ ", fidn: " ~ fid.to!string ~ ", fidl: " ~ lm.author_id.to!string ~ ", neednm " ~ neednm.to!string ~ ", d: " ~ d.to!string);
+        return neednm;
     }
 
     // ===== buffers =====
@@ -687,7 +710,7 @@ class VKapi {
 
         vkMessage ld = {
             author_name: getLocal("loading"),
-            needName: true
+            needName: true, isLoading: true
         };
 
         vkMessage[] defaultrt = [ ld ];
@@ -707,29 +730,110 @@ class VKapi {
 
         if(outload) return defaultrt;
 
-        auto rvrt = rt.dup;
-        reverse(rvrt);
-        resolvenm(rvrt);
+        //auto rvrt = rt.reversed!0;
+        //reverse(rvrt);
+        //resolvenm(rvrt);
 
-        return rvrt;
-    }
-
-    void resolvenm(ref vkMessage[] bf) {
-        int last_fid;
-        long last_date;
-        foreach(ref m; bf) {
-            auto tdelta = m.utime - last_date;
-            bool neednm = (tdelta > needNameMaxDelta) || (m.author_id != last_fid);
-            last_date = m.utime;
-            last_fid = m.author_id;
-            m.needName = neednm;
-        }
+        return rt;
     }
 
     ref vkMessage lastMessage(ref vkMessage[] buf) {
         auto bufl = buf.length;
         if(bufl == 0) return emptyVkMessage;
         return buf[bufl-1];
+    }
+
+    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer) {
+        auto dumbmsg = getBufferedChat(count, offset, peer);
+        auto bufl = pb.chatBuffer[peer].buffer.length;
+        auto msg = pb.chatBuffer[peer].buffer[0..bufl];
+
+        vkMessageLine loading = {
+            text: getLocal("loading")
+        };
+        if(dumbmsg.length == 0 || dumbmsg[dumbmsg.length-1].isLoading) return [ loading ];
+
+        foreach(ref m; msg.filter!(q => q.lineCount == -1)) {
+            int strc = 1; // first spacing
+            auto bodyln = m.body_lines.length;
+            strc += (bodyln == 0) ? 1 : bodyln; // spacing for empty line : lines
+            if(m.needName) strc += 2; // name + 2nd spacing
+            m.lineCount = strc;
+        }
+
+        int of = 0;
+        int oc = 0;
+        int i = 0;
+        int i_start;
+        int i_end;
+        bool itercount = false;
+
+        foreach(m; msg) {
+            if(!itercount) {
+                auto tmpof = of + m.lineCount;
+                if(tmpof < offset) {
+                    of = tmpof;
+                } else {
+                    i_start = i;
+                    itercount = true;
+                }
+            }
+
+            if(itercount) {
+                oc += m.lineCount;
+                if(oc >= count) {
+                    i_end = i;
+                    break;
+                }
+            }
+
+            ++i;
+        }
+
+        vkMessageLine spacing = {
+            text: "", time: "",
+            isSpacing: true
+        };
+
+        vkMessageLine[] lines;
+        auto msgrng = msg[i_start..(i_end+1)].dup;
+        reverse(msgrng);
+        foreach(m; msgrng) {
+            lines ~= spacing;
+            if(m.needName) {
+                vkMessageLine name = {
+                    text: m.author_name,
+                    time: m.time_str,
+                    isName: true
+                };
+                //lines ~= name ~ spacing;
+                lines ~= name;
+                lines ~= spacing;
+            }
+            if(m.body_lines.length != 0) {
+                bool first = true;
+                foreach(l; m.body_lines) {
+
+                    bool unr = false;
+                    if(first) {
+                        unr = m.unread;
+                        first = false;
+                    }
+
+                    vkMessageLine message = {
+                        text: l, unread: unr,
+                        time: ""
+                    };
+                    lines ~= message;
+                }
+            } else lines ~= spacing;
+        }
+
+        auto offsetDelta = offset - of;
+        auto linesln = lines.length;
+        dbm("offsetDelta: " ~ offsetDelta.to!string);
+        auto rlines = lines[linesln-count..linesln-offsetDelta];
+        return rlines;
     }
 
     private apiBufferData* getData(blockType tp) {
@@ -829,6 +933,9 @@ class VKapi {
 
         if(!haspeer) pb.chatBuffer[peer] = apiChatBuffer();
         auto cb = &(pb.chatBuffer[peer]);
+
+        //nm.needName = isNeedName(cb.buffer, utime, from);
+
         cb.buffer = nm ~ cb.buffer;
 
         toggleUpdate();
