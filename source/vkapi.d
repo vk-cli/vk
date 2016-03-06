@@ -3,7 +3,7 @@ module vkapi;
 import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
-import std.algorithm, std.experimental.ndslice;
+import std.algorithm, std.range, std.experimental.ndslice;
 import std.parallelism, std.concurrency, core.thread;
 import utils, namecache, localization;
 
@@ -66,6 +66,7 @@ struct vkMessageLine {
     bool unread;
     bool isName;
     bool isSpacing;
+    bool isFwd;
 }
 
 auto emptyVkMessage = vkMessage();
@@ -150,9 +151,16 @@ struct apiBufferData {
 
 }
 
+struct apiRecentlyUpdated {
+    long updated;
+    bool checkedout;
+}
+
 struct apiChatBuffer {
     vkMessage[] buffer;
     apiBufferData data;
+    apiRecentlyUpdated[int] recent; //by mid
+    vkMessageLine[][int] linebuffer; // by peer
 }
 
 struct apiBuffers {
@@ -744,96 +752,60 @@ class VKapi {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer) {
-        auto dumbmsg = getBufferedChat(count, offset, peer);
-        auto bufl = pb.chatBuffer[peer].buffer.length;
-        auto msg = pb.chatBuffer[peer].buffer[0..bufl];
-
-        vkMessageLine loading = {
+        const int takeamount = 1;
+        vkMessageLine ld = {
             text: getLocal("loading")
         };
-        if(dumbmsg.length == 0 || dumbmsg[dumbmsg.length-1].isLoading) return [ loading ];
 
-        foreach(ref m; msg.filter!(q => q.lineCount == -1)) {
-            int strc = 1; // first spacing
-            auto bodyln = m.body_lines.length;
-            strc += (bodyln == 0) ? 1 : bodyln; // spacing for empty line : lines
-            if(m.needName) strc += 2; // name + 2nd spacing
-            m.lineCount = strc;
+        auto chat = getBufferedChat(count, 0, peer);
+        if(chat.length == 0 || chat[chat.length-1].isLoading) return [ ld ];
+
+        vkMessageLine[] localbuf;
+        auto lazylines = chat.map!(q => convertMessage(q)).map!(q => localbuf ~= q);
+        int needln = count + offset;
+
+        while(localbuf.length < needln) {
+            lazylines.take(takeamount);
         }
 
-        int of = 0;
-        int oc = 0;
-        int i = 0;
-        int i_start;
-        int i_end;
-        bool itercount = false;
+        return localbuf.slice!vkMessageLine(count, offset);
+    }
 
-        foreach(m; msg) {
-            if(!itercount) {
-                auto tmpof = of + m.lineCount;
-                if(tmpof < offset) {
-                    of = tmpof;
-                } else {
-                    i_start = i;
-                    itercount = true;
-                }
-            }
+    vkMessageLine lspacing = {
+        text: "", isSpacing: true
+    };
 
-            if(itercount) {
-                oc += m.lineCount;
-                if(oc >= count) {
-                    i_end = i;
-                    break;
-                }
-            }
-
-            ++i;
+    vkMessageLine[] convertMessage(vkMessage inp) {
+        //auto ct = Clock.currTime();
+        auto cb = &(pb.chatBuffer[inp.peer_id]);
+        auto rupd = (inp.msg_id in cb.recent);
+        bool bufallowed = true;
+        if(rupd) if(!cb.recent[inp.msg_id].checkedout) bufallowed = false;
+        if(bufallowed && (inp.msg_id in cb.linebuffer)) {
+            return cb.linebuffer[inp.msg_id];
         }
-
-        vkMessageLine spacing = {
-            text: "", time: "",
-            isSpacing: true
-        };
-
-        vkMessageLine[] lines;
-        auto msgrng = msg[i_start..(i_end+1)].dup;
-        reverse(msgrng);
-        foreach(m; msgrng) {
-            lines ~= spacing;
-            if(m.needName) {
-                vkMessageLine name = {
-                    text: m.author_name,
-                    time: m.time_str,
-                    isName: true
-                };
-                //lines ~= name ~ spacing;
-                lines ~= name;
-                lines ~= spacing;
-            }
-            if(m.body_lines.length != 0) {
-                bool first = true;
-                foreach(l; m.body_lines) {
-
-                    bool unr = false;
-                    if(first) {
-                        unr = m.unread;
-                        first = false;
-                    }
-
-                    vkMessageLine message = {
-                        text: l, unread: unr,
-                        time: ""
+        vkMessageLine[] rt;
+        rt ~= lspacing;
+        if(inp.needName) {
+            vkMessageLine name = {
+                text: inp.author_name,
+                time: inp.time_str,
+                isName: true
+            };
+            rt ~= name;
+            rt ~= lspacing;
+            if(inp.body_lines.length != 0) {
+                foreach(l; inp.body_lines) {
+                    vkMessageLine msg = {
+                        text: l
                     };
-                    lines ~= message;
+                    rt ~= msg;
                 }
-            } else lines ~= spacing;
+            } else rt ~= lspacing;
         }
-
-        auto offsetDelta = offset - of;
-        auto linesln = lines.length;
-        dbm("offsetDelta: " ~ offsetDelta.to!string);
-        auto rlines = lines[linesln-count..linesln-offsetDelta];
-        return rlines;
+        cb.linebuffer[inp.msg_id] = rt;
+        if(rupd) cb.recent[inp.msg_id].checkedout = true;
+        return rt;
     }
 
     private apiBufferData* getData(blockType tp) {
