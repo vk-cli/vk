@@ -763,7 +763,7 @@ class VKapi {
         if(chat.length == 0 || chat[chat.length-1].isLoading) return [ ld ];
 
         vkMessageLine[] localbuf;
-        auto lazylines = chat.map!(q => convertMessage(q)).map!(q => localbuf ~= q);
+        auto lazylines = chat.map!(q => convertMessage(q)).map!(q => localbuf = q ~ localbuf);
 
         while(localbuf.length < needln) {
             lazylines.take(takeamount);
