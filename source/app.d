@@ -22,36 +22,40 @@ const int
   k_home     = 49,
   k_end      = 52,
   // keys
-  k_q      = 113,
-  k_enter  = 10,
-  k_up     = 65,
-  k_down   = 66,
-  k_left   = 68,
-  k_right  = 67,
-  k_w      = 119,
-  k_s      = 115,
-  k_a      = 97,
-  k_d      = 100,
-  k_rus_w  = 134,
-  k_rus_a  = 132,
-  k_rus_s  = 139,
-  k_rus_d  = 178,
-  k_k      = 107,
-  k_j      = 106,
-  k_h      = 104,
-  k_l      = 108,
-  k_rus_h  = 128,
-  k_rus_j  = 190,
-  k_rus_k  = 187,
-  k_rus_l  = 180;
+  k_q        = 113,
+  k_rus_q    = 185,
+  k_r        = 114,
+  k_rus_r    = 186,
+  k_enter    = 10,
+  k_up       = 65,
+  k_down     = 66,
+  k_left     = 68,
+  k_right    = 67,
+  k_w        = 119,
+  k_s        = 115,
+  k_a        = 97,
+  k_d        = 100,
+  k_rus_w    = 134,
+  k_rus_a    = 132,
+  k_rus_s    = 139,
+  k_rus_d    = 178,
+  k_k        = 107,
+  k_j        = 106,
+  k_h        = 104,
+  k_l        = 108,
+  k_rus_h    = 128,
+  k_rus_j    = 190,
+  k_rus_k    = 187,
+  k_rus_l    = 180;
 
 const int[] 
   // key groups
-  kg_esc   = [k_q],
-  kg_up    = [k_up, k_w, k_k, k_rus_w, k_rus_k],
-  kg_down  = [k_down, k_s, k_j, k_rus_s, k_rus_j],
-  kg_left  = [k_left, k_a, k_h, k_rus_a, k_rus_h],
-  kg_right = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
+  kg_esc     = [k_q, k_rus_q],
+  kg_refresh = [k_r, k_rus_r],
+  kg_up      = [k_up, k_w, k_k, k_rus_w, k_rus_k],
+  kg_down    = [k_down, k_s, k_j, k_rus_s, k_rus_j],
+  kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
+  kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
 const string
   play  = " ▶  ",
@@ -97,7 +101,7 @@ struct Win {
     scrollOffset, msgDrawSetting,
     activeBuffer;
   string
-    debugText;
+    debugText, currentTrack;
   bool
     dialogsOpened, isMusicPlaying;
 }
@@ -400,18 +404,21 @@ void controller() {
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key)) selectEvent;
   else if (canFind(kg_left, win.key)) backEvent;
-  else if (win.section == Sections.right && activeBufferScrollAllowed) {
-    if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
-    else if (win.key == k_end) jumpToEnd;
-    else if (win.key == k_pagedown) {
-      win.scrollOffset += LINES/2;
-      win.active += LINES/2;
-    }
-    else if (win.key == k_pageup) {
-      win.scrollOffset -= LINES/2;
-      win.active -= LINES/2;
-      if (win.active < 0) win.active = win.scrollOffset = 0;
-      if (win.scrollOffset < 0) win.scrollOffset = 0;
+  else if (win.section == Sections.right) {
+    if (canFind(kg_refresh, win.key)) bodyToBuffer;
+    if (activeBufferScrollAllowed) {
+      if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
+      else if (win.key == k_end) jumpToEnd;
+      else if (win.key == k_pagedown) {
+        win.scrollOffset += LINES/2;
+        win.active += LINES/2;
+      }
+      else if (win.key == k_pageup) {
+        win.scrollOffset -= LINES/2;
+        win.active -= LINES/2;
+        if (win.active < 0) win.active = win.scrollOffset = 0;
+        if (win.scrollOffset < 0) win.scrollOffset = 0;
+      }
     }
   }
   checkBounds;
