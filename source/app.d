@@ -53,6 +53,10 @@ const int[]
   kg_left  = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
+const string
+  play  = " ▶  ",
+  pause = " ▮▮ ";
+
 const utfranges = [
   utf(19968, 40959, 1),
   utf(12288, 12351, 1),
@@ -276,7 +280,7 @@ void bodyToBuffer() {
     switch (win.activeBuffer) {
       case Buffers.dialogs: win.mbody = GetDialogs; break;
       case Buffers.friends: win.mbody = GetFriends; break;
-      case Buffers.music: win.mbody = GetMusic; break;
+      case Buffers.music: win.mbody = GetMusic; if (win.active < 5) win.active = 5; break;
       default: break;
     }
     if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
@@ -527,10 +531,11 @@ ListElement[] GetFriends() {
 
 ListElement[] MusicPlayer() {
   ListElement[] mplayer;
-  mplayer ~= ListElement(center("Bassnectar", COLS-16, ' ')); 
-  mplayer ~= ListElement(center("Voodoo (Ill.Gates Remix)", COLS-16, ' '));
-  mplayer ~= ListElement(center("3:13 / 4:27", COLS-16, ' '));
-  mplayer ~= ListElement(center("[========================|==========]", COLS-16, ' '));
+  mplayer ~= ListElement(center("", COLS-16, ' ')); // Artist
+  mplayer ~= ListElement(center("", COLS-16, ' ')); // Title
+  mplayer ~= ListElement(center("", COLS-16, ' ')); // 2:43 / 4:57
+  mplayer ~= ListElement(center("", COLS-16, ' ')); // [========================|==========]
+  mplayer ~= ListElement("");
   return mplayer;
 }
 
@@ -542,13 +547,13 @@ ListElement[] GetMusic() {
   
   list ~= MusicPlayer;
 
-  list ~= ListElement("");
   foreach(e; music) {
-    artistAndSong = e.artist ~ " - " ~ e.title;
-    if (artistAndSong.utfLength > COLS-5-win.offset-e.duration_str.length.to!int) {
-      artistAndSong = artistAndSong[0..COLS-5-win.offset-e.duration_str.length.to!int];
+    // play OR pause here
+    artistAndSong = "    " ~ e.artist ~ " - " ~ e.title;
+    if (artistAndSong.utfLength > COLS-9-win.offset-e.duration_str.length.to!int) {
+      artistAndSong = artistAndSong[0..COLS-9-win.offset-e.duration_str.length.to!int];
       amount = COLS-6-win.offset-artistAndSong.utfLength.to!int;
-    } else amount = COLS - 5 - win.offset - e.artist.utfLength.to!int - e.title.utfLength.to!int - e.duration_str.length.to!int;
+    } else amount = COLS - 9 - win.offset - e.artist.utfLength.to!int - e.title.utfLength.to!int - e.duration_str.length.to!int;
     space = " ".replicate(amount);
     list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url);
   }
