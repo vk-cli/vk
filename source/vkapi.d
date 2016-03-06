@@ -758,12 +758,12 @@ class VKapi {
             text: getLocal("loading")
         };
 
-        auto chat = getBufferedChat(count, 0, peer);
+        int needln = count + offset;
+        auto chat = getBufferedChat(needln, 0, peer);
         if(chat.length == 0 || chat[chat.length-1].isLoading) return [ ld ];
 
         vkMessageLine[] localbuf;
         auto lazylines = chat.map!(q => convertMessage(q)).map!(q => localbuf ~= q);
-        int needln = count + offset;
 
         while(localbuf.length < needln) {
             lazylines.take(takeamount);
