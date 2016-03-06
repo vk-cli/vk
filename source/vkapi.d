@@ -584,15 +584,6 @@ class VKapi {
         return rt;
     }
 
-    private bool isNeedName(vkMessage lm, long ut, int fid) {
-        bool neednm = true;
-            //auto lm = buf[buf.length-1];
-            auto d = ut-lm.utime;
-            if(lm.author_id == fid && d <= needNameMaxDelta) neednm = false;
-            //dbm("isneedname lmm: " ~ lm.body_lines[0] ~ ", fidn: " ~ fid.to!string ~ ", fidl: " ~ lm.author_id.to!string ~ ", neednm " ~ neednm.to!string ~ ", d: " ~ d.to!string);
-        return neednm;
-    }
-
     // ===== buffers =====
 
 
@@ -729,6 +720,7 @@ class VKapi {
             pb.chatBuffer[peer].buffer ~= messagesGetHistory(peer, c, off, sc);
             pb.chatBuffer[peer].data.serverCount = sc;
             pb.chatBuffer[peer].data.updated = true;
+            resolveNeedName(peer);
             toggleUpdate();
         }
 
@@ -741,9 +733,20 @@ class VKapi {
 
         //auto rvrt = rt.reversed!0;
         //reverse(rvrt);
-        //resolvenm(rvrt);
 
         return rt;
+    }
+
+    private void resolveNeedName(int peer) {
+        int lastfid;
+        long lastut;
+        for(long i = pb.chatBuffer[peer].buffer.length-1; i > -1; i--) {
+            auto m = &(pb.chatBuffer[peer].buffer[i]);
+            bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
+            m.needName = nm;
+            lastfid = m.author_id;
+            lastut = m.utime;
+        }
     }
 
     ref vkMessage lastMessage(ref vkMessage[] buf) {
@@ -907,7 +910,8 @@ class VKapi {
         if(!haspeer) pb.chatBuffer[peer] = apiChatBuffer();
         auto cb = &(pb.chatBuffer[peer]);
 
-        //nm.needName = isNeedName(cb.buffer, utime, from);
+        auto lastm = cb.buffer[cb.buffer.length-1];
+        nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
 
         cb.buffer = nm ~ cb.buffer;
 
