@@ -99,7 +99,7 @@ struct Win {
   string
     debugText;
   bool
-    dialogsOpened;
+    dialogsOpened, isMusicPlaying;
 }
 
 struct ListElement {
@@ -280,7 +280,7 @@ void bodyToBuffer() {
     switch (win.activeBuffer) {
       case Buffers.dialogs: win.mbody = GetDialogs; break;
       case Buffers.friends: win.mbody = GetFriends; break;
-      case Buffers.music: win.mbody = GetMusic; if (win.active < 5) win.active = 5; break;
+      case Buffers.music: win.mbody = GetMusic; if (win.active < 5 && win.isMusicPlaying) win.active = 5; break;
       default: break;
     }
     if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
@@ -541,11 +541,15 @@ ListElement[] MusicPlayer() {
 
 ListElement[] GetMusic() {
   ListElement[] list;
-  auto music = api.getBufferedMusic(LINES-6, win.scrollOffset);
   string space, artistAndSong;
   int amount;
-  
-  list ~= MusicPlayer;
+  vkAudio[] music;
+
+  if (win.isMusicPlaying) {
+    music = api.getBufferedMusic(LINES-6, win.scrollOffset);
+    list ~= MusicPlayer;
+  } else
+    music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
   foreach(e; music) {
     // play OR pause here
