@@ -922,17 +922,28 @@ class VKapi {
     }
 
     void triggerRead(JSONValue u) {
+        bool inboxrd = (u[0].integer == 6);
         auto peer = u[1].integer.to!int;
         auto mid = u[2].integer.to!int;
 
-        auto dc = pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
-        if(dc == -1) return;
+        auto dc = (inboxrd) ? pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true) : -1;
+        auto mc = (peer in pb.chatBuffer) ? pb.chatBuffer[peer].buffer.map!(q => q.msg_id == mid).countUntil(true) : -1;
+        bool upd = false;
 
-        if(pb.dialogsBuffer[dc].lastmid == mid) {
+        if(dc != -1 && pb.dialogsBuffer[dc].lastmid == mid) {
             pb.dialogsBuffer[dc].unread = false;
+            upd = true;
         }
 
-        toggleUpdate();
+        if(mc != -1) {
+            auto ct = Clock.currStdTime.stdTimeToUnixTime!long;
+            auto cb = &(pb.chatBuffer[peer]);
+            cb.buffer[mc].unread = false;
+            cb.recent[mid] = apiRecentlyUpdated(ct);
+            upd = true;
+        }
+
+        if(upd) toggleUpdate();
 
     }
 
