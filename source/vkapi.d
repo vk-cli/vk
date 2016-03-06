@@ -67,6 +67,7 @@ struct vkMessageLine {
     bool isName;
     bool isSpacing;
     bool isFwd;
+    int fwdDepth;
 }
 
 auto emptyVkMessage = vkMessage();
