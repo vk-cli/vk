@@ -1064,10 +1064,13 @@ class VKapi {
                     case 6: //inbox read
                         triggerRead(u);
                         break;
-                    case 8:
+                    case 7: //outbox read
+                        triggerRead(u);
+                        break;
+                    case 8: //online\offline
                         triggerOnline(u);
                         break;
-                    case 9:
+                    case 9: //online\offline
                         triggerOnline(u);
                         break;
                     default:
