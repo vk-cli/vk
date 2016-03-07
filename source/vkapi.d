@@ -790,6 +790,8 @@ class VKapi {
         }
         vkMessageLine[] rt;
         rt ~= lspacing;
+        bool nofwd = (inp.fwd_depth == -1);
+
         if(inp.needName) {
             vkMessageLine name = {
                 text: inp.author_name,
@@ -798,17 +800,55 @@ class VKapi {
             };
             rt ~= name;
             rt ~= lspacing;
-            if(inp.body_lines.length != 0) {
-                foreach(l; inp.body_lines) {
-                    vkMessageLine msg = {
-                        text: l
-                    };
-                    rt ~= msg;
-                }
-            } else rt ~= lspacing;
         }
+
+        if(inp.body_lines.length != 0) {
+            foreach(l; inp.body_lines) {
+                vkMessageLine msg = {
+                    text: l
+                };
+                rt ~= msg;
+            }
+        } else if (nofwd) rt ~= lspacing;
+
+        if(!nofwd) {
+            rt ~= digFwd(inp.fwd, 0);
+        }
+
         cb.linebuffer[inp.msg_id] = rt;
         if(rupd) cb.recent[inp.msg_id].checkedout = true;
+        return rt;
+    }
+
+    private vkMessageLine[] digFwd(vkFwdMessage[] inp, int depth) {
+        ++depth;
+        vkMessageLine[] rt;
+        foreach(fm; inp) {
+            vkMessageLine name = {
+                text: fm.author_name,
+                time: fm.time_str,
+                isFwd: true, isName: true, fwdDepth: depth
+            };
+            rt ~= name;
+            foreach(l; fm.body_lines) {
+                vkMessageLine msg = {
+                    text: l,
+                    isFwd: true, fwdDepth: depth
+                };
+                rt ~= msg;
+            }
+            vkMessageLine fwdspc = {
+                isFwd: true, isSpacing: true,
+                fwdDepth: depth
+            };
+            rt ~= fwdspc;
+
+            if(fm.fwd.length != 0) {
+                rt ~= digFwd(fm.fwd, depth);
+                rt ~= fwdspc;
+            }
+
+        }
         return rt;
     }
 
