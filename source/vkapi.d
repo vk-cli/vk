@@ -971,13 +971,16 @@ class VKapi {
 
         }
 
-        if(!haspeer) pb.chatBuffer[peer] = apiChatBuffer();
-        auto cb = &(pb.chatBuffer[peer]);
 
-        auto lastm = cb.buffer[cb.buffer.length-1];
-        nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
+        if(haspeer) {
+            auto cb = &(pb.chatBuffer[peer]);
+            if(cb.buffer.length != 0) {
+                auto lastm = cb.buffer[cb.buffer.length-1];
+                nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
 
-        cb.buffer = nm ~ cb.buffer;
+                cb.buffer = nm ~ cb.buffer;
+            }
+        }
 
         toggleUpdate();
         dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
