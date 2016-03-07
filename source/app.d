@@ -58,8 +58,9 @@ const int[]
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
 const string 
-  play  = " ▶  ",
-  pause = " ▮▮ ";
+  repost = "↳",
+  play   = " ▶  ",
+  pause  = " ▮▮ ";
 
 const utfranges = [
   utf(19968, 40959, 1),
@@ -352,9 +353,8 @@ void drawMusicList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (win.isMusicPlaying) {
-      //e.name.regular;
-      //else
-      i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
+      if (e.name.canFind(play) || e.name.canFind(pause)) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
+      else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
     }
     else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
   }
