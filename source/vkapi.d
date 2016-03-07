@@ -1019,7 +1019,7 @@ class VKapi {
         if(mc != -1) {
             auto ct = Clock.currStdTime.stdTimeToUnixTime!long;
             auto cb = &(pb.chatBuffer[peer]);
-            for(long i = mc; i > -1; i--) {
+            for(long i = mc; i > -1; --i) {
                 if(cb.buffer[i].unread) {
                     cb.buffer[i].unread = false;
                     cb.recent[cb.buffer[i].msg_id] = apiRecentlyUpdated(ct);
