@@ -861,6 +861,10 @@ class VKapi {
         }
     }
 
+    void toggleForeceUpdate(blockType tp) {
+        getData(tp).forceUpdate = true;
+    }
+
     int getServerCount(blockType tp) {
         return getData(tp).serverCount;
     }
