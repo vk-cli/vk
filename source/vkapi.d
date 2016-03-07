@@ -535,19 +535,7 @@ class VKapi {
         return apiFwdIter(rt, cmd);
     }
 
-    vkMessage[] messagesGetHistory(int peer_id, int count, int offset, out int servercount, int start_message_id = -1, bool rev = false) {
-        auto ct = Clock.currTime();
-        auto params = [ "peer_id": peer_id.to!string ];
-        if(count >= 0) params["count"] = count.to!string;
-        if(offset != 0) params["offset"] = offset.to!string;
-        if(start_message_id > 0) params["start_message_id"] = start_message_id.to!string;
-        if(rev) params["rev"] = "1";
-
-        auto resp = vkget("messages.getHistory", params);
-        auto items = resp["items"].array;
-
-        servercount = resp["count"].integer.to!int;
-
+    private vkMessage[] parseMessageObjects(JSONValue[] items, SysTime ct) {
         vkMessage[] rt;
         int i = 0;
         foreach(m; items) {
@@ -582,6 +570,31 @@ class VKapi {
             ++i;
         }
         return rt;
+    }
+
+    vkMessage[] messagesGetHistory(int peer_id, int count, int offset, out int servercount, int start_message_id = -1, bool rev = false) {
+        auto ct = Clock.currTime();
+        auto params = [ "peer_id": peer_id.to!string ];
+        if(count >= 0) params["count"] = count.to!string;
+        if(offset != 0) params["offset"] = offset.to!string;
+        if(start_message_id > 0) params["start_message_id"] = start_message_id.to!string;
+        if(rev) params["rev"] = "1";
+
+        auto resp = vkget("messages.getHistory", params);
+        auto items = resp["items"].array;
+
+        servercount = resp["count"].integer.to!int;
+
+        return parseMessageObjects(items, ct);
+    }
+
+    vkMessage[] messagesGetById(int[] mids) {
+        auto ct = Clock.currTime();
+        auto params = [ "message_ids": mids.map!(q => q.to!string).join(",") ];
+        auto resp = vkget("messages.getById", params);
+        auto items = resp["items"].array;
+
+        return parseMessageObjects(items, ct);
     }
 
     // ===== buffers =====
@@ -812,7 +825,7 @@ class VKapi {
         } else if (nofwd) rt ~= lspacing;
 
         if(!nofwd) {
-            rt ~= digFwd(inp.fwd, 0);
+            rt ~= renderFwd(inp.fwd, 0);
         }
 
         cb.linebuffer[inp.msg_id] = rt;
@@ -820,7 +833,7 @@ class VKapi {
         return rt;
     }
 
-    private vkMessageLine[] digFwd(vkFwdMessage[] inp, int depth) {
+    private vkMessageLine[] renderFwd(vkFwdMessage[] inp, int depth) {
         ++depth;
         vkMessageLine[] rt;
         foreach(fm; inp) {
@@ -844,7 +857,7 @@ class VKapi {
             rt ~= fwdspc;
 
             if(fm.fwd.length != 0) {
-                rt ~= digFwd(fm.fwd, depth);
+                rt ~= renderFwd(fm.fwd, depth);
                 rt ~= fwdspc;
             }
 
@@ -922,14 +935,21 @@ class VKapi {
             unread: (unread && !outbox)
         };
 
-        vkMessage nm = {
-            author_id: from, peer_id: peer, msg_id: mid,
-            outgoing: outbox, unread: unread,
-            utime: utime, time_str: vktime(ct, utime),
-            author_name: nc.getName(from).strName,
-            body_lines: msg.split("\n"),
-            fwd_depth: -1
-        };
+        vkMessage nm;
+        if(!hasattaches) {
+            vkMessage lpnm = {
+                author_id: from, peer_id: peer, msg_id: mid,
+                outgoing: outbox, unread: unread,
+                utime: utime, time_str: vktime(ct, utime),
+                author_name: nc.getName(from).strName,
+                body_lines: msg.split("\n"),
+                fwd_depth: -1
+            };
+            nm = lpnm;
+        } else {
+            auto gett = messagesGetById([mid]);
+            if(gett.length == 1) nm = gett[0];
+        }
 
         if(first) {
             pb.dialogsBuffer[0] = nd;
