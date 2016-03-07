@@ -765,8 +765,7 @@ class VKapi {
     private void resolveNeedName(int peer) {
         int lastfid;
         long lastut;
-        for(long i = pb.chatBuffer[peer].buffer.length-1; i > -1; i--) {
-            auto m = &(pb.chatBuffer[peer].buffer[i]);
+        foreach(ref m; pb.chatBuffer[peer].buffer.retro) {
             bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
             m.needName = nm;
             lastfid = m.author_id;

@@ -673,7 +673,7 @@ void test() {
 }
 
 void main(string[] args) {
-  //test;
+  test;
   init;
   color;
   curs_set(0);
