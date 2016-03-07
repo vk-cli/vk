@@ -539,14 +539,26 @@ class VKapi {
         vkMessage[] rt;
         int i = 0;
         foreach(m; items) {
-            int fid = m["from_id"].integer.to!int;
+            int fid;
             int mid = m["id"].integer.to!int;
-            int pid = ("chat_id" in m) ? (m["chat_id"].integer.to!int + convStartId) : m["user_id"].integer.to!int;
+            auto hascid = ("chat_id" in m);
+            int uid = m["user_id"].integer.to!int;
+            int pid = (hascid) ? (m["chat_id"].integer.to!int + convStartId) : uid;
             long ut = m["date"].integer.to!long;
             bool outg = (m["out"].integer.to!int == 1);
             bool rstate = (m["read_state"].integer.to!int == 1);
             //bool unr = (outg && !rstate);
             bool unr = !rstate;
+
+            if("from_id" in m) {
+                fid = m["from_id"].integer.to!int;
+            } else {
+                if(hascid || !outg) {
+                    fid = uid;
+                } else {
+                    fid = me.id;
+                }
+            }
 
             string[] mbody = m["body"].str.split("\n");
             string st = vktime(ct, ut);
