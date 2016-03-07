@@ -57,7 +57,7 @@ const int[]
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
-const string
+const string 
   play  = " ▶  ",
   pause = " ▮▮ ";
 
@@ -82,6 +82,10 @@ struct utf {
   int spaces;
 }
 
+struct Track {
+  string artist, title, duration;
+}
+
 struct Win {
   ListElement[]
   menu = [
@@ -101,9 +105,10 @@ struct Win {
     scrollOffset, msgDrawSetting,
     activeBuffer;
   string
-    debugText, currentTrack;
+    debugText, currentPlayingTrack;
   bool
     dialogsOpened, isMusicPlaying;
+  Track currentTrack = {};
 }
 
 struct ListElement {
@@ -346,7 +351,12 @@ void drawFriendsList() {
 void drawMusicList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
-    i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
+    if (win.isMusicPlaying) {
+      //e.name.regular;
+      //else
+      i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
+    }
+    else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
   }
 }
 
@@ -454,7 +464,18 @@ void selectEvent() {
     win.last_active = win.active;
     win.active = 0;
     win.section = Sections.right;
-  } else if (win.mbody[win.active].callback) win.mbody[win.active].callback(win.mbody[win.active]);
+  } else {
+    if (win.isMusicPlaying) {
+      if (win.scrollOffset == 0) {
+        setCurrentTrack;
+        win.mbody[win.active].callback(win.mbody[win.active]);
+      }
+      else {
+        setCurrentTrack;
+        win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
+      }
+    } else if (win.mbody[win.active].callback) win.mbody[win.active].callback(win.mbody[win.active]);
+  }
 }
 
 void backEvent() {
@@ -474,6 +495,10 @@ void exit(ref ListElement le) {
 
 void open(ref ListElement le) {
   win.mbody = le.getter();
+}
+
+void run(ref ListElement le) {
+  le.getter();
 }
 
 void changeLang(ref ListElement le) {
@@ -538,12 +563,24 @@ ListElement[] GetFriends() {
 
 ListElement[] MusicPlayer() {
   ListElement[] mplayer;
-  mplayer ~= ListElement(center("", COLS-16, ' ')); // Artist
-  mplayer ~= ListElement(center("", COLS-16, ' ')); // Title
-  mplayer ~= ListElement(center("", COLS-16, ' ')); // 2:43 / 4:57
-  mplayer ~= ListElement(center("", COLS-16, ' ')); // [========================|==========]
+  mplayer ~= ListElement(center(win.currentTrack.artist, COLS-16, ' '));
+  mplayer ~= ListElement(center(win.currentTrack.title, COLS-16, ' '));
+  mplayer ~= ListElement(center("0:00 / " ~ win.currentTrack.duration, COLS-16, ' '));
+  mplayer ~= ListElement(center("[========================|==========]", COLS-16, ' '));
   mplayer ~= ListElement("");
   return mplayer;
+}
+ 
+ListElement[] setCurrentTrack() {
+  if (!win.isMusicPlaying) win.active += 5;
+  win.isMusicPlaying = true;
+  auto track = api.getBufferedMusic(1, win.active-5);
+  win.buffer[win.active-5].flag = true;
+  win.currentPlayingTrack = track[0].artist ~ " - " ~ track[0].title;
+  win.currentTrack.artist = track[0].artist;
+  win.currentTrack.title = track[0].title;
+  win.currentTrack.duration = track[0].duration_str;
+  return new ListElement[0];
 }
 
 ListElement[] GetMusic() {
@@ -559,14 +596,14 @@ ListElement[] GetMusic() {
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
   foreach(e; music) {
-    // play OR pause here
-    artistAndSong = "    " ~ e.artist ~ " - " ~ e.title;
+    string indicator = win.currentPlayingTrack == e.artist ~ " - " ~ e.title ? play : "    ";
+    artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
     if (artistAndSong.utfLength > COLS-9-win.offset-e.duration_str.length.to!int) {
       artistAndSong = artistAndSong[0..COLS-9-win.offset-e.duration_str.length.to!int];
       amount = COLS-6-win.offset-artistAndSong.utfLength.to!int;
-    } else amount = COLS - 9 - win.offset - e.artist.utfLength.to!int - e.title.utfLength.to!int - e.duration_str.length.to!int;
+    } else amount = COLS-9-win.offset-e.artist.utfLength.to!int-e.title.utfLength.to!int-e.duration_str.length.to!int;
     space = " ".replicate(amount);
-    list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url);
+    list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url, &run, &setCurrentTrack);
   }
   win.activeBuffer = Buffers.music;
   return list;
