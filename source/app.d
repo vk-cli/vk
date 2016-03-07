@@ -353,8 +353,11 @@ void drawMusicList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.offset+1);
     if (win.isMusicPlaying) {
-      if (e.name.canFind(play) || e.name.canFind(pause)) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
-      else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
+      if (i < 5) e.name.regular;
+      else {
+        if (e.name.canFind(play) || e.name.canFind(pause)) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
+        else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
+      }
     }
     else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
   }
@@ -572,13 +575,14 @@ ListElement[] MusicPlayer() {
 }
  
 ListElement[] setCurrentTrack() {
-  if (!win.isMusicPlaying) win.active += 5;
-  win.isMusicPlaying = true;
+  if (!win.isMusicPlaying) {
+    win.active += 5;
+    win.isMusicPlaying = true;
+  }
   auto track = api.getBufferedMusic(1, win.active-5);
-  win.buffer[win.active-5].flag = true;
-  win.currentPlayingTrack = track[0].artist ~ " - " ~ track[0].title;
-  win.currentTrack.artist = track[0].artist;
-  win.currentTrack.title = track[0].title;
+  win.currentPlayingTrack   = track[0].artist ~ " - " ~ track[0].title;
+  win.currentTrack.artist   = track[0].artist;
+  win.currentTrack.title    = track[0].title;
   win.currentTrack.duration = track[0].duration_str;
   return new ListElement[0];
 }
