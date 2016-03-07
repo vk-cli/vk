@@ -636,7 +636,7 @@ void test() {
     api.asyncLongpoll();
     //readln();
     auto dlgg = api.getBufferedDialogs(10, 0);
-    int i = 18;
+    int i = 0;
     const int step = 48;
     while(true) {
         int huj;

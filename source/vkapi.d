@@ -775,17 +775,20 @@ class VKapi {
         };
 
         int needln = count + offset;
+
         auto chat = getBufferedChat(needln, 0, peer);
+
         if(chat.length == 0 || chat[chat.length-1].isLoading) return [ ld ];
 
         vkMessageLine[] localbuf;
-        auto lazylines = chat.map!(q => convertMessage(q)).map!(q => localbuf = q ~ localbuf);
+        auto lazylines = chat.map!(q => convertMessage(q));
 
         while(localbuf.length < needln) {
-            lazylines.take(takeamount);
+            lazylines.take(takeamount).each!(q => localbuf = q ~ localbuf);
+            lazylines = lazylines.drop(takeamount);
         }
 
-        return localbuf.slice!vkMessageLine(count, offset);
+        return localbuf[$-needln..$-offset];
     }
 
     vkMessageLine lspacing = {
