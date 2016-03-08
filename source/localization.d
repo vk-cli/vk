@@ -41,6 +41,12 @@ void localize() {
   local["msg_setting1"] = lang("show the selected text only", "текст только выделенного диалога");
   local["msg_setting2"] = lang("show the selected text and unread ones", "текст выделенного диалога и всех непрочитанных");
   local["loading"] = lang("Loading", "Загрузка");
+  local["general_navig"] = lang("[ General navigation ]", "[ Общее управление ]");
+  local["help_move"]   = lang("Arrow keys, WASD, HJKL         ->   Move cursor", "Стрелки, WASD, HJKL           ->   Двигать курсор");
+  local["help_select"] = lang("Enter, right arrow key, D, L   ->   Select item", "Enter, стрелка вправо, D, L   ->   Выбрать элемент");
+  local["help_jump"]   = lang("Page Up/Down                   ->   Scroll up/down for a half of screen", "Page Up/Down                  ->   Прокрутить вверх/вниз на половину экрана");
+  local["help_homend"] = lang("Home/End                       ->   Jump to the beginning/end", "Home/End                      ->   Прыгнуть в начало/конец");
+  local["help_exit"]   = lang("Q                              ->   Exit", "Q                             ->   Выход");
 }
 
 void swapLang() {

@@ -527,7 +527,12 @@ void changeMsgSetting(ref ListElement le) {
 
 ListElement[] GenerateHelp() {
   return [
-    ListElement("help"),
+    ListElement(center("general_navig".getLocal, COLS-16, ' ')),
+    ListElement("help_move".getLocal),
+    ListElement("help_select".getLocal),
+    ListElement("help_jump".getLocal),
+    ListElement("help_homend".getLocal),
+    ListElement("help_exit".getLocal),
   ];
 }
 
