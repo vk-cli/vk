@@ -579,11 +579,12 @@ ListElement[] setCurrentTrack() {
     win.active += 5;
     win.isMusicPlaying = true;
   }
-  auto track = api.getBufferedMusic(1, win.active-5);
-  win.currentPlayingTrack   = track[0].artist ~ " - " ~ track[0].title;
-  win.currentTrack.artist   = track[0].artist;
-  win.currentTrack.title    = track[0].title;
-  win.currentTrack.duration = track[0].duration_str;
+  auto tracklist = api.getBufferedMusic(1, win.active-5);
+  auto track = tracklist[0];
+  win.currentPlayingTrack   = track.artist ~ " - " ~ track.title;
+  win.currentTrack.artist   = track.artist;
+  win.currentTrack.title    = track.title;
+  win.currentTrack.duration = track.duration_str;
   return new ListElement[0];
 }
 
