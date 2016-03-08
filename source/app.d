@@ -637,7 +637,7 @@ void test() {
     api.asyncLongpoll();
     //readln();
     auto dlgg = api.getBufferedDialogs(10, 0);
-    int i = 18;
+    int i = 0;
     const int step = 48;
     while(true) {
         int huj;
@@ -646,7 +646,8 @@ void test() {
         foreach (d; conv) {
             //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
             //writeln("m " ~ d.author_name ~ ": " ~ d.body_lines.join ~ " " ~ d.time_str ~ " nm:" ~ d.needName.to!string);
-            writeln(d.text ~ " " ~ d.time);
+            if(d.isFwd) writeln("| ".replicate(d.fwdDepth) ~ d.text ~ " " ~ d.time);
+            else writeln(d.text ~ " " ~ d.time);
         }
         readln();
     }
@@ -670,18 +671,6 @@ void test() {
 
     readln();
     //ticker();
-}
-
-string digTest(vkFwdMessage[] huj) {
-    string lel = "";
-    string pref = "| ";
-    foreach(h; huj) {
-        lel ~= pref ~ h.author_name ~ " " ~ h.time_str ~ "\n";
-        foreach(s; h.body_lines) lel ~= pref ~ s ~ "\n";
-        auto fw = digTest(h.fwd);
-        foreach(fs; fw.split("\n")) lel ~= pref ~ fs ~ "\n";
-    }
-    return lel;
 }
 
 void main(string[] args) {

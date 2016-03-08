@@ -539,14 +539,26 @@ class VKapi {
         vkMessage[] rt;
         int i = 0;
         foreach(m; items) {
-            int fid = m["from_id"].integer.to!int;
+            int fid;
             int mid = m["id"].integer.to!int;
-            int pid = ("chat_id" in m) ? (m["chat_id"].integer.to!int + convStartId) : m["user_id"].integer.to!int;
+            auto hascid = ("chat_id" in m);
+            int uid = m["user_id"].integer.to!int;
+            int pid = (hascid) ? (m["chat_id"].integer.to!int + convStartId) : uid;
             long ut = m["date"].integer.to!long;
             bool outg = (m["out"].integer.to!int == 1);
             bool rstate = (m["read_state"].integer.to!int == 1);
             //bool unr = (outg && !rstate);
             bool unr = !rstate;
+
+            if("from_id" in m) {
+                fid = m["from_id"].integer.to!int;
+            } else {
+                if(hascid || !outg) {
+                    fid = uid;
+                } else {
+                    fid = me.id;
+                }
+            }
 
             string[] mbody = m["body"].str.split("\n");
             string st = vktime(ct, ut);
@@ -753,8 +765,7 @@ class VKapi {
     private void resolveNeedName(int peer) {
         int lastfid;
         long lastut;
-        for(long i = pb.chatBuffer[peer].buffer.length-1; i > -1; i--) {
-            auto m = &(pb.chatBuffer[peer].buffer[i]);
+        foreach(ref m; pb.chatBuffer[peer].buffer.retro) {
             bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
             m.needName = nm;
             lastfid = m.author_id;
@@ -775,17 +786,20 @@ class VKapi {
         };
 
         int needln = count + offset;
+
         auto chat = getBufferedChat(needln, 0, peer);
+
         if(chat.length == 0 || chat[chat.length-1].isLoading) return [ ld ];
 
         vkMessageLine[] localbuf;
-        auto lazylines = chat.map!(q => convertMessage(q)).map!(q => localbuf = q ~ localbuf);
+        auto lazylines = chat.map!(q => convertMessage(q));
 
         while(localbuf.length < needln) {
-            lazylines.take(takeamount);
+            lazylines.take(takeamount).each!(q => localbuf = q ~ localbuf);
+            lazylines = lazylines.drop(takeamount);
         }
 
-        return localbuf.slice!vkMessageLine(count, offset);
+        return localbuf[$-needln..$-offset];
     }
 
     vkMessageLine lspacing = {
@@ -971,13 +985,16 @@ class VKapi {
 
         }
 
-        if(!haspeer) pb.chatBuffer[peer] = apiChatBuffer();
-        auto cb = &(pb.chatBuffer[peer]);
 
-        auto lastm = cb.buffer[cb.buffer.length-1];
-        nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
+        if(haspeer) {
+            auto cb = &(pb.chatBuffer[peer]);
+            if(cb.buffer.length != 0) {
+                auto lastm = cb.buffer[cb.buffer.length-1];
+                nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
 
-        cb.buffer = nm ~ cb.buffer;
+                cb.buffer = nm ~ cb.buffer;
+            }
+        }
 
         toggleUpdate();
         dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
@@ -1002,8 +1019,14 @@ class VKapi {
         if(mc != -1) {
             auto ct = Clock.currStdTime.stdTimeToUnixTime!long;
             auto cb = &(pb.chatBuffer[peer]);
-            cb.buffer[mc].unread = false;
-            cb.recent[mid] = apiRecentlyUpdated(ct);
+            for(long i = mc; i > -1; --i) {
+                if(cb.buffer[i].unread) {
+                    cb.buffer[i].unread = false;
+                    cb.recent[cb.buffer[i].msg_id] = apiRecentlyUpdated(ct);
+                } else {
+                    break;
+                }
+            }
             upd = true;
         }
 
