@@ -584,8 +584,7 @@ ListElement[] setCurrentTrack() {
     win.active += 5;
     win.isMusicPlaying = true;
   }
-  auto tracklist = api.getBufferedMusic(1, win.active-5);
-  auto track = tracklist[0];
+  vkAudio track = api.getBufferedMusic(1, win.active-5)[0];
   win.currentPlayingTrack   = track.artist ~ " - " ~ track.title;
   win.currentTrack.artist   = track.artist;
   win.currentTrack.title    = track.title;
