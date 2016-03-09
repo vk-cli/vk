@@ -843,7 +843,7 @@ class VKapi {
         } else if (nofwd) rt ~= lspacing;
 
         if(!nofwd) {
-            rt ~= renderFwd(inp.fwd, 0);
+            rt ~= lspacing ~ renderFwd(inp.fwd, 0);
         }
 
         cb.linebuffer[inp.msg_id] = rt;
