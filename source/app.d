@@ -409,7 +409,8 @@ bool activeBufferScrollAllowed() {
     case Buffers.dialogs: return api.isScrollAllowed(blockType.dialogs);
     case Buffers.friends: return api.isScrollAllowed(blockType.friends);
     case Buffers.music: return api.isScrollAllowed(blockType.music);
-    default: return false;
+    case Buffers.chat: return api.isChatScrollAllowed(win.chatID);
+    default: return true;
   }
 }
 
@@ -429,25 +430,25 @@ void controller() {
     if(api.isSomethingUpdated) break;
   }
   win.key.print;
-  if (canFind(kg_down, win.key)) downEvent;
-  else if (canFind(kg_up, win.key)) upEvent;
-  else if (canFind(kg_right, win.key)) selectEvent;
-  else if (canFind(kg_left, win.key)) backEvent;
-  else if (win.section == Sections.right) {
-    if (canFind(kg_refresh, win.key)) bodyToBuffer;
-    if (activeBufferScrollAllowed) {
-      if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
-      else if (win.key == k_end) jumpToEnd;
-      else if (win.key == k_pagedown) {
-        win.scrollOffset += LINES/2;
-        win.active += LINES/2;
-      }
-      else if (win.key == k_pageup) {
-        win.scrollOffset -= LINES/2;
-        win.active -= LINES/2;
-        if (win.active < 0) win.active = win.scrollOffset = 0;
-        if (win.scrollOffset < 0) win.scrollOffset = 0;
-      }
+  if (activeBufferScrollAllowed) {
+    if (canFind(kg_down, win.key)) downEvent;
+    else if (canFind(kg_up, win.key)) upEvent;
+    else if (canFind(kg_right, win.key)) selectEvent;
+    else if (canFind(kg_left, win.key)) backEvent;
+    else if (win.section == Sections.right) {
+      if (canFind(kg_refresh, win.key)) bodyToBuffer;
+        if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
+        else if (win.key == k_end) jumpToEnd;
+        else if (win.key == k_pagedown) {
+          win.scrollOffset += LINES/2;
+          win.active += LINES/2;
+        }
+        else if (win.key == k_pageup) {
+          win.scrollOffset -= LINES/2;
+          win.active -= LINES/2;
+          if (win.active < 0) win.active = win.scrollOffset = 0;
+          if (win.scrollOffset < 0) win.scrollOffset = 0;
+        }
     }
   }
   checkBounds;
