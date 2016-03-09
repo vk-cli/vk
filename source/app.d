@@ -430,11 +430,11 @@ void controller() {
     if(api.isSomethingUpdated) break;
   }
   win.key.print;
+  else if (canFind(kg_left, win.key)) backEvent;
   if (activeBufferScrollAllowed) {
     if (canFind(kg_down, win.key)) downEvent;
     else if (canFind(kg_up, win.key)) upEvent;
     else if (canFind(kg_right, win.key)) selectEvent;
-    else if (canFind(kg_left, win.key)) backEvent;
     else if (win.section == Sections.right) {
       if (canFind(kg_refresh, win.key)) bodyToBuffer;
         if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
