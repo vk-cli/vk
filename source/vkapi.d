@@ -989,9 +989,8 @@ class VKapi {
         if(haspeer) {
             auto cb = &(pb.chatBuffer[peer]);
             if(cb.buffer.length != 0) {
-                auto lastm = cb.buffer[cb.buffer.length-1];
+                auto lastm = cb.buffer[0];
                 nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
-
                 cb.buffer = nm ~ cb.buffer;
             }
         }
