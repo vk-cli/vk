@@ -512,6 +512,7 @@ void open(ref ListElement le) {
 void chat(ref ListElement le) {
   win.activeBuffer = Buffers.chat;
   open(le);
+  win.scrollOffset = 0;
   win.chatID = le.id;
 }
 
@@ -638,9 +639,11 @@ ListElement[] GetChat() {
   auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID);
   foreach(e; chat) {
     if (e.isFwd) {
-      if (e.isName && !e.isSpacing) list ~= ListElement("    " ~ "| ".replicate(e.fwdDepth) ~ "➥ " ~ e.text);
-      if (e.isSpacing && !e.isName) list ~= ListElement("    " ~ "| ".replicate(e.fwdDepth) ~ e.text);
-      if (!e.isSpacing && !e.isName) list ~= ListElement("    " ~ "| ".replicate(e.fwdDepth) ~ e.text);
+      ListElement line = {"    " ~ "| ".replicate(e.fwdDepth)};
+      if (e.isName && !e.isSpacing) line.name ~= "➥ " ~ e.text;
+      if (e.isSpacing && !e.isName) line.name ~= e.text;
+      if (!e.isSpacing && !e.isName) line.name ~= e.text;
+      list ~= line;
     } else 
       list ~= !e.isName ? ListElement("    " ~ e.text) : ListElement(e.text ~ " ".replicate(COLS-e.text.utfLength-e.time.length-2) ~ e.time);
   }
