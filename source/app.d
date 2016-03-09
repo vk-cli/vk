@@ -9,7 +9,7 @@ import vkapi, cfg, localization, utils, namecache;
 
 // INIT VARS
 enum Sections { left, right }
-enum Buffers { none, friends, dialogs, music }
+enum Buffers { none, friends, dialogs, music, chat }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 Win win;
@@ -104,11 +104,11 @@ struct Win {
     counter, active, section,
     last_active, offset, key,
     scrollOffset, msgDrawSetting,
-    activeBuffer;
+    activeBuffer, chatID;
   string
     debugText, currentPlayingTrack;
   bool
-    dialogsOpened, isMusicPlaying;
+    isMusicPlaying;
   Track currentTrack = {};
 }
 
@@ -117,6 +117,7 @@ struct ListElement {
   void function(ref ListElement) callback;
   ListElement[] function() getter;
   bool flag;
+  int id;
 }
 
 void relocale() {
@@ -221,12 +222,16 @@ void graySelected(string name) {
   attroff(A_REVERSE);
 }
 
-void white(string name) {
-  attron(A_BOLD);
+void regularWhite(string name) {
   attron(COLOR_PAIR(0));
   name.print;
-  attroff(A_BOLD);
   attroff(COLOR_PAIR(0));
+}
+
+void white(string name) {
+  attron(A_BOLD);
+  regularWhite(name);
+  attroff(A_BOLD);
 }
 
 void statusbar() {
@@ -288,6 +293,7 @@ string cut(ulong i, ListElement e) {
 void bodyToBuffer() {
   if (win.mbody.length != 0) {
     switch (win.activeBuffer) {
+      case Buffers.chat: win.mbody = GetChat; break;
       case Buffers.dialogs: win.mbody = GetDialogs; break;
       case Buffers.friends: win.mbody = GetFriends; break;
       case Buffers.music: win.mbody = GetMusic; if (win.active < 5 && win.isMusicPlaying) win.active = 5; break;
@@ -295,10 +301,12 @@ void bodyToBuffer() {
     }
     if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
     else win.buffer = win.mbody.dup;
-    foreach(i, e; win.buffer) {
-      if (e.name.utfLength.to!int + win.offset+1 > COLS) {
-        win.buffer[i].name = e.name[0..COLS-win.offset-4];
-      } else win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.offset-1);
+    if (win.activeBuffer != Buffers.chat) {
+      foreach(i, e; win.buffer) {
+        if (e.name.utfLength.to!int + win.offset+1 > COLS) {
+          win.buffer[i].name = e.name[0..COLS-win.offset-4];
+        } else win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.offset-1);
+      }
     }
   }
 }
@@ -368,6 +376,7 @@ void drawBuffer() {
     case Buffers.dialogs: drawDialogsList; break;
     case Buffers.friends: drawFriendsList; break;
     case Buffers.music: drawMusicList; break;
+    case Buffers.chat: drawChat; break;
     case Buffers.none: {
       foreach(i, e; win.buffer) {
         wmove(stdscr, 2+i.to!int, win.offset+1);
@@ -500,6 +509,12 @@ void open(ref ListElement le) {
   win.mbody = le.getter();
 }
 
+void chat(ref ListElement le) {
+  win.activeBuffer = Buffers.chat;
+  open(le);
+  win.chatID = le.id;
+}
+
 void run(ref ListElement le) {
   le.getter();
 }
@@ -553,7 +568,7 @@ ListElement[] GetDialogs() {
   string newMsg;
   foreach(e; dialogs) {
     newMsg = e.unread ? "⚫ " : "  ";
-    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), null, null, e.online);
+    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), &chat, &GetChat, e.online, e.id);
   }
   win.activeBuffer = Buffers.dialogs;
   return list;
@@ -563,7 +578,7 @@ ListElement[] GetFriends() {
   ListElement[] list;
   auto friends = api.getBufferedFriends(LINES-2, win.scrollOffset);
   foreach(e; friends) {
-    list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.id.to!string, null, null, e.online);
+    list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.id.to!string, &chat, &GetChat, e.online, e.id);
   }
   win.activeBuffer = Buffers.friends;
   return list;
@@ -578,7 +593,7 @@ ListElement[] MusicPlayer() {
   mplayer ~= ListElement("");
   return mplayer;
 }
- 
+
 ListElement[] setCurrentTrack() {
   if (!win.isMusicPlaying) {
     win.active += 5;
@@ -616,6 +631,27 @@ ListElement[] GetMusic() {
   }
   win.activeBuffer = Buffers.music;
   return list;
+}
+
+ListElement[] GetChat() {
+  ListElement[] list;
+  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID);
+  foreach(e; chat) {
+    if (e.isFwd) {
+      if (e.isName && !e.isSpacing) list ~= ListElement("    " ~ "| ".replicate(e.fwdDepth) ~ "➥ " ~ e.text);
+      if (e.isSpacing && !e.isName) list ~= ListElement("    " ~ "| ".replicate(e.fwdDepth) ~ e.text);
+      if (!e.isSpacing && !e.isName) list ~= ListElement("    " ~ "| ".replicate(e.fwdDepth) ~ e.text);
+    } else 
+      list ~= !e.isName ? ListElement("    " ~ e.text) : ListElement(e.text ~ " ".replicate(COLS-e.text.utfLength-e.time.length-2) ~ e.time);
+  }
+  return list;
+}
+
+void drawChat() {
+  foreach(i, e; win.buffer) {
+    wmove(stdscr, 2+i.to!int, 1);
+    e.name.regularWhite;
+  }
 }
 
 void test() {
@@ -700,7 +736,7 @@ void main(string[] args) {
     clear;
     win.counter = api.messagesCounter;
     statusbar;
-    drawMenu;
+    if (win.activeBuffer != Buffers.chat) drawMenu;
     bodyToBuffer;
     drawBuffer;
     refresh;
