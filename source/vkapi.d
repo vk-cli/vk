@@ -40,6 +40,7 @@ struct vkDialog {
     int id = -1;
     bool unread = false;
     bool online;
+    bool isChat;
 }
 
 struct vkMessage {
@@ -402,11 +403,13 @@ class VKapi {
                 ds.id = cid;
                 ds.name = ctitle;
                 ds.online = true;
+                ds.isChat = true;
             } else {
                 auto uid = msg["user_id"].integer.to!int;
                 ds.id = uid;
                 ds.name = nc.getName(ds.id).strName;
                 ds.online = (uid in online) ? online[uid] : false;
+                ds.isChat = false;
             }
             ds.lastMessage = msg["body"].str;
             ds.lastmid = msg["id"].integer.to!int;
@@ -945,7 +948,7 @@ class VKapi {
 
         vkDialog nd = {
             name: title, lastMessage: msg, lastmid: mid,
-            id: peer, online: true,
+            id: peer, online: true, isChat: conv,
             unread: (unread && !outbox)
         };
 
