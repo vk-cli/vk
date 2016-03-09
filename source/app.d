@@ -486,7 +486,7 @@ void selectEvent() {
         setCurrentTrack;
         win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
       }
-    } else if (win.mbody[win.active].callback) win.mbody[win.active].callback(win.mbody[win.active]);
+    } else if (win.mbody[win.active-win.scrollOffset].callback) win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
   }
 }
 
