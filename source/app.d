@@ -518,9 +518,9 @@ void open(ref ListElement le) {
 
 void chat(ref ListElement le) {
   win.chatID = le.id;
-  win.activeBuffer = Buffers.chat;
-  open(le);
   win.scrollOffset = 0;
+  open(le);
+  win.activeBuffer = Buffers.chat;
 }
 
 void run(ref ListElement le) {
