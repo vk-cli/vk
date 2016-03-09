@@ -136,6 +136,7 @@ struct apiState {
     bool lp80got = true;
     int latestUnreadMsg = 0;
     bool somethingUpdated = false;
+    bool chatloading = false;
 }
 
 enum blockType {
@@ -901,6 +902,10 @@ class VKapi {
 
     bool isScrollAllowed(blockType tp) {
         return !getData(tp).loading;
+    }
+
+    bool isChatScrollAllowed(int peer){
+        return !pb.chatBuffer[peer].data.loading;
     }
 
     bool isUpdated(blockType tp) {
