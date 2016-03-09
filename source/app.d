@@ -190,47 +190,54 @@ void color() {
   init_pair(Colors.max*2+1, 0, -1);
 }
 
-void selected(string name) {
+void selected(string text) {
   attron(A_REVERSE);
-  name.regular;
+  text.regular;
   attroff(A_REVERSE);
 }
 
-void regular(string name) {
+void regular(string text) {
   attron(A_BOLD);
   attron(COLOR_PAIR(win.namecolor));
-  name.print;
+  text.print;
   attroff(A_BOLD);
   attroff(COLOR_PAIR(win.namecolor));
 }
 
-void secondColor(string name) {
+void colored(string text, int color) {
+  int temp = win.namecolor;
+  win.namecolor = color;
+  text.regular;
+  win.namecolor = temp;
+}
+
+void secondColor(string text) {
   attron(A_BOLD);
   attron(COLOR_PAIR(win.textcolor+Colors.max+1));
-  name.print;
+  text.print;
   attroff(A_BOLD);
   attroff(COLOR_PAIR(win.textcolor+Colors.max+1));
 }
 
-void graySelected(string name) {
+void graySelected(string text) {
   attron(A_REVERSE);
   attron(A_BOLD);
   attron(COLOR_PAIR(win.namecolor+Colors.max+1));
-  name.print;
+  text.print;
   attroff(A_BOLD);
   attroff(COLOR_PAIR(win.namecolor+Colors.max+1));
   attroff(A_REVERSE);
 }
 
-void regularWhite(string name) {
+void regularWhite(string text) {
   attron(COLOR_PAIR(0));
-  name.print;
+  text.print;
   attroff(COLOR_PAIR(0));
 }
 
-void white(string name) {
+void white(string text) {
   attron(A_BOLD);
-  regularWhite(name);
+  regularWhite(text);
   attroff(A_BOLD);
 }
 
@@ -238,7 +245,7 @@ void statusbar() {
   if (win.debugText == "") {
     string notify = " " ~ win.counter.to!string ~ " ✉ ";
     notify.selected;
-    center("Some User: o, ebat' notify v statusbare", COLS+2-notify.length, ' ').selected;
+    center(" ", COLS+2-notify.length, ' ').selected;
     "\n".print;
   } else {
     center(win.debugText, COLS, ' ').selected;
@@ -510,10 +517,10 @@ void open(ref ListElement le) {
 }
 
 void chat(ref ListElement le) {
+  win.chatID = le.id;
   win.activeBuffer = Buffers.chat;
   open(le);
   win.scrollOffset = 0;
-  win.chatID = le.id;
 }
 
 void run(ref ListElement le) {
@@ -640,12 +647,16 @@ ListElement[] GetChat() {
   foreach(e; chat) {
     if (e.isFwd) {
       ListElement line = {"    " ~ "| ".replicate(e.fwdDepth)};
-      if (e.isName && !e.isSpacing) line.name ~= "➥ " ~ e.text;
+      if (e.isName && !e.isSpacing) {
+        line.flag = true;
+        line.id = line.name.length.to!int + 4;
+        line.name ~= "➥ " ~ e.text;
+      }
       if (e.isSpacing && !e.isName) line.name ~= e.text;
       if (!e.isSpacing && !e.isName) line.name ~= e.text;
       list ~= line;
     } else 
-      list ~= !e.isName ? ListElement("    " ~ e.text) : ListElement(e.text ~ " ".replicate(COLS-e.text.utfLength-e.time.length-2) ~ e.time);
+      list ~= !e.isName ? ListElement("    " ~ e.text) : ListElement(e.text, e.time, null, null, true, -1);
   }
   return list;
 }
@@ -653,7 +664,17 @@ ListElement[] GetChat() {
 void drawChat() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, 1);
-    e.name.regularWhite;
+    if (e.flag) {
+      if (e.id == -1) {
+        e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
+        " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
+        e.text.secondColor;
+      } else {
+        e.name[0..e.id].regularWhite;
+        e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
+      }
+    } else 
+      e.name.regularWhite;
   }
 }
 
