@@ -480,13 +480,13 @@ void selectEvent() {
     if (win.isMusicPlaying) {
       if (win.scrollOffset == 0) {
         setCurrentTrack;
-        win.mbody[win.active].callback(win.mbody[win.active]);
+        win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
       }
       else {
         setCurrentTrack;
         win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
       }
-    } else if (win.mbody[win.active].callback) win.mbody[win.active].callback(win.mbody[win.active]);
+    } else if (win.mbody[win.active-win.scrollOffset].callback) win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
   }
 }
 
