@@ -459,14 +459,6 @@ void controller() {
   checkBounds;
 }
 
-void chatScrollUp() {
-  
-}
-
-void chatScrollDown() {
-  
-}
-
 void checkBounds() {
   if (win.activeBuffer != Buffers.none && activeBufferLen > 0 && win.active > activeBufferLen-1) jumpToEnd;
 }
