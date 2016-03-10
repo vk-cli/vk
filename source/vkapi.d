@@ -345,6 +345,7 @@ class VKapi {
     }
 
     vkUser[] usersGet(int[] userIds, string fields = "", string nameCase = "nom") {
+        if(userIds.length == 0) return [];
         string[string] params;
         params["user_ids"] = userIds.map!(i => i.to!string).join(",");
         if(fields != "") params["fields"] = fields;
@@ -527,9 +528,10 @@ class VKapi {
                 fw = r.fwd;
             }
 
+            nc.requestId(fid);
+
             vkFwdMessage mm = {
                 author_id: fid,
-                author_name: nc.getName(fid).strName,
                 utime: ut, time_str: vktime(ct, ut),
                 body_lines: j["body"].str.split("\n"),
                 fwd: fw
@@ -537,6 +539,18 @@ class VKapi {
             rt ~= mm;
         }
         return apiFwdIter(rt, cmd);
+    }
+
+    private void resolveFwdRecv(ref vkFwdMessage[] inp) {
+        foreach(ref m; inp) {
+            m.author_name = nc.getName(m.author_id).strName;
+            if(m.fwd.length != 0) resolveFwdRecv(m.fwd);
+        }
+    }
+
+    private void resolveFwdNames(ref vkMessage[] inp) {
+        nc.resolveNames();
+        inp.map!(q => q.fwd).filter!(q => q.length != 0).each!(q => resolveFwdRecv(q));
     }
 
     private vkMessage[] parseMessageObjects(JSONValue[] items, SysTime ct) {
@@ -585,6 +599,7 @@ class VKapi {
             rt ~= mo;
             ++i;
         }
+        resolveFwdNames(rt);
         return rt;
     }
 
@@ -759,9 +774,6 @@ class VKapi {
         auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload);
 
         if(outload) return defaultrt;
-
-        //auto rvrt = rt.reversed!0;
-        //reverse(rvrt);
 
         return rt;
     }
