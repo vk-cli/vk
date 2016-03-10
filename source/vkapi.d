@@ -923,8 +923,12 @@ class VKapi {
         return !getData(tp).loading;
     }
 
-    bool isChatScrollAllowed(int peer){
+    bool isChatScrollAllowed(int peer) {
         return !pb.chatBuffer[peer].data.loading;
+    }
+
+    int getChatServerCount(int peer) {
+        return pb.chatBuffer[peer].data.serverCount;
     }
 
     bool isUpdated(blockType tp) {
