@@ -430,7 +430,7 @@ void controller() {
     if(api.isSomethingUpdated) break;
   }
   win.key.print;
-  else if (canFind(kg_left, win.key)) backEvent;
+  if (canFind(kg_left, win.key)) backEvent;
   if (activeBufferScrollAllowed) {
     if (canFind(kg_down, win.key)) downEvent;
     else if (canFind(kg_up, win.key)) upEvent;
