@@ -400,6 +400,7 @@ int activeBufferLen() {
     case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
     case Buffers.friends: return api.getServerCount(blockType.friends);
     case Buffers.music: return api.getServerCount(blockType.music);
+    case Buffers.chat: return api.getChatServerCount(win.chatID);
     default: return 0;
   }
 }
@@ -415,10 +416,8 @@ bool activeBufferScrollAllowed() {
 }
 
 void jumpToEnd() {
-  if (win.activeBuffer != Buffers.none) {
-    win.active = activeBufferLen-1;
-    win.scrollOffset = activeBufferLen-LINES+2;
-  }
+  win.active = activeBufferLen-1;
+  win.scrollOffset = activeBufferLen-LINES+2;
 }
 
 void controller() {
@@ -431,27 +430,41 @@ void controller() {
   }
   win.key.print;
   if (canFind(kg_left, win.key)) backEvent;
-  if (activeBufferScrollAllowed) {
+  if (activeBufferScrollAllowed && win.activeBuffer != Buffers.chat) { // non-chat events
     if (canFind(kg_down, win.key)) downEvent;
     else if (canFind(kg_up, win.key)) upEvent;
     else if (canFind(kg_right, win.key)) selectEvent;
     else if (win.section == Sections.right) {
       if (canFind(kg_refresh, win.key)) bodyToBuffer;
-        if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
-        else if (win.key == k_end) jumpToEnd;
-        else if (win.key == k_pagedown) {
-          win.scrollOffset += LINES/2;
-          win.active += LINES/2;
-        }
-        else if (win.key == k_pageup) {
-          win.scrollOffset -= LINES/2;
-          win.active -= LINES/2;
-          if (win.active < 0) win.active = win.scrollOffset = 0;
-          if (win.scrollOffset < 0) win.scrollOffset = 0;
-        }
+      if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
+      else if (win.key == k_end) jumpToEnd;
+      else if (win.key == k_pagedown) {
+        win.scrollOffset += LINES/2;
+        win.active += LINES/2;
+      }
+      else if (win.key == k_pageup) {
+        win.scrollOffset -= LINES/2;
+        win.active -= LINES/2;
+        if (win.active < 0) win.active = win.scrollOffset = 0;
+        if (win.scrollOffset < 0) win.scrollOffset = 0;
+      }
     }
+  } else { // chat events
+    if (canFind(kg_up, win.key)) win.scrollOffset += 2;
+    else if (canFind(kg_down, win.key)) win.scrollOffset -= 2;
+    else if (win.key == k_pagedown) win.scrollOffset -= LINES/2;
+    else if (win.key == k_pageup) win.scrollOffset += LINES/2;
+    if (win.scrollOffset < 0) win.scrollOffset = 0;
   }
   checkBounds;
+}
+
+void chatScrollUp() {
+  
+}
+
+void chatScrollDown() {
+  
 }
 
 void checkBounds() {
