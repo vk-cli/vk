@@ -59,7 +59,7 @@ const int[]
 
 const string 
   unread = "⚫ ",
-  repost = "↳",
+  fwd    = "➥ ",
   play   = " ▶  ",
   pause  = " ▮▮ ";
 
@@ -693,7 +693,7 @@ ListElement[] GetChat() {
       if (e.isName && !e.isSpacing) {
         line.flag = true;
         line.id = line.name.length.to!int + 4;
-        line.name ~= "➥ " ~ e.text;
+        line.name ~= fwd ~ e.text;
         line.text = e.time;
       }
       if (e.isSpacing && !e.isName) line.name ~= e.text;
