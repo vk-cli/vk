@@ -796,6 +796,7 @@ class VKapi {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer) {
+        if(offset < 0) offset = 0;
         const int takeamount = 1;
         vkMessageLine ld = {
             text: getLocal("loading")
