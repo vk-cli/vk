@@ -104,7 +104,7 @@ struct Win {
     counter, active, section,
     last_active, offset, key,
     scrollOffset, msgDrawSetting,
-    activeBuffer, chatID;
+    activeBuffer, chatID, lastBuffer;
   string
     debugText, currentPlayingTrack;
   bool
@@ -146,6 +146,7 @@ void update(ref string[string] storage) {
 
 void init() {
   setlocale(LC_CTYPE,"");
+  win.lastBuffer = Buffers.none;
   localize;
   relocale;
   initscr;
@@ -428,35 +429,43 @@ void controller() {
     if(ch != -1) break;
     if(api.isSomethingUpdated) break;
   }
-  win.key.print;
+  //win.key.print;
   if (canFind(kg_left, win.key)) backEvent;
-  if (activeBufferScrollAllowed && win.activeBuffer != Buffers.chat) { // non-chat events
-    if (canFind(kg_down, win.key)) downEvent;
-    else if (canFind(kg_up, win.key)) upEvent;
-    else if (canFind(kg_right, win.key)) selectEvent;
-    else if (win.section == Sections.right) {
-      if (canFind(kg_refresh, win.key)) bodyToBuffer;
-      if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
-      else if (win.key == k_end) jumpToEnd;
-      else if (win.key == k_pagedown) {
-        win.scrollOffset += LINES/2;
-        win.active += LINES/2;
-      }
-      else if (win.key == k_pageup) {
-        win.scrollOffset -= LINES/2;
-        win.active -= LINES/2;
-        if (win.active < 0) win.active = win.scrollOffset = 0;
-        if (win.scrollOffset < 0) win.scrollOffset = 0;
-      }
-    }
-  } else { // chat events
-    if (canFind(kg_up, win.key)) win.scrollOffset += 2;
-    else if (canFind(kg_down, win.key)) win.scrollOffset -= 2;
-    else if (win.key == k_pagedown) win.scrollOffset -= LINES/2;
-    else if (win.key == k_pageup) win.scrollOffset += LINES/2;
-    if (win.scrollOffset < 0) win.scrollOffset = 0;
-  }
+  if (activeBufferScrollAllowed && win.activeBuffer != Buffers.chat) nonChatEvents;
+  else chatEvents;
   checkBounds;
+}
+
+void nonChatEvents() {
+  if (canFind(kg_down, win.key)) downEvent;
+  else if (canFind(kg_up, win.key)) upEvent;
+  else if (canFind(kg_right, win.key)) selectEvent;
+  else if (win.section == Sections.right) {
+    if (canFind(kg_refresh, win.key)) bodyToBuffer;
+    if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
+    else if (win.key == k_end) jumpToEnd;
+    else if (win.key == k_pagedown) {
+      win.scrollOffset += LINES/2;
+      win.active += LINES/2;
+    }
+    else if (win.key == k_pageup) {
+      win.scrollOffset -= LINES/2;
+      win.active -= LINES/2;
+      if (win.active < 0) win.active = win.scrollOffset = 0;
+      if (win.scrollOffset < 0) win.scrollOffset = 0;
+    }
+  }
+}
+
+void chatEvents() {
+  if (canFind(kg_up, win.key)) win.scrollOffset += 2;
+  else if (canFind(kg_down, win.key)) win.scrollOffset -= 2;
+  else if (win.key == k_pagedown) win.scrollOffset -= LINES/2;
+  else if (win.key == k_pageup) win.scrollOffset += LINES/2;
+  else if (win.key == k_home) win.scrollOffset = 0;
+  else if (win.key == k_end) jumpToEnd;
+
+  if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
 void checkBounds() {
@@ -505,12 +514,18 @@ void selectEvent() {
 
 void backEvent() {
   if (win.section == Sections.right) {
-    win.activeBuffer = Buffers.none;
-    win.active = win.last_active;
-    win.scrollOffset = 0;
-    win.section = Sections.left;
-    win.mbody = new ListElement[0];
-    win.buffer = new ListElement[0];
+    if (win.lastBuffer != Buffers.none) {
+      win.activeBuffer = win.lastBuffer;
+      win.lastBuffer = Buffers.none;
+      win.scrollOffset = 0;
+    } else {
+      win.activeBuffer = Buffers.none;
+      win.mbody = new ListElement[0];
+      win.active = win.last_active;
+      win.scrollOffset = 0;
+      win.section = Sections.left;
+      win.buffer = new ListElement[0];
+    }
   }
 }
 
@@ -526,6 +541,7 @@ void chat(ref ListElement le) {
   win.chatID = le.id;
   win.scrollOffset = 0;
   open(le);
+  win.lastBuffer = win.activeBuffer;
   win.activeBuffer = Buffers.chat;
 }
 
