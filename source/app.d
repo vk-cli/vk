@@ -291,10 +291,8 @@ ulong utfLength(string inp) {
 }
 
 string cut(ulong i, ListElement e) {
-  string tempText;
-  int cut;
-  tempText = e.text;
-  cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
+  string tempText = e.text;
+  int cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
   if (e.text.walkLength > cut) tempText = tempText[0..cut];
   return tempText;
 }
