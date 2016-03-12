@@ -396,6 +396,23 @@ void drawBuffer() {
   }
 }
 
+void drawChat() {
+  foreach(i, e; win.buffer) {
+    wmove(stdscr, 2+i.to!int, 1);
+    if (e.flag) {
+      if (e.id == -1) {
+        e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
+        " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
+        e.text.secondColor;
+      } else {
+        e.name[0..e.id].regularWhite;
+        e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
+      }
+    } else 
+      e.name.regularWhite;
+  }
+}
+
 int activeBufferLen() {
   switch (win.activeBuffer) {
     case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
@@ -665,6 +682,7 @@ ListElement[] GetMusic() {
 
 ListElement[] GetChat() {
   ListElement[] list;
+  win.scrollOffset = 0;
   auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID);
   foreach(e; chat) {
     if (e.isFwd) {
@@ -681,23 +699,6 @@ ListElement[] GetChat() {
       list ~= !e.isName ? ListElement("    " ~ e.text) : ListElement(e.text, e.time, null, null, true, -1);
   }
   return list;
-}
-
-void drawChat() {
-  foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, 1);
-    if (e.flag) {
-      if (e.id == -1) {
-        e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
-        " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
-        e.text.secondColor;
-      } else {
-        e.name[0..e.id].regularWhite;
-        e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
-      }
-    } else 
-      e.name.regularWhite;
-  }
 }
 
 void test() {
