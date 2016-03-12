@@ -518,14 +518,8 @@ void selectEvent() {
     win.section = Sections.right;
   } else {
     if (win.isMusicPlaying && win.activeBuffer == Buffers.music) {
-      if (win.scrollOffset == 0) {
-        setCurrentTrack;
-        win.mbody[win.active].callback(win.mbody[win.active]);
-      }
-      else {
-        setCurrentTrack;
-        win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
-      }
+      setCurrentTrack;
+      win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
     } else if (win.mbody[win.active-win.scrollOffset].callback) win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
   }
 }
