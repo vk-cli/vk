@@ -526,16 +526,15 @@ void selectEvent() {
 
 void backEvent() {
   if (win.section == Sections.right) {
+    win.scrollOffset = 0;
     if (win.lastBuffer != Buffers.none) {
       win.activeBuffer = win.lastBuffer;
       win.lastBuffer = Buffers.none;
-      win.scrollOffset = 0;
     } else {
       win.activeBuffer = Buffers.none;
-      win.mbody = new ListElement[0];
       win.active = win.last_active;
-      win.scrollOffset = 0;
       win.section = Sections.left;
+      win.mbody = new ListElement[0];
       win.buffer = new ListElement[0];
     }
   }
