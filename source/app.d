@@ -449,8 +449,10 @@ void controller() {
   }
   //win.key.print;
   if (canFind(kg_left, win.key)) backEvent;
-  if (activeBufferScrollAllowed && win.activeBuffer != Buffers.chat) nonChatEvents;
-  else chatEvents;
+  if (activeBufferScrollAllowed) {
+    if (win.activeBuffer != Buffers.chat) nonChatEvents;
+    else chatEvents;
+  }
   checkBounds;
 }
 
@@ -482,7 +484,6 @@ void chatEvents() {
   else if (win.key == k_pageup) win.scrollOffset += LINES/2;
   else if (win.key == k_home) win.scrollOffset = 0;
   else if (win.key == k_end) jumpToEnd;
-
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
@@ -627,7 +628,6 @@ ListElement[] GetFriends() {
 
 ListElement[] MusicPlayer() {
   ListElement[] mplayer;
-
   mplayer ~= ListElement(" ".replicate((COLS-16)/2-win.currentTrack.artist.utfLength/2)~win.currentTrack.artist);
   mplayer ~= ListElement(" ".replicate((COLS-16)/2-win.currentTrack.title.utfLength/2)~win.currentTrack.title);
   mplayer ~= ListElement(center("0:00 / " ~ win.currentTrack.duration, COLS-16, ' '));
@@ -677,7 +677,6 @@ ListElement[] GetMusic() {
 
 ListElement[] GetChat() {
   ListElement[] list;
-  win.scrollOffset = 0;
   auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID);
   foreach(e; chat) {
     if (e.isFwd) {
