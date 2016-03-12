@@ -853,11 +853,14 @@ class VKapi {
         }
 
         if(inp.body_lines.length != 0) {
+            bool unrfl = inp.unread;
             foreach(l; inp.body_lines) {
                 vkMessageLine msg = {
-                    text: l
+                    text: l,
+                    unread: unrfl
                 };
                 rt ~= msg;
+                if(unrfl) unrfl = false;
             }
         } else if (nofwd) rt ~= lspacing;
 
