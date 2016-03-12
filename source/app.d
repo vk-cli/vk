@@ -686,9 +686,8 @@ ListElement[] GetChat() {
         line.id = line.name.length.to!int + 4;
         line.name ~= fwd ~ e.text;
         line.text = e.time;
-      }
-      if (e.isSpacing && !e.isName) line.name ~= e.text;
-      if (!e.isSpacing && !e.isName) line.name ~= e.text;
+      } else 
+        line.name ~= e.text;
       list ~= line;
     } else {
       string unreadSign = e.unread ? unread : " ";
