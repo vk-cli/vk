@@ -373,8 +373,8 @@ void drawMusicList() {
         if (e.name.canFind(play) || e.name.canFind(pause)) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
         else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
       }
-    }
-    else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
+    } else
+      i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
   }
 }
 
@@ -627,8 +627,9 @@ ListElement[] GetFriends() {
 
 ListElement[] MusicPlayer() {
   ListElement[] mplayer;
-  mplayer ~= ListElement(center(win.currentTrack.artist, COLS-16, ' '));
-  mplayer ~= ListElement(center(win.currentTrack.title, COLS-16, ' '));
+
+  mplayer ~= ListElement(" ".replicate((COLS-16)/2-win.currentTrack.artist.utfLength/2)~win.currentTrack.artist);
+  mplayer ~= ListElement(" ".replicate((COLS-16)/2-win.currentTrack.title.utfLength/2)~win.currentTrack.title);
   mplayer ~= ListElement(center("0:00 / " ~ win.currentTrack.duration, COLS-16, ' '));
   mplayer ~= ListElement(center("[========================|==========]", COLS-16, ' '));
   mplayer ~= ListElement("");
