@@ -58,6 +58,7 @@ const int[]
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
 
 const string 
+  unread = "⚫ ",
   repost = "↳",
   play   = " ▶  ",
   pause  = " ▮▮ ";
@@ -407,6 +408,8 @@ void drawChat() {
       } else {
         e.name[0..e.id].regularWhite;
         e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
+        wmove(stdscr, 2+i.to!int, (COLS-e.text.length-1).to!int);
+        e.text.secondColor;
       }
     } else 
       e.name.regularWhite;
@@ -691,12 +694,15 @@ ListElement[] GetChat() {
         line.flag = true;
         line.id = line.name.length.to!int + 4;
         line.name ~= "➥ " ~ e.text;
+        line.text = e.time;
       }
       if (e.isSpacing && !e.isName) line.name ~= e.text;
       if (!e.isSpacing && !e.isName) line.name ~= e.text;
       list ~= line;
-    } else 
-      list ~= !e.isName ? ListElement("    " ~ e.text) : ListElement(e.text, e.time, null, null, true, -1);
+    } else {
+      string unreadSign = e.unread ? unread : " ";
+      list ~= !e.isName ? ListElement("  " ~ unreadSign ~ e.text) : ListElement(e.text, e.time, null, null, true, -1);
+    }
   }
   return list;
 }
