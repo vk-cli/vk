@@ -15,6 +15,7 @@ const int convStartId = 2000000000;
 const int mailStartId = convStartId*-1;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
+const int chatBlock = 100;
 
 // ===== networking const =====
 
@@ -749,7 +750,7 @@ class VKapi {
     }
 
     vkMessage[] getBufferedChat(int count, int offset, int peer) {
-        const int block = 100;
+        const int block = chatBlock;
         const int upd = 50;
 
         vkMessage ld = {
@@ -796,41 +797,78 @@ class VKapi {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer) {
+        dbm("============== called chatlines count: " ~ count.to!string ~ ", offset: " ~ offset.to!string ~ ", peer: " ~ peer.to!string);
         if(offset < 0) offset = 0;
-        const int takeamount = 1;
         vkMessageLine ld = {
             text: getLocal("loading")
         };
 
         int needln = count + offset;
+        int lnsum;
+        int start;
+        int stoff;
+        int end;
 
-        auto chat = getBufferedChat(needln, 0, peer);
-
-        if(chat.length == 0 || chat[chat.length-1].isLoading) return [ ld ];
-
-        auto sv = pb.chatBuffer[peer].data.serverCount;
-        auto needlnofw = (chat.length != needln);
-
-        vkMessageLine[] localbuf;
-        auto lazylines = chat.map!(q => convertMessage(q));
-
-        while(needlnofw ? (lazylines.length != 0) : (localbuf.length < needln)) {
-            lazylines.take(takeamount).each!(q => localbuf = q ~ localbuf);
-            lazylines = lazylines.drop(takeamount);
+        auto haspeer = peer in pb.chatBuffer;
+        int loadoffset = 0;
+        bool offsetcatched = false;
+        if(haspeer) {
+            auto cb = &(pb.chatBuffer[peer]);
+            loadoffset = cb.buffer.length.to!int;
+            int i;
+            foreach(m; cb.buffer) {
+                auto lc = getMessageLinecount(m);
+                lnsum += lc;
+                dbm("current lc: " ~ lc.to!string);
+                if(!offsetcatched && lnsum >= offset) {
+                    start = i;
+                    if(offset != 0 && lnsum > offset) stoff = lnsum - offset;
+                    offsetcatched = true;
+                    dbm("offset catched curr lnsum: " ~ lnsum.to!string);
+                }
+                if(lnsum >= needln) {
+                    end = i;
+                    dbm("needln catched");
+                    break;
+                }
+                ++i;
+            }
         }
 
-        if(needlnofw && count > localbuf.length) {
-            count = localbuf.length.to!int;
+        if(lnsum < needln) {
+            getBufferedChat(chatBlock, loadoffset, peer);
+            return [ ld ];
         }
 
-        return needlnofw ? localbuf[$-count..$] : localbuf[$-needln..$-offset];
+        dbm( "lnsum: " ~ lnsum.to!string ~ ", needln: " ~ needln.to!string ~ ", start: " ~ start.to!string ~ ", end: " ~ end.to!string ~ ", offset: " ~ offset.to!string);
+
+        vkMessageLine[] lnbf;
+        auto mbf = pb.chatBuffer[peer].buffer[start..end+1];
+        mbf.retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
+
+        auto lcount = count+stoff;
+        dbm("lnbf ln: "~ lnbf.length.to!string ~ ", count: " ~ count.to!string ~ ", stoff: " ~ stoff.to!string ~ ", mbf ln: " ~ mbf.length.to!string);
+        try{
+            return lnbf[$-lcount..$-stoff];
+            //return lnbf;
+        } catch (Error e) {
+            dbm(e.msg);
+        }
+        dbm("lnbf fail");
+        ld.text = "lnbf fail";
+        return [ ld ];
     }
 
     vkMessageLine lspacing = {
         text: "", isSpacing: true
     };
 
-    vkMessageLine[] convertMessage(vkMessage inp) {
+    int getMessageLinecount(ref vkMessage inp) {
+        if(inp.lineCount == -1) return convertMessage(inp).length.to!int;
+        else return inp.lineCount;
+    }
+
+    vkMessageLine[] convertMessage(ref vkMessage inp) {
         //auto ct = Clock.currTime();
         auto cb = &(pb.chatBuffer[inp.peer_id]);
         auto rupd = (inp.msg_id in cb.recent);
@@ -870,6 +908,7 @@ class VKapi {
         }
 
         cb.linebuffer[inp.msg_id] = rt;
+        inp.lineCount = rt.length.to!int;
         if(rupd) cb.recent[inp.msg_id].checkedout = true;
         return rt;
     }
