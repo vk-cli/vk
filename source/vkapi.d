@@ -797,7 +797,6 @@ class VKapi {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer) {
-        dbm("============== called chatlines count: " ~ count.to!string ~ ", offset: " ~ offset.to!string ~ ", peer: " ~ peer.to!string);
         if(offset < 0) offset = 0;
         vkMessageLine ld = {
             text: getLocal("loading")
@@ -819,16 +818,13 @@ class VKapi {
             foreach(m; cb.buffer) {
                 auto lc = getMessageLinecount(m);
                 lnsum += lc;
-                dbm("current lc: " ~ lc.to!string);
                 if(!offsetcatched && lnsum >= offset) {
                     start = i;
-                    if(offset != 0 && lnsum > offset) stoff = lnsum - offset;
+                    stoff = lc - (lnsum - offset);
                     offsetcatched = true;
-                    dbm("offset catched curr lnsum: " ~ lnsum.to!string);
                 }
                 if(lnsum >= needln) {
                     end = i;
-                    dbm("needln catched");
                     break;
                 }
                 ++i;
@@ -840,23 +836,11 @@ class VKapi {
             return [ ld ];
         }
 
-        dbm( "lnsum: " ~ lnsum.to!string ~ ", needln: " ~ needln.to!string ~ ", start: " ~ start.to!string ~ ", end: " ~ end.to!string ~ ", offset: " ~ offset.to!string);
-
         vkMessageLine[] lnbf;
-        auto mbf = pb.chatBuffer[peer].buffer[start..end+1];
-        mbf.retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
+        pb.chatBuffer[peer].buffer[start..end+1].retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
 
         auto lcount = count+stoff;
-        dbm("lnbf ln: "~ lnbf.length.to!string ~ ", count: " ~ count.to!string ~ ", stoff: " ~ stoff.to!string ~ ", mbf ln: " ~ mbf.length.to!string);
-        try{
-            return lnbf[$-lcount..$-stoff];
-            //return lnbf;
-        } catch (Error e) {
-            dbm(e.msg);
-        }
-        dbm("lnbf fail");
-        ld.text = "lnbf fail";
-        return [ ld ];
+        return lnbf[$-lcount..$-stoff];
     }
 
     vkMessageLine lspacing = {
@@ -967,7 +951,8 @@ class VKapi {
     }
 
     bool isChatScrollAllowed(int peer) {
-        return !pb.chatBuffer[peer].data.loading;
+        //return !pb.chatBuffer[peer].data.loading;
+        return true;
     }
 
     int getChatServerCount(int peer) {
