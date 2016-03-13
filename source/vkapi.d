@@ -1066,8 +1066,13 @@ class VKapi {
         auto mid = u[2].integer.to!int;
 
         auto dc = (inboxrd) ? pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true) : -1;
-        auto mc = (peer in pb.chatBuffer) ? pb.chatBuffer[peer].buffer.map!(q => q.msg_id == mid).countUntil(true) : -1;
+        auto haspeer = (peer in pb.chatBuffer);
+        long mc = -1;
         bool upd = false;
+
+        if(haspeer) {
+            mc = pb.chatBuffer[peer].buffer.map!(q => q.msg_id == mid).countUntil(true);
+        }
 
         if(dc != -1 && pb.dialogsBuffer[dc].lastmid == mid) {
             pb.dialogsBuffer[dc].unread = false;
@@ -1076,13 +1081,15 @@ class VKapi {
 
         if(mc != -1) {
             auto cb = &(pb.chatBuffer[peer]);
-            for(long i = mc; i > -1; --i) {
-                auto m = &(cb.buffer[i]);
-                if(m.unread) {
-                    m.unread = false;
-                    defeatMessageCache(m.msg_id, peer);
-                } else {
-                    break;
+            foreach(ref m; cb.buffer[mc..$]) {
+                dbm("lp read iteration");
+                if(m.outgoing != inboxrd) {
+                    if(m.unread) {
+                        m.unread = false;
+                        defeatMessageCache(m.msg_id, peer);
+                    } else {
+                        break;
+                    }
                 }
             }
             upd = true;
