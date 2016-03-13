@@ -163,8 +163,7 @@ struct apiRecentlyUpdated {
 struct apiChatBuffer {
     vkMessage[] buffer;
     apiBufferData data;
-    apiRecentlyUpdated[int] recent; //by mid
-    vkMessageLine[][int] linebuffer; // by peer
+    vkMessageLine[][int] linebuffer; // by mid
 }
 
 struct apiBuffers {
@@ -852,14 +851,16 @@ class VKapi {
         else return inp.lineCount;
     }
 
+    void defeatMessageCache(int mid, int peer) {
+        pb.chatBuffer[peer].linebuffer.remove(mid);
+    }
+
     vkMessageLine[] convertMessage(ref vkMessage inp) {
         //auto ct = Clock.currTime();
         auto cb = &(pb.chatBuffer[inp.peer_id]);
-        auto rupd = (inp.msg_id in cb.recent);
-        bool bufallowed = true;
-        if(rupd) if(!cb.recent[inp.msg_id].checkedout) bufallowed = false;
-        if(bufallowed && (inp.msg_id in cb.linebuffer)) {
-            return cb.linebuffer[inp.msg_id];
+        auto cached = inp.msg_id in cb.linebuffer;
+        if(cached) {
+            return *cached;
         }
         vkMessageLine[] rt;
         rt ~= lspacing;
@@ -893,7 +894,6 @@ class VKapi {
 
         cb.linebuffer[inp.msg_id] = rt;
         inp.lineCount = rt.length.to!int;
-        if(rupd) cb.recent[inp.msg_id].checkedout = true;
         return rt;
     }
 
@@ -1075,12 +1075,12 @@ class VKapi {
         }
 
         if(mc != -1) {
-            auto ct = Clock.currStdTime.stdTimeToUnixTime!long;
             auto cb = &(pb.chatBuffer[peer]);
             for(long i = mc; i > -1; --i) {
-                if(cb.buffer[i].unread) {
-                    cb.buffer[i].unread = false;
-                    cb.recent[cb.buffer[i].msg_id] = apiRecentlyUpdated(ct);
+                auto m = &(cb.buffer[i]);
+                if(m.unread) {
+                    m.unread = false;
+                    defeatMessageCache(m.msg_id, peer);
                 } else {
                     break;
                 }
