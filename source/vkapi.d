@@ -765,6 +765,7 @@ class VKapi {
             pb.chatBuffer[peer].data.serverCount = sc;
             pb.chatBuffer[peer].data.updated = true;
             resolveNeedName(peer);
+            pb.chatBuffer[peer].data.loading = false;
             toggleUpdate();
         }
 
@@ -951,8 +952,7 @@ class VKapi {
     }
 
     bool isChatScrollAllowed(int peer) {
-        //return !pb.chatBuffer[peer].data.loading;
-        return true;
+        return !pb.chatBuffer[peer].data.loading;
     }
 
     int getChatServerCount(int peer) {
