@@ -16,6 +16,7 @@ const int mailStartId = convStartId*-1;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
 const int chatBlock = 100;
+const int chatUpd = 50;
 
 // ===== networking const =====
 
@@ -750,7 +751,7 @@ class VKapi {
 
     vkMessage[] getBufferedChat(int count, int offset, int peer) {
         const int block = chatBlock;
-        const int upd = 50;
+        const int upd = chatUpd;
 
         vkMessage ld = {
             author_name: getLocal("loading"),
@@ -802,7 +803,7 @@ class VKapi {
             text: getLocal("loading")
         };
 
-        int needln = count + offset;
+        immutable int needln = count + offset;
         int lnsum;
         int start;
         int stoff;
@@ -814,9 +815,13 @@ class VKapi {
         if(haspeer) {
             auto cb = &(pb.chatBuffer[peer]);
             loadoffset = cb.buffer.length.to!int;
+
+            immutable auto updtr = loadoffset + chatUpd;
+            if(offset >= updtr) getBufferedChat(1, updtr+1, peer); //preload
+
             int i;
             foreach(m; cb.buffer) {
-                auto lc = getMessageLinecount(m);
+                immutable auto lc = getMessageLinecount(m);
                 lnsum += lc;
                 if(!offsetcatched && lnsum >= offset) {
                     start = i;
@@ -1082,7 +1087,6 @@ class VKapi {
         if(mc != -1) {
             auto cb = &(pb.chatBuffer[peer]);
             foreach(ref m; cb.buffer[mc..$]) {
-                dbm("lp read iteration");
                 if(m.outgoing != inboxrd) {
                     if(m.unread) {
                         m.unread = false;
