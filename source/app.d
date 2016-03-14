@@ -110,7 +110,8 @@ struct Win {
   string
     debugText, currentPlayingTrack;
   bool
-    isMusicPlaying, isConferenceOpened;
+    isMusicPlaying, isConferenceOpened,
+    isRainbowChat;
   Track currentTrack = {};
 }
 
@@ -595,6 +596,11 @@ void changeMsgSetting(ref ListElement le) {
   le.name = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
 }
 
+void changeChatRender(ref ListElement le) {
+  win.isRainbowChat = !win.isRainbowChat;
+  le.name = "rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal;
+}
+
 ListElement[] GenerateHelp() {
   return [
     ListElement(center("general_navig".getLocal, COLS-16, ' ')),
@@ -614,6 +620,7 @@ ListElement[] GenerateSettings() {
     ListElement("lang".getLocal, "", &changeLang, null),
     ListElement(center("convers_settings".getLocal, COLS-16, ' ')),
     ListElement("msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal, "", &changeMsgSetting),
+    ListElement("rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal, "", &changeChatRender),
   ];
 }
 
