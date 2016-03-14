@@ -150,6 +150,7 @@ enum blockType {
 
 struct apiBufferData {
     int serverCount = -1;
+    int linesCount = -1;
     bool forceUpdate = true;
     bool loading = false;
     bool updated = false;
@@ -810,11 +811,13 @@ class VKapi {
         int end;
 
         auto haspeer = peer in pb.chatBuffer;
+        bool doneload;
         int loadoffset = 0;
         bool offsetcatched = false;
         if(haspeer) {
             auto cb = &(pb.chatBuffer[peer]);
             loadoffset = cb.buffer.length.to!int;
+            doneload = loadoffset == cb.data.serverCount;
 
             immutable auto updtr = loadoffset + chatUpd;
             if(offset >= updtr) getBufferedChat(1, updtr+1, peer); //preload
@@ -837,15 +840,28 @@ class VKapi {
         }
 
         if(lnsum < needln) {
-            getBufferedChat(chatBlock, loadoffset, peer);
-            return [ ld ];
+            if(!doneload) {
+                getBufferedChat(chatBlock, loadoffset, peer);
+                return [ ld ];
+            } else {
+                if(loadoffset == 0) return [];
+                end = loadoffset-1;
+            }
+        }
+
+        if(doneload) {
+            auto dt = (pb.chatBuffer[peer]);
+            if(dt.data.linesCount == -1) {
+                dt.data.linesCount  = dt.buffer.map!(q => getMessageLinecount(q)).sum;
+            }
         }
 
         vkMessageLine[] lnbf;
         pb.chatBuffer[peer].buffer[start..end+1].retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
 
         auto lcount = count+stoff;
-        return lnbf[$-lcount..$-stoff];
+        bool shortchat = doneload && (lnbf.length <= count);
+        return (shortchat) ? lnbf : lnbf[$-lcount..$-stoff];
     }
 
     vkMessageLine lspacing = {
@@ -962,6 +978,10 @@ class VKapi {
 
     int getChatServerCount(int peer) {
         return pb.chatBuffer[peer].data.serverCount;
+    }
+
+    int getChatLineCount(int peer) {
+        return pb.chatBuffer[peer].data.linesCount;
     }
 
     bool isUpdated(blockType tp) {

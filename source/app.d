@@ -747,14 +747,16 @@ void test() {
         return;
     }
 
-    string unc = "TsuShiMaMiRe – ニンゲン・コーティング";
+    string unc = "TsuйShiMaMiRe – ニンゲン・コーティング";
     writeln(unc);
-    writeln("def: " ~ unc.length.to!string);
-    writeln("walk: " ~ walkLength(unc).to!string);
-    writeln("kl: " ~ unc.utfLength.to!string);
+    //writeln("def: " ~ unc.length.to!string);
+    //writeln("walk: " ~ walkLength(unc).to!string);
+    //writeln("kl: " ~ unc.utfLength.to!string);
+    writeln("slcx");
+    writeln(unc.to!wstring[0..8].to!string);
 
     api.asyncLongpoll();
-    //readln();
+    readln();
     auto dlgg = api.getBufferedDialogs(10, 0);
     int i = 0;
     const int step = 48;
