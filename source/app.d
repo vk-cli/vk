@@ -411,15 +411,14 @@ void drawChat() {
     wmove(stdscr, 2+i.to!int, 1);
     if (e.flag) {
       if (e.id == -1) {
-        if (win.isRainbowChat) {
-          e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.colored(e.name.colorHash);
-        } else
-          e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
+        if (win.isRainbowChat) e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.colored(e.name.colorHash);
+        else e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
         " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
         e.text.secondColor;
       } else {
         e.name[0..e.id].regularWhite;
-        e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
+        if (win.isRainbowChat) e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].colored(e.name.colorHash);
+        else e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
         wmove(stdscr, 2+i.to!int, (COLS-e.text.length-1).to!int);
         e.text.secondColor;
       }
