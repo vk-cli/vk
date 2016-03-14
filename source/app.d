@@ -138,6 +138,7 @@ void parse(ref string[string] storage) {
   if ("second_color" in storage) win.textcolor = storage["second_color"].to!int;
   if ("message_setting" in storage) win.msgDrawSetting = storage["message_setting"].to!int;
   if ("lang" in storage) if (storage["lang"] == "1") swapLang;
+  if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
   relocale;
 }
 
@@ -146,6 +147,7 @@ void update(ref string[string] storage) {
   storage["main_color"] = win.namecolor.to!string;
   storage["second_color"] = win.textcolor.to!string;
   storage["message_setting"] = win.msgDrawSetting.to!string;
+  storage["rainbow"] = win.isRainbowChat.to!string;
 }
 
 void init() {
@@ -398,12 +400,21 @@ void drawBuffer() {
   }
 }
 
+int colorHash(string name) {
+  int sum;
+  foreach(e; name) sum += e;
+  return sum % 5 + 1;
+}
+
 void drawChat() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, 1);
     if (e.flag) {
       if (e.id == -1) {
-        e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
+        if (win.isRainbowChat) {
+          e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.colored(e.name.colorHash);
+        } else
+          e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
         " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
         e.text.secondColor;
       } else {
@@ -422,7 +433,7 @@ int activeBufferLen() {
     case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
     case Buffers.friends: return api.getServerCount(blockType.friends);
     case Buffers.music: return api.getServerCount(blockType.music);
-    case Buffers.chat: return api.getChatServerCount(win.chatID);
+    case Buffers.chat: return api.getChatLineCount(win.chatID);
     default: return 0;
   }
 }
@@ -564,7 +575,8 @@ void chat(ref ListElement le) {
   win.scrollOffset = 0;
   open(le);
   if (le.isConference) {
-    le.name[3..$].SetStatusbar;
+    if (le.name[0..3] == "⚫") le.name[3..$].SetStatusbar;
+    else le.name.SetStatusbar;
     win.isConferenceOpened = true;
   }
   win.lastBuffer = win.activeBuffer;
@@ -629,7 +641,7 @@ ListElement[] GetDialogs() {
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   string newMsg;
   foreach(e; dialogs) {
-    newMsg = e.unread ? "⚫ " : "  ";
+    newMsg = e.unread ? unread : "  ";
     list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), &chat, &GetChat, e.online, e.id, e.isChat);
   }
   win.activeBuffer = Buffers.dialogs;
