@@ -139,6 +139,7 @@ struct apiState {
     int latestUnreadMsg = 0;
     bool somethingUpdated = false;
     bool chatloading = false;
+    string lastlp = "";
 }
 
 enum blockType {
@@ -984,6 +985,12 @@ class VKapi {
         return pb.chatBuffer[peer].data.linesCount;
     }
 
+    string getLastLongpollMessage() {
+        auto last = ps.lastlp;
+        ps.lastlp = "";
+        return last;
+    }
+
     bool isUpdated(blockType tp) {
         auto data = getData(tp);
         if(data.updated) {
@@ -1078,6 +1085,8 @@ class VKapi {
                 cb.buffer = nm ~ cb.buffer;
             }
         }
+
+        ps.lastlp = title ~ ": " ~ msg;
 
         toggleUpdate();
         dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
