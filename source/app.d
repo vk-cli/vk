@@ -103,7 +103,7 @@ struct Win {
     namecolor = Colors.white,
     textcolor = Colors.gray,
     counter, active, section,
-    menuActive, offset, key,
+    menuActive, menuOffset, key,
     scrollOffset, msgDrawSetting,
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive;
@@ -263,14 +263,14 @@ void SetStatusbar(string s = "") {
 
 void setOffset() {
   foreach(le; win.menu) {
-    win.offset = le.name.walkLength.to!int > win.offset ? le.name.walkLength.to!int : win.offset;
+    win.menuOffset = le.name.walkLength.to!int > win.menuOffset ? le.name.walkLength.to!int : win.menuOffset;
   }
-  win.offset++;
+  win.menuOffset++;
 }
 
 void drawMenu() {
   foreach(i, le; win.menu) {
-    auto space = (le.name.walkLength < win.offset) ? " ".replicate(win.offset-le.name.walkLength) : "";
+    auto space = (le.name.walkLength < win.menuOffset) ? " ".replicate(win.menuOffset-le.name.walkLength) : "";
     auto name = le.name ~ space ~ "\n";
     if (win.section == Sections.left) i == win.active ? name.selected : name.regular;
     else i == win.menuActive ? name.selected : name.regular;
@@ -294,7 +294,7 @@ ulong utfLength(string inp) {
 
 string cut(ulong i, ListElement e) {
   string tempText = e.text;
-  int cut = (COLS-win.offset-win.mbody[i].name.walkLength-1).to!int;
+  int cut = (COLS-win.menuOffset-win.mbody[i].name.walkLength-1).to!int;
   if (e.text.walkLength > cut) tempText = tempText[0..cut];
   return tempText;
 }
@@ -312,9 +312,9 @@ void bodyToBuffer() {
     else win.buffer = win.mbody.dup;
     if (win.activeBuffer != Buffers.chat) {
       foreach(i, e; win.buffer) {
-        if (e.name.utfLength.to!int + win.offset+1 > COLS) {
-          win.buffer[i].name = e.name.to!wstring[0..COLS-win.offset-4].to!string;
-        } else win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.offset-1);
+        if (e.name.utfLength.to!int + win.menuOffset+1 > COLS) {
+          win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-4].to!string;
+        } else win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
       }
     }
   }
@@ -322,10 +322,10 @@ void bodyToBuffer() {
 
 void drawDialogsList() {
   foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, win.offset+1);
+    wmove(stdscr, 2+i.to!int, win.menuOffset+1);
     if (i.to!int == win.active-win.scrollOffset) {
       e.name.selected;
-      wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.utfLength.to!int+1);
+      wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.utfLength.to!int+1);
       cut(i, e).graySelected;
     } else {
       switch (win.msgDrawSetting) {
@@ -343,7 +343,7 @@ void drawDialogsList() {
 
 void allMessages(ListElement e, ulong i) {
   e.flag ? e.name.regular : e.name.secondColor;
-  wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.walkLength.to!int+1);
+  wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.walkLength.to!int+1);
   cut(i, e).white;
 }
 
@@ -354,21 +354,21 @@ void onlySelectedMessage(ListElement e, ulong i) {
 void onlySelectedMessageAndUnread(ListElement e, ulong i) {
   if (e.name[0..3] == "⚫") {
     e.flag ? e.name.regular : e.name.secondColor;
-    wmove(stdscr, 2+i.to!int, win.offset+win.mbody[i].name.walkLength.to!int+1);
+    wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.walkLength.to!int+1);
     cut(i, e).white;
   } else e.flag ? e.name.regular : e.name.secondColor;
 }
 
 void drawFriendsList() {
   foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, win.offset+1);
+    wmove(stdscr, 2+i.to!int, win.menuOffset+1);
     i.to!int == win.active-win.scrollOffset ? e.name.selected : e.flag ? e.name.regular : e.name.secondColor;
   }
 }
 
 void drawMusicList() {
   foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, win.offset+1);
+    wmove(stdscr, 2+i.to!int, win.menuOffset+1);
     if (win.isMusicPlaying) {
       if (i < 5) e.name.regular;
       else {
@@ -388,7 +388,7 @@ void drawBuffer() {
     case Buffers.chat: drawChat; break;
     case Buffers.none: {
       foreach(i, e; win.buffer) {
-        wmove(stdscr, 2+i.to!int, win.offset+1);
+        wmove(stdscr, 2+i.to!int, win.menuOffset+1);
         i.to!int == win.active ? e.name.selected : e.name.regular;
       }
       break;
@@ -563,7 +563,7 @@ void chat(ref ListElement le) {
   win.scrollOffset = 0;
   open(le);
   if (le.isConference) {
-    le.name.SetStatusbar;
+    le.name[3..$].SetStatusbar;
     win.isConferenceOpened = true;
   }
   win.lastBuffer = win.activeBuffer;
@@ -681,10 +681,10 @@ ListElement[] GetMusic() {
   foreach(e; music) {
     string indicator = win.currentPlayingTrack == e.artist ~ " - " ~ e.title ? play : "    ";
     artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
-    if (artistAndSong.utfLength > COLS-9-win.offset-e.duration_str.length.to!int) {
-      artistAndSong = artistAndSong[0..COLS-9-win.offset-e.duration_str.length.to!int];
-      amount = COLS-6-win.offset-artistAndSong.utfLength.to!int;
-    } else amount = COLS-9-win.offset-e.artist.utfLength.to!int-e.title.utfLength.to!int-e.duration_str.length.to!int;
+    if (artistAndSong.utfLength > COLS-9-win.menuOffset-e.duration_str.length.to!int) {
+      artistAndSong = artistAndSong[0..COLS-9-win.menuOffset-e.duration_str.length.to!int];
+      amount = COLS-6-win.menuOffset-artistAndSong.utfLength.to!int;
+    } else amount = COLS-9-win.menuOffset-e.artist.utfLength.to!int-e.title.utfLength.to!int-e.duration_str.length.to!int;
     space = " ".replicate(amount);
     list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url, &run, &setCurrentTrack);
   }
