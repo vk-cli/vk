@@ -638,6 +638,10 @@ ListElement[] MusicPlayer() {
 
 ListElement[] setCurrentTrack() {
   if (!win.isMusicPlaying) {
+    if (win.active > LINES-8) {
+      if (win.scrollOffset == 0) win.scrollOffset += win.active-LINES+8;
+      else win.scrollOffset += 5;
+    }
     win.active += 5;
     win.isMusicPlaying = true;
   }
