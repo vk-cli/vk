@@ -155,11 +155,11 @@ void init() {
 }
 
 void print(string s) {
-  s.toStringz.printw;
+  s.toStringz.addstr;
 }
 
 void print(int i) {
-  i.to!string.toStringz.printw;
+  i.to!string.toStringz.addstr;
 }
 
 VKapi get_token(ref string[string] storage) {
