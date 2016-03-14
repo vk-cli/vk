@@ -103,9 +103,10 @@ struct Win {
     namecolor = Colors.white,
     textcolor = Colors.gray,
     counter, active, section,
-    last_active, offset, key,
+    menuActive, offset, key,
     scrollOffset, msgDrawSetting,
-    activeBuffer, chatID, lastBuffer;
+    activeBuffer, chatID, lastBuffer,
+    lastScrollOffset, lastScrollActive;
   string
     debugText, currentPlayingTrack;
   bool
@@ -271,7 +272,7 @@ void drawMenu() {
     auto space = (le.name.walkLength < win.offset) ? " ".replicate(win.offset-le.name.walkLength) : "";
     auto name = le.name ~ space ~ "\n";
     if (win.section == Sections.left) i == win.active ? name.selected : name.regular;
-    else i == win.last_active ? name.selected : name.regular;
+    else i == win.menuActive ? name.selected : name.regular;
   }
 }
 
@@ -514,10 +515,12 @@ void upEvent() {
 void selectEvent() {
   if (win.section == Sections.left) {
     if (win.menu[win.active].callback) win.menu[win.active].callback(win.menu[win.active]);
-    win.last_active = win.active;
+    win.menuActive = win.active;
     win.active = 0;
     win.section = Sections.right;
   } else {
+    win.lastScrollOffset = win.scrollOffset;
+    win.lastScrollActive = win.active;
     if (win.isMusicPlaying && win.activeBuffer == Buffers.music) {
       setCurrentTrack;
       win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
@@ -527,13 +530,16 @@ void selectEvent() {
 
 void backEvent() {
   if (win.section == Sections.right) {
-    win.scrollOffset = 0;
     if (win.lastBuffer != Buffers.none) {
+      win.scrollOffset = win.lastScrollOffset;
       win.activeBuffer = win.lastBuffer;
       win.lastBuffer = Buffers.none;
+      if (win.scrollOffset != 0) win.active = win.lastScrollActive;
     } else {
+      win.scrollOffset = 0;
+      win.lastScrollOffset = 0;
       win.activeBuffer = Buffers.none;
-      win.active = win.last_active;
+      win.active = win.menuActive;
       win.section = Sections.left;
       win.mbody = new ListElement[0];
       win.buffer = new ListElement[0];
