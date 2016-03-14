@@ -110,7 +110,7 @@ struct Win {
   string
     debugText, currentPlayingTrack;
   bool
-    isMusicPlaying;
+    isMusicPlaying, isConferenceOpened;
   Track currentTrack = {};
 }
 
@@ -120,6 +120,7 @@ struct ListElement {
   ListElement[] function() getter;
   bool flag;
   int id;
+  bool isConference;
 }
 
 void relocale() {
@@ -256,7 +257,7 @@ void statusbar() {
   }
 }
 
-void Debug(string s = "") {
+void SetStatusbar(string s = "") {
   win.debugText = s;
 }
 
@@ -534,6 +535,8 @@ void backEvent() {
       win.scrollOffset = win.lastScrollOffset;
       win.activeBuffer = win.lastBuffer;
       win.lastBuffer = Buffers.none;
+      SetStatusbar;
+      win.isConferenceOpened = false;
       if (win.scrollOffset != 0) win.active = win.lastScrollActive;
     } else {
       win.scrollOffset = 0;
@@ -559,6 +562,10 @@ void chat(ref ListElement le) {
   win.chatID = le.id;
   win.scrollOffset = 0;
   open(le);
+  if (le.isConference) {
+    le.name.SetStatusbar;
+    win.isConferenceOpened = true;
+  }
   win.lastBuffer = win.activeBuffer;
   win.activeBuffer = Buffers.chat;
 }
@@ -616,7 +623,7 @@ ListElement[] GetDialogs() {
   string newMsg;
   foreach(e; dialogs) {
     newMsg = e.unread ? "⚫ " : "  ";
-    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), &chat, &GetChat, e.online, e.id);
+    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), &chat, &GetChat, e.online, e.id, e.isChat);
   }
   win.activeBuffer = Buffers.dialogs;
   return list;
