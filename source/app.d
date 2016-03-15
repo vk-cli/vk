@@ -111,7 +111,7 @@ struct Win {
     debugText, currentPlayingTrack;
   bool
     isMusicPlaying, isConferenceOpened,
-    isRainbowChat;
+    isRainbowChat, isRainbowOnlyInGroupChats;
   Track currentTrack = {};
 }
 
@@ -139,6 +139,7 @@ void parse(ref string[string] storage) {
   if ("message_setting" in storage) win.msgDrawSetting = storage["message_setting"].to!int;
   if ("lang" in storage) if (storage["lang"] == "1") swapLang;
   if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
+  if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
   relocale;
 }
 
@@ -148,6 +149,7 @@ void update(ref string[string] storage) {
   storage["second_color"] = win.textcolor.to!string;
   storage["message_setting"] = win.msgDrawSetting.to!string;
   storage["rainbow"] = win.isRainbowChat.to!string;
+  storage["rainbow_in_chat"] = win.isRainbowOnlyInGroupChats.to!string;
 }
 
 void init() {
@@ -411,14 +413,22 @@ void drawChat() {
     wmove(stdscr, 2+i.to!int, 1);
     if (e.flag) {
       if (e.id == -1) {
-        if (win.isRainbowChat) e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.colored(e.name.colorHash);
-        else e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
+        if (win.isRainbowChat) {
+          if (win.isRainbowOnlyInGroupChats && win.isConferenceOpened) 
+            e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.colored(e.name.colorHash);  
+          else
+            e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
+        }
         " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
         e.text.secondColor;
       } else {
         e.name[0..e.id].regularWhite;
-        if (win.isRainbowChat) e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].colored(e.name.colorHash);
-        else e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
+        if (win.isRainbowChat) {
+          if (win.isRainbowOnlyInGroupChats && win.isConferenceOpened) 
+            e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].colored(e.name.colorHash);
+          else
+            e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
+        }
         wmove(stdscr, 2+i.to!int, (COLS-e.text.length-1).to!int);
         e.text.secondColor;
       }
@@ -609,7 +619,12 @@ void changeMsgSetting(ref ListElement le) {
 
 void changeChatRender(ref ListElement le) {
   win.isRainbowChat = !win.isRainbowChat;
-  le.name = "rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal;
+  win.mbody = GenerateSettings;
+}
+
+void changeChatRenderOnlyGroup(ref ListElement le) {
+  win.isRainbowOnlyInGroupChats = !win.isRainbowOnlyInGroupChats;
+  le.name = "rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal;
 }
 
 ListElement[] GenerateHelp() {
@@ -624,7 +639,8 @@ ListElement[] GenerateHelp() {
 }
 
 ListElement[] GenerateSettings() {
-  return [
+  ListElement[] list;
+  list ~= [
     ListElement(center("display_settings".getLocal, COLS-16, ' ')),
     ListElement("main_color".getLocal ~ ("color"~win.namecolor.to!string).getLocal, "", &changeMainColor),
     ListElement("second_color".getLocal ~ ("color"~win.textcolor.to!string).getLocal, "", &changeSecondColor),
@@ -633,6 +649,8 @@ ListElement[] GenerateSettings() {
     ListElement("msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal, "", &changeMsgSetting),
     ListElement("rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal, "", &changeChatRender),
   ];
+  if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &changeChatRenderOnlyGroup);
+  return list;
 }
 
 ListElement[] GetDialogs() {
