@@ -199,7 +199,7 @@ class VKapi {
 // ===== API & networking =====
 
     private const string vkurl = "https://api.vk.com/method/";
-    const string vkver = "5.45";
+    const string vkver = "5.50";
     private string vktoken = "";
     bool isTokenValid;
     vkUser me;
@@ -1012,8 +1012,9 @@ class VKapi {
         return rt;
     }
 
-    void triggerNewMessage(JSONValue u, SysTime ct) {
+    void triggerNewMessage(JSONValue ui, SysTime ct) {
         if(pb.dialogsData.forceUpdate) return;
+        auto u = ui.array;
 
         auto mid = u[1].integer.to!int;
         auto flags = u[2].integer.to!int;
@@ -1021,6 +1022,7 @@ class VKapi {
         auto utime = u[4].integer.to!long;
         auto msg = u[6].str.longpollReplaces;
         auto att = u[7];
+        auto rndid = (u.length > 8) ? u[8].integer.to!long : 0L;
 
         bool outbox = (flags & 2) == 2;
         bool unread = (flags & 1) == 1;
@@ -1207,12 +1209,13 @@ class VKapi {
     void doLongpoll(vkLongpoll start) {
         auto tm = dur!timeoutFormat(longpollCurlTimeout);
         int cts = start.ts;
+        auto mode = (2 + 128).to!string; //attaches + random_id
         bool ok = true;
         dbm("longpoll works");
         while(ok) {
             try {
                 if(cts < 1) break;
-                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=2";
+                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=" ~ mode;
                 auto resp = httpget(url, tm);
                 immutable auto next = parseLongpoll(resp);
                 if(next.failed == 2 || next.failed == 3) ok = false; //get new server
