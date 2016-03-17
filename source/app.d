@@ -770,6 +770,8 @@ void test() {
 
     api.asyncLongpoll();
     readln();
+    //auto tstmid = api.messagesSend(2000000023, "govneco", 3239);
+    //writeln(tstmid.to!string);
     auto dlgg = api.getBufferedDialogs(10, 0);
     int i = 0;
     const int step = 48;
