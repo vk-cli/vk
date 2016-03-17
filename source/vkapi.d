@@ -632,6 +632,19 @@ class VKapi {
         return parseMessageObjects(items, ct);
     }
 
+    int messagesSend(int pid, string msg, int rndid = 0, int[] fwd = [], string[] attaches = []) {
+        if(msg.length == 0 && fwd.length == 0 && attaches.length == 0) return -1;
+
+        auto params = ["peer_id": pid.to!string ];
+        if(rndid != 0) params["random_id"] = rndid.to!string;
+        if(msg != "") params["message"] = msg;
+        if(fwd.length != 0) params["forward_messages"] = fwd.map!(q => q.to!string).join(",");
+        if(attaches.length != 0) params["attachment"] = attaches.join(",");
+
+        auto resp = vkget("messages.send", params);
+        return resp.integer.to!int;
+    }
+
     // ===== buffers =====
 
 
