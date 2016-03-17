@@ -317,7 +317,9 @@ void bodyToBuffer() {
     else win.buffer = win.mbody.dup;
     if (win.activeBuffer != Buffers.chat) {
       foreach(i, e; win.buffer) {
-        if (e.name.utfLength.to!int + win.menuOffset+1 < COLS) 
+        if (e.name.utfLength.to!int + win.menuOffset+1 > COLS) 
+          win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-1].to!string;
+        else
           win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
       }
     }
