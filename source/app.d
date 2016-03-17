@@ -444,7 +444,7 @@ int activeBufferLen() {
   }
 }
 
-bool activeBufferScrollAllowed() { 
+bool activeBufferEventsAllowed() { 
   switch (win.activeBuffer) {
     case Buffers.dialogs: return api.isScrollAllowed(blockType.dialogs);
     case Buffers.friends: return api.isScrollAllowed(blockType.friends);
@@ -469,7 +469,7 @@ void controller() {
   }
   //win.key.print;
   if (canFind(kg_left, win.key)) backEvent;
-  if (activeBufferScrollAllowed) {
+  if (activeBufferEventsAllowed) {
     if (win.activeBuffer != Buffers.chat) nonChatEvents;
     else chatEvents;
   }
@@ -516,7 +516,7 @@ void downEvent() {
   else {
     if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
     if (win.activeBuffer != Buffers.none) {
-      if (activeBufferScrollAllowed) win.active++; 
+      if (activeBufferEventsAllowed) win.active++; 
     } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
@@ -524,7 +524,7 @@ void downEvent() {
 void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
-    if (win.activeBuffer != Buffers.none && activeBufferScrollAllowed) {
+    if (win.activeBuffer != Buffers.none && activeBufferEventsAllowed) {
       win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
       win.active == 0 ? win.active += 0 : win.active--;
     } else win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
