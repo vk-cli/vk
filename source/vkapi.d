@@ -60,6 +60,7 @@ struct vkMessage {
     int fwd_depth; // max fwd message deph (-1 if no fwd)
     vkFwdMessage[] fwd; // forwarded messages
     bool isLoading;
+    bool ignore;
     int lineCount = -1;
 }
 
@@ -775,7 +776,8 @@ class VKapi {
         if(peer !in pb.chatBuffer) pb.chatBuffer[peer] = apiChatBuffer();
 
         bool outload;
-        auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload);
+        auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload)
+                    .filter!(q => !q.ignore).array;
 
         if(outload) return defaultrt;
 
@@ -824,7 +826,7 @@ class VKapi {
             if(offset >= updtr) getBufferedChat(1, updtr+1, peer); //preload
 
             int i;
-            foreach(m; cb.buffer) {
+            foreach(m; cb.buffer.filter!(q => !q.ignore)) {
                 immutable auto lc = getMessageLinecount(m);
                 lnsum += lc;
                 if(!offsetcatched && lnsum >= offset) {
@@ -858,7 +860,7 @@ class VKapi {
         }
 
         vkMessageLine[] lnbf;
-        pb.chatBuffer[peer].buffer[start..end+1].retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
+        pb.chatBuffer[peer].buffer.filter!(q => !q.ignore).array[start..end+1].retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
 
         auto lcount = count+stoff;
         bool shortchat = doneload && (lnbf.length <= count);
