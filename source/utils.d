@@ -1,23 +1,31 @@
 module utils;
 
-import std.stdio, std.array, std.file, core.thread, core.exception, std.datetime, std.conv;
+import std.stdio, std.array, std.file, core.thread, core.sync.mutex, core.exception, std.datetime, std.conv;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
 
 __gshared string dbmlog = "";
+__gshared dbgfname = "dbg";
+File dbgff;
+__gshared Mutex dbgmutex;
 
 private void appendDbg(string app) {
-    thread_enterCriticalRegion();
-    dbmlog ~= app;
-    thread_exitCriticalRegion();
+    synchronized(dbgmutex) {
+        dbgfname.append(app);
+    }
+}
+
+void initdbm() {
+    if(!dbmfe) return;
+    dbgmutex = new Mutex();
+    dbgff = File(dbgfname, "w");
+    dbgff.write("log\n");
+    dbgff.close();
 }
 
 void dbmclose() {
     if(!dbmfe) return;
-    auto ff = File("dbg", "w");
-    ff.write(dbmlog);
-    ff.close();
 }
 
 void dbm(string msg) {
