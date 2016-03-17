@@ -51,6 +51,8 @@ void localize() {
   local["true"] = lang("On", "Да");
   local["false"] = lang("Off", "Нет");
   local["rainbow_in_chat"] = lang("Color only in group chats: ", "Выделять цветом только конференции: ");
+  local["sending"] = lang("Sending", "Отправка");
+  local["sendfailed"] = lang("Failed", "Ошибка");
 }
 
 void swapLang() {

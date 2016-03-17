@@ -1,10 +1,10 @@
 module vkapi;
 
-import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, core.time;
+import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
 import std.algorithm, std.range, std.experimental.ndslice;
-import std.parallelism, std.concurrency, core.thread;
+import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, namecache, localization;
 
 
@@ -60,6 +60,8 @@ struct vkMessage {
     int fwd_depth; // max fwd message deph (-1 if no fwd)
     vkFwdMessage[] fwd; // forwarded messages
     bool isLoading;
+    bool isZombie;
+    int rndid;
     bool ignore;
     int lineCount = -1;
 }
@@ -141,6 +143,24 @@ struct apiState {
     bool somethingUpdated = false;
     bool chatloading = false;
     string lastlp = "";
+    sendOrderMsg[] order;
+    sentMsg[int] sent; //by rid
+}
+
+struct sendOrderMsg {
+    int author;
+    int peer;
+    int rid;
+    string msg;
+    int[] fwd = [];
+    string[] att = [];
+}
+
+struct sentMsg {
+    int rid;
+    int author;
+    vkMessage* zombie;
+    sendState state = sendState.pending;
 }
 
 enum blockType {
@@ -148,6 +168,12 @@ enum blockType {
     music,
     friends,
     chat
+}
+
+enum sendState {
+    pending,
+    failed,
+    ok
 }
 
 struct apiBufferData {
@@ -194,6 +220,9 @@ __gshared apiState ps = apiState();
 __gshared apiBuffers pb = apiBuffers();
 loadBlockThread lbThread;
 longpollThread lpThread;
+sendThread sndThread;
+Mutex sndMutex;
+Random rng;
 
 class VKapi {
 
@@ -226,10 +255,18 @@ class VKapi {
         isTokenValid = checkToken(token);
         lbThread = new loadBlockThread();
         lpThread = new longpollThread(this);
+        sndThread = new sendThread(this);
+        sndMutex = new Mutex();
     }
 
     apiTransfer exportStruct() {
         return apiTransfer(vktoken, isTokenValid, me);
+    }
+
+    const uint maxuint = 4_294_967_295;
+    const uint ridstart = 1;
+    int genId() {
+        return uniform(ridstart, maxuint, rng).to!int;
     }
 
     bool isSomethingUpdated() {
@@ -1015,6 +1052,54 @@ class VKapi {
         return false;
     }
 
+    // ===== send =====
+
+    void notifySendState(sentMsg m) {
+        switch(m.state) {
+            case sendState.failed:
+                m.zombie.time_str = getLocal("sendfailed");
+                toggleUpdate();
+                break;
+            default: break;
+        }
+    }
+
+    void asyncSendMessage(int peer, string msg) {
+        auto rid = genId();
+        auto aid = me.id;
+        auto cb = &(pb.chatBuffer[peer]);
+
+        vkMessage zombie = {
+            author_name: me.first_name ~ " " ~ me.last_name,
+            author_id: aid,
+            body_lines: msg.split("\n"),
+            time_str: getLocal("sending"),
+            rndid: rid
+        };
+
+        cb.buffer ~= zombie;
+        auto ldx = cb.buffer.length - 1 ;
+        toggleUpdate();
+
+        sendOrderMsg ord = {
+            author: aid,
+            peer: peer, rid: rid, msg: msg
+        };
+        sentMsg snt = {
+            rid: rid, author: aid,
+            zombie: &(cb.buffer[ldx])
+        };
+
+        synchronized(sndMutex) {
+            ps.sent[rid] = snt;
+            ps.order ~= ord;
+        }
+
+        if(!sndThread.isRunning) {
+            sndThread.start();
+        }
+    }
+
     // ===== longpoll =====
 
     vkLongpoll getLongpollServer() {
@@ -1037,7 +1122,7 @@ class VKapi {
         auto utime = u[4].integer.to!long;
         auto msg = u[6].str.longpollReplaces;
         auto att = u[7];
-        auto rndid = (u.length > 8) ? u[8].integer.to!long : 0L;
+        int rndid = (u.length > 8) ? u[8].integer.to!int : 0;
 
         bool outbox = (flags & 2) == 2;
         bool unread = (flags & 1) == 1;
@@ -1100,6 +1185,14 @@ class VKapi {
                 auto lastm = cb.buffer[0];
                 nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
                 cb.buffer = nm ~ cb.buffer;
+            }
+        }
+
+        if(rndid != 0) synchronized(sndMutex) {
+            auto snt = rndid in ps.sent;
+            if(snt && snt.author == me.id) {
+                snt.zombie.ignore = true;
+                ps.sent.remove(rndid);
             }
         }
 
@@ -1302,6 +1395,37 @@ class loadBlockThread : Thread {
         }
     }
 
+}
+
+class sendThread : Thread {
+
+    VKapi api;
+
+    this(VKapi api) {
+        this.api = api;
+        super(&sendproc);
+    }
+
+    private void sendproc() {
+        for(int i; i < ps.order.length; ++i) {
+            auto msg = ps.order[i];
+            try {
+                api.messagesSend(msg.peer, msg.msg, msg.rid, msg.fwd, msg.att);
+            } catch (Exception e) {
+                dbm("catched at sendThread: " ~ e.msg);
+                synchronized(sndMutex) {
+                    auto snt = msg.rid in ps.sent;
+                    if(snt) {
+                        snt.state = sendState.failed;
+                        api.notifySendState(*snt);
+                    }
+                }
+            }
+        }
+        synchronized(sndMutex) {
+            ps.order = [];
+        }
+    }
 }
 
 // ===== Exceptions =====
