@@ -408,27 +408,24 @@ int colorHash(string name) {
   return sum % 5 + 1;
 }
 
+void renderColoredOrRegularText(string text) {
+  if (win.isRainbowChat && (!win.isRainbowOnlyInGroupChats || win.isConferenceOpened))
+    text == api.me.first_name~" "~api.me.last_name ? text.secondColor : text.colored(text.colorHash);  
+  else
+    text == api.me.first_name~" "~api.me.last_name ? text.secondColor : text.regular;
+}
+
 void drawChat() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, 1);
     if (e.flag) {
       if (e.id == -1) {
-        if (win.isRainbowChat) {
-          if (win.isRainbowOnlyInGroupChats && win.isConferenceOpened) 
-            e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.colored(e.name.colorHash);  
-          else
-            e.name == api.me.first_name~" "~api.me.last_name ? e.name.secondColor : e.name.regular;
-        }
+        e.name.renderColoredOrRegularText;
         " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
         e.text.secondColor;
       } else {
         e.name[0..e.id].regularWhite;
-        if (win.isRainbowChat) {
-          if (win.isRainbowOnlyInGroupChats && win.isConferenceOpened) 
-            e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].colored(e.name.colorHash);
-          else
-            e.name[e.id..$] == api.me.first_name~" "~api.me.last_name ? e.name[e.id..$].secondColor : e.name[e.id..$].regular;
-        }
+        e.name[e.id..$].renderColoredOrRegularText;
         wmove(stdscr, 2+i.to!int, (COLS-e.text.length-1).to!int);
         e.text.secondColor;
       }
