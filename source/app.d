@@ -298,10 +298,10 @@ ulong utfLength(string inp) {
 }
 
 string cut(ulong i, ListElement e) {
-  string tempText = e.text;
+  wstring tempText = e.text.to!wstring;
   int cut = (COLS-win.menuOffset-win.mbody[i].name.walkLength-1).to!int;
   if (e.text.walkLength > cut) tempText = tempText[0..cut];
-  return tempText;
+  return tempText.to!string;
 }
 
 void bodyToBuffer() {
@@ -317,9 +317,10 @@ void bodyToBuffer() {
     else win.buffer = win.mbody.dup;
     if (win.activeBuffer != Buffers.chat) {
       foreach(i, e; win.buffer) {
-        if (e.name.utfLength.to!int + win.menuOffset+1 > COLS) {
-          win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-4].to!string;
-        } else win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
+        if (e.name.utfLength.to!int + win.menuOffset+1 > COLS) 
+          win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-1].to!string;
+        else
+          win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
       }
     }
   }
