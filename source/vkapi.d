@@ -857,7 +857,7 @@ class VKapi {
         return buf[bufl-1];
     }
 
-    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer) {
+    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrpawidth) {
         if(offset < 0) offset = 0;
         vkMessageLine ld = {
             text: getLocal("loading")
