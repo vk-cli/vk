@@ -909,17 +909,14 @@ class VKapi {
         }
 
         if(doneload) {
-            auto dt = (pb.chatBuffer[peer]);
+            auto dt = &(pb.chatBuffer[peer]);
             if(dt.data.linesCount == -1) {
-                dt.data.linesCount  = dt.buffer.map!(q => getMessageLinecount(q)).sum;
+                dt.data.linesCount = dt.buffer.map!(q => getMessageLinecount(q)).sum;
             }
         }
 
         vkMessageLine[] lnbf;
         pb.chatBuffer[peer].buffer.filter!(q => !q.ignore).array[start..end+1].retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
-
-        dbm("ignored: ");
-        pb.chatBuffer[peer].buffer.map!(q => q.body_lines[0] ~ " " ~ q.time_str ~ " ign: " ~ q.ignore.to!string).take(5).join("\n").dbm;
 
         auto lcount = count+stoff;
         bool shortchat = doneload && (lnbf.length <= count);
