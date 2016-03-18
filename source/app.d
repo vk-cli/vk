@@ -723,7 +723,7 @@ ListElement[] GetMusic() {
 
 ListElement[] GetChat() {
   ListElement[] list;
-  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID);
+  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID, COLS);
   foreach(e; chat) {
     if (e.isFwd) {
       ListElement line = {"    " ~ "| ".replicate(e.fwdDepth)};
@@ -756,51 +756,6 @@ void test() {
         writeln("bad token");
         return;
     }
-
-    string unc = "TsuйShiMaMiRe – ニンゲン・コーティング";
-    writeln(unc);
-    //writeln("def: " ~ unc.length.to!string);
-    //writeln("walk: " ~ walkLength(unc).to!string);
-    //writeln("kl: " ~ unc.utfLength.to!string);
-    writeln("slcx");
-    writeln(unc.to!wstring[0..8].to!string);
-
-    api.asyncLongpoll();
-    readln();
-    //auto tstmid = api.messagesSend(2000000023, "govneco", 3239);
-    //writeln(tstmid.to!string);
-    auto dlgg = api.getBufferedDialogs(10, 0);
-    int i = 0;
-    const int step = 48;
-    while(true) {
-        int huj;
-        auto conv = api.getBufferedChatLines(step, i, convStartId + 12);
-        //if(conv[conv.length-1].lastMessage != getLocal("loading")) i += step;
-        foreach (d; conv) {
-            //writeln("d " ~ d.name ~ " " ~ d.lastMessage ~ (d.online ? " online" : ""));
-            //writeln("m " ~ d.author_name ~ ": " ~ d.body_lines.join ~ " " ~ d.time_str ~ " nm:" ~ d.needName.to!string);
-            if(d.isFwd) writeln("| ".replicate(d.fwdDepth) ~ d.text ~ " " ~ d.time);
-            else writeln(d.text ~ " " ~ d.time);
-        }
-        readln();
-    }
-    //dbm("cbuf: " ~ api.pb.alldialogs.length.to!string);
-    //nc.dbmAll();
-    //auto fr = api.friendsGet();
-    //foreach(f; fr) dbm(f.first_name ~ " " ~ f.last_name ~ " " ~ (f.online ? "!" : ""));
-
-    //auto aud = api.audioGet(0, 0, 10);
-    //foreach(a; aud) dbm(a.artist ~ " - " ~ a.title ~ "  " ~ a.duration_str);
-
-    /+auto allsh = api.messagesGetHistory(convStartId+23, 25, 0, -1, false);
-    foreach(ww; allsh) {
-        writeln(ww.author_name ~ " " ~ ww.time_str);
-        foreach(ml; ww.body_lines) writeln(ml);
-        writeln("maxdep: " ~ ww.fwd_depth.to!string);
-        writeln(digTest(ww.fwd));
-    }+/
-
-
 
     readln();
     //ticker();
