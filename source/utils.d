@@ -41,7 +41,9 @@ string tzr(int inpt) {
 
 string vktime(SysTime ct, long ut) {
     auto t = SysTime(unixTimeToStdTime(ut));
-    return (t.dayOfGregorianCal == ct.dayOfGregorianCal) ? (tzr(t.hour) ~ ":" ~ tzr(t.minute)) : (tzr(t.day) ~ "." ~ tzr(t.month));
+    return (t.dayOfGregorianCal == ct.dayOfGregorianCal) ?
+            (tzr(t.hour) ~ ":" ~ tzr(t.minute)) :
+                (tzr(t.day) ~ "." ~ tzr(t.month) ~ ( t.year != ct.year ? "." ~ t.year.to!string[$-2..$] : "" ) );
 }
 
 string longpollReplaces(string inp) {
