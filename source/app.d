@@ -807,6 +807,7 @@ void test() {
 }
 
 void main(string[] args) {
+  initdbm;
   //test;
   init;
   color;

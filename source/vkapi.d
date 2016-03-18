@@ -158,8 +158,8 @@ struct sendOrderMsg {
 
 struct sentMsg {
     int rid;
+    int peer;
     int author;
-    vkMessage* zombie;
     sendState state = sendState.pending;
 }
 
@@ -216,13 +216,13 @@ struct apiFwdIter {
 
 __gshared nameCache nc = nameCache();
 __gshared apiState ps = apiState();
-
 __gshared apiBuffers pb = apiBuffers();
+
+__gshared Mutex sndMutex;
+
 loadBlockThread lbThread;
 longpollThread lpThread;
 sendThread sndThread;
-Mutex sndMutex;
-Random rng;
 
 class VKapi {
 
@@ -264,9 +264,15 @@ class VKapi {
     }
 
     const uint maxuint = 4_294_967_295;
+    const uint maxint = 2_147_483_647;
     const uint ridstart = 1;
     int genId() {
-        return uniform(ridstart, maxuint, rng).to!int;
+        long rnd = uniform(ridstart, maxuint);
+        if(rnd > maxint) {
+            rnd = -(rnd-maxint);
+        }
+        dbm("genId rand: " ~ rnd.to!string);
+        return rnd.to!int;
     }
 
     bool isSomethingUpdated() {
@@ -903,9 +909,9 @@ class VKapi {
         }
 
         if(doneload) {
-            auto dt = (pb.chatBuffer[peer]);
+            auto dt = &(pb.chatBuffer[peer]);
             if(dt.data.linesCount == -1) {
-                dt.data.linesCount  = dt.buffer.map!(q => getMessageLinecount(q)).sum;
+                dt.data.linesCount = dt.buffer.map!(q => getMessageLinecount(q)).sum;
             }
         }
 
@@ -1054,10 +1060,18 @@ class VKapi {
 
     // ===== send =====
 
+    const int zombiermtake = 30;
+
+    auto findzombie(sentMsg snt) {
+        return pb.chatBuffer[snt.peer].buffer.take(zombiermtake)
+            .filter!(q => q.rndid == snt.rid);
+    }
+
     void notifySendState(sentMsg m) {
         switch(m.state) {
             case sendState.failed:
-                m.zombie.time_str = getLocal("sendfailed");
+                auto fnd = findzombie(m);
+                if(!fnd.empty) fnd.front.time_str = getLocal("sendfailed");
                 toggleUpdate();
                 break;
             default: break;
@@ -1071,23 +1085,25 @@ class VKapi {
 
         vkMessage zombie = {
             author_name: me.first_name ~ " " ~ me.last_name,
-            author_id: aid,
+            author_id: aid, isZombie: true,
             body_lines: msg.split("\n"),
             time_str: getLocal("sending"),
-            rndid: rid
+            rndid: rid, msg_id: -1, outgoing: true, unread: true,
+            peer_id: peer, utime: 1,
+            needName: true, nmresolved: true
         };
 
-        cb.buffer ~= zombie;
-        auto ldx = cb.buffer.length - 1 ;
+        cb.buffer = zombie ~ cb.buffer;
         toggleUpdate();
+
+        dbm("sendmsg: zombie created");
 
         sendOrderMsg ord = {
             author: aid,
             peer: peer, rid: rid, msg: msg
         };
         sentMsg snt = {
-            rid: rid, author: aid,
-            zombie: &(cb.buffer[ldx])
+            rid: rid, author: aid, peer: peer
         };
 
         synchronized(sndMutex) {
@@ -1095,7 +1111,10 @@ class VKapi {
             ps.order ~= ord;
         }
 
+        dbm("sendmsg: message in order");
+
         if(!sndThread.isRunning) {
+            dbm("sendmsg: start sndthread");
             sndThread.start();
         }
     }
@@ -1181,8 +1200,9 @@ class VKapi {
 
         if(haspeer) {
             auto cb = &(pb.chatBuffer[peer]);
-            if(cb.buffer.length != 0) {
-                auto lastm = cb.buffer[0];
+            auto realmsg = cb.buffer.filter!(q => !q.isZombie);
+            if(!realmsg.empty) {
+                auto lastm = realmsg.front;
                 nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
                 cb.buffer = nm ~ cb.buffer;
             }
@@ -1191,7 +1211,9 @@ class VKapi {
         if(rndid != 0) synchronized(sndMutex) {
             auto snt = rndid in ps.sent;
             if(snt && snt.author == me.id) {
-                snt.zombie.ignore = true;
+                dbm("lp nm: approved sent");
+                auto fnd = findzombie(*snt);
+                if(!fnd.empty) fnd.front.ignore = true; //.each!(q => q.ignore = true);
                 ps.sent.remove(rndid);
             }
         }
@@ -1416,6 +1438,7 @@ class sendThread : Thread {
                 synchronized(sndMutex) {
                     auto snt = msg.rid in ps.sent;
                     if(snt) {
+                        dbm("sndThread: new failed state");
                         snt.state = sendState.failed;
                         api.notifySendState(*snt);
                     }
@@ -1424,6 +1447,7 @@ class sendThread : Thread {
         }
         synchronized(sndMutex) {
             ps.order = [];
+            dbm("sndThread: order clear");
         }
     }
 }
