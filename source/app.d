@@ -5,7 +5,7 @@ import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm;
-import vkapi, cfg, localization, utils, namecache;
+import vkapi, cfg, localization, utils, namecache, musicplayer;
 
 // INIT VARS
 enum Sections { left, right }
@@ -108,11 +108,10 @@ struct Win {
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive;
   string
-    debugText, currentPlayingTrack;
+    debugText;
   bool
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats;
-  Track currentTrack = {};
 }
 
 struct ListElement {
@@ -153,6 +152,7 @@ void update(ref string[string] storage) {
 }
 
 void init() {
+  initMplayer;
   setlocale(LC_CTYPE,"");
   win.lastBuffer = Buffers.none;
   localize;
@@ -673,17 +673,8 @@ ListElement[] GetFriends() {
   return list;
 }
 
-ListElement[] MusicPlayer() {
-  ListElement[] mplayer;
-  mplayer ~= ListElement(" ".replicate((COLS-16)/2-win.currentTrack.artist.utfLength/2)~win.currentTrack.artist);
-  mplayer ~= ListElement(" ".replicate((COLS-16)/2-win.currentTrack.title.utfLength/2)~win.currentTrack.title);
-  mplayer ~= ListElement(center("0:00 / " ~ win.currentTrack.duration, COLS-16, ' '));
-  mplayer ~= ListElement(center("[========================|==========]", COLS-16, ' '));
-  mplayer ~= ListElement("");
-  return mplayer;
-}
-
 ListElement[] setCurrentTrack() {
+  vkAudio track;
   if (!win.isMusicPlaying) {
     if (win.active > LINES-8) {
       if (win.scrollOffset == 0) win.scrollOffset += win.active-LINES+8;
@@ -691,12 +682,16 @@ ListElement[] setCurrentTrack() {
     }
     win.active += 5;
     win.isMusicPlaying = true;
+    track = api.getBufferedMusic(1, win.active-5)[0];
+    startPlayer(track.url);
+  } else {
+    track = api.getBufferedMusic(1, win.active-5)[0];
+    send("loadfile " ~ track.url);
   }
-  vkAudio track = api.getBufferedMusic(1, win.active-5)[0];
-  win.currentPlayingTrack   = track.artist ~ " - " ~ track.title;
-  win.currentTrack.artist   = track.artist;
-  win.currentTrack.title    = track.title;
-  win.currentTrack.duration = track.duration_str;
+  mplayer.currentPlayingTrack   = track.artist ~ " - " ~ track.title;
+  mplayer.currentTrack.artist   = track.artist;
+  mplayer.currentTrack.title    = track.title;
+  mplayer.currentTrack.duration = track.duration_str;
   return new ListElement[0];
 }
 
@@ -708,12 +703,12 @@ ListElement[] GetMusic() {
 
   if (win.isMusicPlaying) {
     music = api.getBufferedMusic(LINES-6, win.scrollOffset);
-    list ~= MusicPlayer;
+    list ~= getMplayerUI(COLS);
   } else
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
   foreach(e; music) {
-    string indicator = win.currentPlayingTrack == e.artist ~ " - " ~ e.title ? play : "    ";
+    string indicator = mplayer.currentPlayingTrack == e.artist ~ " - " ~ e.title ? mplayer.musicState ? pause : play : "    ";
     artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
     if (artistAndSong.utfLength > COLS-9-win.menuOffset-e.duration_str.length.to!int) {
       artistAndSong = artistAndSong[0..COLS-9-win.menuOffset-e.duration_str.length.to!int];
@@ -845,5 +840,6 @@ void main(string[] args) {
   storage.save;
   dbmclose;
   endwin;
+  exitMplayer;
   exit(0);
 }
