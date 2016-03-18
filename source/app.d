@@ -4,7 +4,7 @@ import deimos.ncurses.ncurses;
 import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
-       std.range, std.algorithm;
+       std.range, std.algorithm, std.concurrency;
 import vkapi, cfg, localization, utils, namecache, musicplayer;
 
 // INIT VARS
@@ -683,7 +683,7 @@ ListElement[] setCurrentTrack() {
     win.active += 5;
     win.isMusicPlaying = true;
     track = api.getBufferedMusic(1, win.active-5)[0];
-    startPlayer(track.url);
+    spawn(&startPlayer, track.url);
   } else {
     track = api.getBufferedMusic(1, win.active-5)[0];
     send("loadfile " ~ track.url);

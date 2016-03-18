@@ -6,26 +6,26 @@ struct Track {
 }
 
 struct MusicPlayer {
-  Track[] playlist;
-  bool musicState = false;
   Track currentTrack;
   string currentPlayingTrack;
+  bool musicState = false;
+  Track[] playlist;
+  string[] output;
 }
 
-MusicPlayer mplayer;
+__gshared MusicPlayer mplayer;
 
 void initMplayer() {
-  auto fifo = executeShell("mkfifo /tmp/mplayerfifo");
-  if (fifo.status != 0) writeln("Failed to create fifo for mplayer");
+  execute(["rm", "/tmp/mplayerfifo"]);
+  execute(["mkfifo", "/tmp/mplayerfifo"]);
 }
 
 void exitMplayer() {
   send("quit");
-  auto fifo = executeShell("rm /tmp/mplayerfifo");
 }
 
 void send(string cmd) {
-  executeShell(`echo "` ~ cmd ~ `" > /tmp/mplayerfifo`);
+  if (mplayer.currentPlayingTrack != "") executeShell(`echo "` ~ cmd ~ `" > /tmp/mplayerfifo`);
 }
 
 ListElement[] getMplayerUI(int cols) {
@@ -39,5 +39,8 @@ ListElement[] getMplayerUI(int cols) {
 }
 
 void startPlayer(string url) {
-  auto mpl = spawnShell("mplayer -slave -idle -input file=/tmp/mplayerfifo " ~ url ~ " > /dev/null 2> /dev/null");
+  auto pipe = pipeProcess("sh", Redirect.stdin | Redirect.stdout);
+  pipe.stdin.writeln("mplayer -slave -idle -input file=/tmp/mplayerfifo " ~ url ~ " 2> /dev/null");
+  pipe.stdin.flush;
+  foreach (line; pipe.stdout.byLine) mplayer.output ~= line.idup;
 }
