@@ -225,6 +225,7 @@ __gshared apiState ps = apiState();
 __gshared apiBuffers pb = apiBuffers();
 
 __gshared Mutex sndMutex;
+__gshared Mutex pbMutex;
 
 loadBlockThread lbThread;
 longpollThread lpThread;
@@ -259,10 +260,13 @@ class VKapi {
     void tokenInit(string token) {
         vktoken = token;
         isTokenValid = checkToken(token);
+
         lbThread = new loadBlockThread();
         lpThread = new longpollThread(this);
         sndThread = new sendThread(this);
+
         sndMutex = new Mutex();
+        pbMutex = new Mutex();
     }
 
     apiTransfer exportStruct() {
@@ -700,44 +704,45 @@ class VKapi {
 
         //dbm("getbuffered count: " ~ count.to!string ~ ", offset: " ~ offset.to!string ~ ", blocktp: " ~ blocktp.to!string);
 
-        if(bufd.forceUpdate){
-             buf = new T[0];
-             bufd.forceUpdate = false;
-             dbm(blocktp.to!string ~ " buffer empty now, fc: " ~ bufd.forceUpdate.to!string);
+        synchronized(pbMutex) {
+            if(bufd.forceUpdate){
+                 buf = new T[0];
+                 bufd.forceUpdate = false;
+                 dbm(blocktp.to!string ~ " buffer empty now, fc: " ~ bufd.forceUpdate.to!string);
+            }
+
+            immutable int cl = buf.length.to!int;
+            int needln = count + offset;
+
+            if (bufd.serverCount == -1 || cl == 0 || (cl < bufd.serverCount && needln >= (cl-upd))) {
+                dbm("called UPD at offset " ~ offset.to!string ~ ", with current trigger " ~ (cl-upd).to!string);
+                dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
+                spawnLoadBlock = true;
+            }
+
+            if(bufd.serverCount != -1 && needln > bufd.serverCount) {
+                count = bufd.serverCount - offset;
+                needln = count + offset;
+                dbm("needln greater than sc, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", sc: " ~ bufd.serverCount.to!string ~ ", needln: " ~ needln.to!string);
+                if(count < 0) throw new BackendException("Bad count on needln fix");
+            }
+
+            if(needln <= cl) {
+                bufd.loading = false;
+                retLoading = false;
+                rt = slice!T(buf, count, offset);
+            } else {
+                dbm("catched LOADING state at offset " ~ offset.to!string);
+                dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
+                bufd.loading = true;
+                retLoading = true;
+            }
+
+            if(spawnLoadBlock && !lbThread.isRunning) {
+                //lbThread.loadBlock(blocktp, block, cl);
+                lbThread.func(download, block, cl);
+            }
         }
-
-        immutable int cl = buf.length.to!int;
-        int needln = count + offset;
-
-        if (bufd.serverCount == -1 || cl == 0 || (cl < bufd.serverCount && needln >= (cl-upd))) {
-            dbm("called UPD at offset " ~ offset.to!string ~ ", with current trigger " ~ (cl-upd).to!string);
-            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
-            spawnLoadBlock = true;
-        }
-
-        if(bufd.serverCount != -1 && needln > bufd.serverCount) {
-            count = bufd.serverCount - offset;
-            needln = count + offset;
-            dbm("needln greater than sc, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", sc: " ~ bufd.serverCount.to!string ~ ", needln: " ~ needln.to!string);
-            if(count < 0) throw new BackendException("Bad count on needln fix");
-        }
-
-        if(needln <= cl) {
-            bufd.loading = false;
-            retLoading = false;
-            rt = slice!T(buf, count, offset);
-        } else {
-            dbm("catched LOADING state at offset " ~ offset.to!string);
-            dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
-            bufd.loading = true;
-            retLoading = true;
-        }
-
-        if(spawnLoadBlock && !lbThread.isRunning) {
-            //lbThread.loadBlock(blocktp, block, cl);
-            lbThread.func(download, block, cl);
-        }
-
         return rt;
     }
 
@@ -953,12 +958,15 @@ class VKapi {
     }
 
     vkMessageLine[] convertMessage(ref vkMessage inp, int ww) {
-        //auto ct = Clock.currTime();
-        auto cb = &(pb.chatBuffer[inp.peer_id]);
-        auto cached = inp.msg_id in cb.linebuffer;
-        if(cached && cached.wrap == ww) {
-            return (*cached).buf;
+        apiChatBuffer* cb;
+        synchronized(pbMutex) {
+            cb = &(pb.chatBuffer[inp.peer_id]);
+            auto cached = inp.msg_id in cb.linebuffer;
+            if(cached && cached.wrap == ww) {
+                return (*cached).buf;
+            }
         }
+
         vkMessageLine[] rt;
         rt ~= lspacing;
         bool nofwd = (inp.fwd_depth == -1);
@@ -991,9 +999,11 @@ class VKapi {
             rt ~= lspacing ~ renderFwd(inp.fwd, 0);
         }
 
-        cb.linebuffer[inp.msg_id] = apiLineCache(rt, ww);
-        inp.lineCount = rt.length.to!int;
-        inp.wrap = ww;
+        synchronized(pbMutex) {
+            cb.linebuffer[inp.msg_id] = apiLineCache(rt, ww);
+            inp.lineCount = rt.length.to!int;
+            inp.wrap = ww;
+        }
         return rt;
     }
 
@@ -1190,50 +1200,54 @@ class VKapi {
         };
 
         vkMessage nm;
-        if(!hasattaches) {
-            vkMessage lpnm = {
-                author_id: from, peer_id: peer, msg_id: mid,
-                outgoing: outbox, unread: unread,
-                utime: utime, time_str: vktime(ct, utime),
-                author_name: nc.getName(from).strName,
-                body_lines: msg.split("\n"),
-                fwd_depth: -1
-            };
-            nm = lpnm;
-        } else {
-            auto gett = messagesGetById([mid]);
-            if(gett.length == 1) nm = gett[0];
-        }
 
-        if(first) {
-            pb.dialogsBuffer[0] = nd;
-        } else {
-
-            if(oldfound) {
-                if(!conv) nd.online = pb.dialogsBuffer[old].online;
-                pb.dialogsBuffer = nd ~ pb.dialogsBuffer[0..old] ~ pb.dialogsBuffer[(old+1)..pb.dialogsBuffer.length];
+        synchronized(pbMutex) {
+            if(!hasattaches) {
+                vkMessage lpnm = {
+                    author_id: from, peer_id: peer, msg_id: mid,
+                    outgoing: outbox, unread: unread,
+                    utime: utime, time_str: vktime(ct, utime),
+                    author_name: nc.getName(from).strName,
+                    body_lines: msg.split("\n"),
+                    fwd_depth: -1
+                };
+                nm = lpnm;
             } else {
-                if (!conv && !group) {
-                    auto peerinfo = usersGet(peer, "online");
-                    auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
-                    nc.addToCache(peerinfo.id, peername);
-                    nd.name = peername.strName;
-                    nd.online = peerinfo.online;
+                auto gett = messagesGetById([mid]);
+                if(gett.length == 1) nm = gett[0];
+            }
+
+            if(first) {
+                pb.dialogsBuffer[0] = nd;
+            } else {
+
+                if(oldfound) {
+                    if(!conv) nd.online = pb.dialogsBuffer[old].online;
+                    pb.dialogsBuffer = nd ~ pb.dialogsBuffer[0..old] ~ pb.dialogsBuffer[(old+1)..pb.dialogsBuffer.length];
+                } else {
+                    if (!conv && !group) {
+                        auto peerinfo = usersGet(peer, "online");
+                        auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
+                        nc.addToCache(peerinfo.id, peername);
+                        nd.name = peername.strName;
+                        nd.online = peerinfo.online;
+                    }
+                    pb.dialogsBuffer = nd ~ pb.dialogsBuffer;
                 }
-                pb.dialogsBuffer = nd ~ pb.dialogsBuffer;
+
             }
 
-        }
 
-
-        if(haspeer) {
-            auto cb = &(pb.chatBuffer[peer]);
-            auto realmsg = cb.buffer.filter!(q => !q.isZombie);
-            if(!realmsg.empty) {
-                auto lastm = realmsg.front;
-                nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
-                cb.buffer = nm ~ cb.buffer;
+            if(haspeer) {
+                auto cb = &(pb.chatBuffer[peer]);
+                auto realmsg = cb.buffer.filter!(q => !q.isZombie);
+                if(!realmsg.empty) {
+                    auto lastm = realmsg.front;
+                    nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
+                    cb.buffer = nm ~ cb.buffer;
+                }
             }
+
         }
 
         if(rndid != 0) synchronized(sndMutex) {
@@ -1259,33 +1273,38 @@ class VKapi {
         auto peer = u[1].integer.to!int;
         auto mid = u[2].integer.to!int;
 
-        auto dc = (inboxrd) ? pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true) : -1;
         auto haspeer = (peer in pb.chatBuffer);
         long mc = -1;
         bool upd = false;
 
-        if(haspeer) {
-            mc = pb.chatBuffer[peer].buffer.map!(q => q.msg_id == mid).countUntil(true);
-        }
+        synchronized(pbMutex) {
+            auto dc = (inboxrd) ? pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true) : -1;
 
-        if(dc != -1 && pb.dialogsBuffer[dc].lastmid == mid) {
-            pb.dialogsBuffer[dc].unread = false;
-            upd = true;
-        }
+            if(haspeer) {
+                mc = pb.chatBuffer[peer].buffer.map!(q => q.msg_id == mid).countUntil(true);
+            }
 
-        if(mc != -1) {
-            auto cb = &(pb.chatBuffer[peer]);
-            foreach(ref m; cb.buffer[mc..$]) {
-                if(m.outgoing != inboxrd) {
-                    if(m.unread) {
-                        m.unread = false;
-                        defeatMessageCache(m.msg_id, peer);
-                    } else {
-                        break;
+            if(dc != -1 && pb.dialogsBuffer[dc].lastmid == mid) {
+                pb.dialogsBuffer[dc].unread = false;
+                upd = true;
+            }
+
+
+            if(mc != -1) {
+                auto cb = &(pb.chatBuffer[peer]);
+                foreach(ref m; cb.buffer[mc..$]) {
+                    if(m.outgoing != inboxrd) {
+                        if(m.unread) {
+                            m.unread = false;
+                            defeatMessageCache(m.msg_id, peer);
+                        } else {
+                            break;
+                        }
                     }
                 }
+                upd = true;
             }
-            upd = true;
+
         }
 
         if(upd) toggleUpdate();
@@ -1300,20 +1319,23 @@ class VKapi {
         if(!exit && event != 8) return;
         dbm("trigger online event: " ~ event.to!string ~ ", uid: " ~ uid.to!string);
 
-        auto dc = (pb.dialogsData.forceUpdate) ? -1 : pb.dialogsBuffer.map!(q => q.id == uid).countUntil(true);
-        auto fc = (pb.friendsData.forceUpdate) ? -1 : pb.friendsBuffer.map!(q => q.id == uid).countUntil(true);
         bool upd = false;
 
-        if(dc != -1) {
-            pb.dialogsBuffer[dc].online = !exit;
-            dbm("trigger online dc");
-            upd = true;
-        }
+        synchronized(pbMutex) {
+            auto dc = (pb.dialogsData.forceUpdate) ? -1 : pb.dialogsBuffer.map!(q => q.id == uid).countUntil(true);
+            auto fc = (pb.friendsData.forceUpdate) ? -1 : pb.friendsBuffer.map!(q => q.id == uid).countUntil(true);
 
-        if(fc != -1) {
-            pb.friendsBuffer[fc].online = !exit;
-            dbm("trigger online fc");
-            upd = true;
+            if(dc != -1) {
+                pb.dialogsBuffer[dc].online = !exit;
+                dbm("trigger online dc");
+                upd = true;
+            }
+
+            if(fc != -1) {
+                pb.friendsBuffer[fc].online = !exit;
+                dbm("trigger online fc");
+                upd = true;
+            }
         }
 
         if(upd) toggleUpdate();
