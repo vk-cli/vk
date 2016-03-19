@@ -2,7 +2,7 @@
 A console (ncurses) client for vk.com written in D
 
 ### Branches
-+ **master** - current upstream (unstable) 
++ **master** - current upstream (may be unstable) 
 
 # Install
 
@@ -11,8 +11,17 @@ A console (ncurses) client for vk.com written in D
 ```
 git clone https://github.com/HaCk3Dq/vk
 cd vk
+```
+If you want build one of specific versions instead of master upstream (alpha-1, for example), you need to run
+```
+git checkout ver
+```
+where is `ver` - name of branch that you want to build
+
+```
 dub build
 ```
+builds `vk` binary for your platform
 
 ## Dependencies
 
