@@ -1009,7 +1009,7 @@ class VKapi {
         return rt;
     }
 
-    const int wwmultipiler = 2;
+    const int wwmultipiler = 3;
 
     private vkMessageLine[] renderFwd(vkFwdMessage[] inp, int depth, int ww) {
         ++depth;
