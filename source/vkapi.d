@@ -996,7 +996,7 @@ class VKapi {
         } else if (nofwd) rt ~= lspacing;
 
         if(!nofwd) {
-            rt ~= lspacing ~ renderFwd(inp.fwd, 0);
+            rt ~= lspacing ~ renderFwd(inp.fwd, 0, ww);
         }
 
         synchronized(pbMutex) {
@@ -1007,8 +1007,13 @@ class VKapi {
         return rt;
     }
 
-    private vkMessageLine[] renderFwd(vkFwdMessage[] inp, int depth) {
+    const int wwmultipiler = 2;
+
+    private vkMessageLine[] renderFwd(vkFwdMessage[] inp, int depth, int ww) {
         ++depth;
+        auto lcww = ww - (depth * wwmultipiler);
+        if(lcww <= 0) lcww = 1;
+
         vkMessageLine[] rt;
         foreach(fm; inp) {
             vkMessageLine name = {
@@ -1017,9 +1022,11 @@ class VKapi {
                 isFwd: true, isName: true, fwdDepth: depth
             };
             rt ~= name;
-            foreach(l; fm.body_lines) {
+            wstring[] wrapped;
+            fm.body_lines.map!(q => q.to!wstring.wordwrap(lcww)).each!(q => wrapped ~= q);
+            foreach(l; wrapped) {
                 vkMessageLine msg = {
-                    text: l,
+                    text: l.to!string,
                     isFwd: true, fwdDepth: depth
                 };
                 rt ~= msg;
@@ -1031,7 +1038,7 @@ class VKapi {
             rt ~= fwdspc;
 
             if(fm.fwd.length != 0) {
-                rt ~= renderFwd(fm.fwd, depth);
+                rt ~= renderFwd(fm.fwd, depth, ww);
                 rt ~= fwdspc;
             }
 
