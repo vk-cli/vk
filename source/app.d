@@ -507,11 +507,12 @@ void chatEvents() {
   //else if (win.key == k_end) jumpToEnd;
   else if (canFind(kg_right, win.key)) {
     wmove(stdscr, LINES, 0);
-    ": ".print;
+    "\n: ".print;
     char msg;
+    echo;
     getstr(&msg);
-    auto strmsg = (cast(char*)&msg).to!string;
-    api.asyncSendMessage(win.chatID, strmsg);
+    noecho;
+    api.asyncSendMessage(win.chatID, (cast(char*)&msg).to!string);
   }
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
