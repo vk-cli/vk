@@ -300,9 +300,6 @@ class VKapi {
         } catch (ApiErrorException e) {
             dbm("ApiErrorException: " ~ e.msg);
             return false;
-        } catch (BackendException e) {
-            dbm("BackendException: " ~ e.msg);
-            return false;
         }
         return true;
     }
