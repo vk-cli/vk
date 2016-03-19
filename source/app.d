@@ -108,10 +108,11 @@ struct Win {
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive;
   string
-    debugText;
+    debugText, msgBuffer;
   bool
     isMusicPlaying, isConferenceOpened,
-    isRainbowChat, isRainbowOnlyInGroupChats;
+    isRainbowChat, isRainbowOnlyInGroupChats,
+    isMessageWriting;
 }
 
 struct ListElement {
@@ -433,6 +434,10 @@ void drawChat() {
     } else 
       e.name.regularWhite;
   }
+  if (win.isMessageWriting) {
+    "\n: ".print;
+    win.msgBuffer.print;
+  }
 }
 
 int activeBufferLen() {
@@ -468,13 +473,24 @@ void controller() {
     if(ch != -1) break;
     if(api.isSomethingUpdated) break;
   }
-  //win.key.print;
-  if (canFind(kg_left, win.key)) backEvent;
-  if (activeBufferEventsAllowed) {
+  win.key.print;
+  if (win.isMessageWriting) msgBufferController;
+  else if (canFind(kg_left, win.key)) backEvent;
+  else if (activeBufferEventsAllowed) {
     if (win.activeBuffer != Buffers.chat) nonChatEvents;
     else chatEvents;
   }
   checkBounds;
+}
+
+void msgBufferController() {
+  if (win.key == 27 || win.key == 10) {
+    if (win.key == 10 && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
+    win.msgBuffer = "";
+    win.isMessageWriting = false;
+  }
+  else if (win.key == 127) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
+  else if (win.key > 0) win.msgBuffer ~= win.key.to!char;
 }
 
 void nonChatEvents() {
@@ -504,16 +520,7 @@ void chatEvents() {
   else if (win.key == k_pagedown) win.scrollOffset -= LINES/2;
   else if (win.key == k_pageup) win.scrollOffset += LINES/2;
   else if (win.key == k_home) win.scrollOffset = 0;
-  //else if (win.key == k_end) jumpToEnd;
-  else if (canFind(kg_right, win.key)) {
-    wmove(stdscr, LINES, 0);
-    "\n: ".print;
-    char msg;
-    echo;
-    getstr(&msg);
-    noecho;
-    api.asyncSendMessage(win.chatID, (cast(char*)&msg).to!string);
-  }
+  else if (canFind(kg_right, win.key)) win.isMessageWriting = true;
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
@@ -770,6 +777,12 @@ void test() {
     //ticker();
 }
 
+void stop() {
+  dbmclose;
+  endwin;
+  exitMplayer;
+}
+
 void main(string[] args) {
   initdbm;
   //test;
@@ -796,7 +809,7 @@ void main(string[] args) {
   }
   api.asyncLongpoll();
 
-  while (!canFind(kg_esc, win.key)) {
+  while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
     clear;
     win.counter = api.messagesCounter;
     statusbar;
@@ -811,10 +824,4 @@ void main(string[] args) {
   storage.save;
   stop;
   exit(0);
-}
-
-void stop() {
-  dbmclose;
-  endwin;
-  exitMplayer;
 }
