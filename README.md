@@ -1,6 +1,9 @@
 # vk
 A console (ncurses) client for vk.com written in D
 
+### Branches
++ **master** - current upstream (unstable) 
+
 # Install
 
 ## Build
