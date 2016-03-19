@@ -867,7 +867,7 @@ class VKapi {
             text: getLocal("loading")
         };
 
-        immutable int needln = count + offset;
+        int needln = count + offset;
         int lnsum;
         int start;
         int stoff;
@@ -877,8 +877,16 @@ class VKapi {
         bool doneload;
         int loadoffset = 0;
         bool offsetcatched = false;
+
         if(haspeer) {
             auto cb = &(pb.chatBuffer[peer]);
+
+            if(cb.data.linesCount != -1 && needln > cb.data.linesCount && count < cb.data.linesCount) {
+                dbm("bfcl got needln more than linescount, coffset: " ~ offset.to!string ~ ", count: " ~ count.to!string);
+                offset = cb.data.linesCount - count;
+                needln = offset+count;
+            }
+
             loadoffset = cb.buffer.length.to!int;
             doneload = loadoffset == cb.data.serverCount;
 
@@ -906,7 +914,7 @@ class VKapi {
         }
 
         if(lnsum < needln) {
-            dbm("not enough lnsum: " ~ lnsum.to!string ~ ", needln: " ~ needln.to!string);
+            dbm("bfcl not enough lnsum: " ~ lnsum.to!string ~ ", needln: " ~ needln.to!string);
             if(!doneload) {
                 getBufferedChat(chatBlock, loadoffset, peer);
                 return [ ld ];
