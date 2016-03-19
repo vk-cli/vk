@@ -984,7 +984,7 @@ class VKapi {
         if(inp.body_lines.length != 0) {
             bool unrfl = inp.unread;
             wstring[] wrapped;
-            inp.body_lines.map!(q => q.to!wstring.wrap(ww)).each!(q => wrapped ~= q.split("\n"));
+            inp.body_lines.map!(q => q.to!wstring.wordwrap(ww)).each!(q => wrapped ~= q);
             foreach(l; wrapped.filter!(q => q != "")) {
                 vkMessageLine msg = {
                     text: l.to!string,

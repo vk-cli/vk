@@ -1,6 +1,6 @@
 module utils;
 
-import std.stdio, std.array, std.file, core.thread, core.sync.mutex, core.exception, std.datetime, std.conv;
+import std.stdio, std.array, std.string, std.file, core.thread, core.sync.mutex, core.exception, std.datetime, std.conv;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -63,4 +63,22 @@ T[] slice(T)(ref T[] src, int count, int offset) {
         dbm("catched slice ex: " ~ e.msg);
         return [];
     }
+}
+
+S[] wordwrap(S)(S s, size_t mln) {
+    auto wrplines = s.wrap(mln).split("\n");
+    S[] lines;
+    foreach(ln; wrplines) {
+        S[] crp = ["", ln];
+        while(crp.length > 1) {
+            crp = cropstr(crp[1] ,mln);
+            lines ~= crp[0];
+        }
+    }
+    return lines;
+}
+
+private S[] cropstr(S)(S s, size_t mln) {
+    if(s.length > mln) return [ s[0..mln], s[mln..$] ];
+    else return [s];
 }
