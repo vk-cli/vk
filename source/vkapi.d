@@ -281,7 +281,6 @@ class VKapi {
         if(rnd > maxint) {
             rnd = -(rnd-maxint);
         }
-        dbm("genId rand: " ~ rnd.to!string);
         return rnd.to!int;
     }
 
@@ -958,12 +957,15 @@ class VKapi {
     }
 
     vkMessageLine[] convertMessage(ref vkMessage inp, int ww) {
+        immutable bool zombie = inp.isZombie || inp.msg_id < 1;
         apiChatBuffer* cb;
         synchronized(pbMutex) {
             cb = &(pb.chatBuffer[inp.peer_id]);
-            auto cached = inp.msg_id in cb.linebuffer;
-            if(cached && cached.wrap == ww) {
-                return (*cached).buf;
+            if(!zombie) {
+                auto cached = inp.msg_id in cb.linebuffer;
+                if(cached && cached.wrap == ww) {
+                    return (*cached).buf;
+                }
             }
         }
 
@@ -1000,7 +1002,7 @@ class VKapi {
         }
 
         synchronized(pbMutex) {
-            cb.linebuffer[inp.msg_id] = apiLineCache(rt, ww);
+            if(!zombie) cb.linebuffer[inp.msg_id] = apiLineCache(rt, ww);
             inp.lineCount = rt.length.to!int;
             inp.wrap = ww;
         }
@@ -1115,6 +1117,8 @@ class VKapi {
     }
 
     void asyncSendMessage(int peer, string msg) {
+        dbm("called asyncsendmsg, peer: " ~ peer.to!string ~ ", msg: " ~ msg);
+
         auto rid = genId();
         auto aid = me.id;
         auto cb = &(pb.chatBuffer[peer]);
