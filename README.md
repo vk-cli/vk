@@ -1,10 +1,11 @@
 # vk
-A console client for vk.com written in D
+A console (ncurses) client for vk.com written in D
 
 # Install
 
 ```
 git clone https://github.com/HaCk3Dq/vk
+cd vk
 dub
 ```
 
