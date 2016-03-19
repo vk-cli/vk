@@ -400,7 +400,7 @@ void drawBuffer() {
       break;
     }
     default: break;
-  }
+    }
 }
 
 int colorHash(string name) {
@@ -504,7 +504,15 @@ void chatEvents() {
   else if (win.key == k_pagedown) win.scrollOffset -= LINES/2;
   else if (win.key == k_pageup) win.scrollOffset += LINES/2;
   else if (win.key == k_home) win.scrollOffset = 0;
-  else if (win.key == k_end) jumpToEnd;
+  //else if (win.key == k_end) jumpToEnd;
+  else if (canFind(kg_right, win.key)) {
+    wmove(stdscr, LINES, 0);
+    ": ".print;
+    char msg;
+    getstr(&msg);
+    auto strmsg = (cast(char*)&msg).to!string;
+    api.asyncSendMessage(win.chatID, strmsg);
+  }
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
