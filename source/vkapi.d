@@ -718,7 +718,8 @@ class VKapi {
         if(bufd.serverCount != -1 && needln > bufd.serverCount) {
             count = bufd.serverCount - offset;
             needln = count + offset;
-            dbm("needln greater than sc, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", needln: " ~ needln.to!string);
+            dbm("needln greater than sc, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", sc: " ~ bufd.serverCount.to!string ~ ", needln: " ~ needln.to!string);
+            if(count < 0) throw new BackendException("Bad count on needln fix");
         }
 
         if(needln <= cl) {
@@ -881,9 +882,6 @@ class VKapi {
             loadoffset = cb.buffer.length.to!int;
             doneload = loadoffset == cb.data.serverCount;
 
-            immutable auto updtr = loadoffset + chatUpd;
-            if(offset >= updtr) getBufferedChat(1, updtr+1, peer); //preload
-
             int i;
             foreach(m; cb.buffer.filter!(q => !q.ignore)) {
                 immutable auto lc = getMessageLinecount(m, wrapwidth);
@@ -901,7 +899,14 @@ class VKapi {
             }
         }
 
+        auto updtr = loadoffset - chatUpd;
+        if(end > updtr && end < loadoffset) {
+            if( (updtr+1) < chatUpd ) updtr = 1;
+            getBufferedChat(1, updtr+1, peer); //preload
+        }
+
         if(lnsum < needln) {
+            dbm("not enough lnsum: " ~ lnsum.to!string ~ ", needln: " ~ needln.to!string);
             if(!doneload) {
                 getBufferedChat(chatBlock, loadoffset, peer);
                 return [ ld ];
