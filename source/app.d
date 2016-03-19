@@ -731,7 +731,7 @@ ListElement[] GetMusic() {
 
 ListElement[] GetChat() {
   ListElement[] list;
-  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID, COLS);
+  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID, COLS-10);
   foreach(e; chat) {
     if (e.isFwd) {
       ListElement line = {"    " ~ "| ".replicate(e.fwdDepth)};
@@ -782,7 +782,13 @@ void main(string[] args) {
   auto storage = load;
   storage.parse;
 
-  api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
+  try{
+    api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
+  } catch (BackendException e) {
+    stop;
+    writeln(e.msg);
+    exit(0);
+  }
   while (!api.isTokenValid) {
     "e_wrong_token".getLocal.print;
     api = storage.get_token;
@@ -802,8 +808,12 @@ void main(string[] args) {
 
   storage.update;
   storage.save;
+  stop;
+  exit(0);
+}
+
+void stop() {
   dbmclose;
   endwin;
   exitMplayer;
-  exit(0);
 }
