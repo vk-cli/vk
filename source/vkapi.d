@@ -1140,6 +1140,8 @@ class VKapi {
         return rt;
     }
 
+    const longpollGimStartId = 1000000000;
+
     void triggerNewMessage(JSONValue ui, SysTime ct) {
         if(pb.dialogsData.forceUpdate) return;
         auto u = ui.array;
@@ -1157,11 +1159,18 @@ class VKapi {
         bool hasattaches = att.object.keys.map!(a => (a == "fwd") || a.matchAll(r"attach.*")).any!"a";
 
         auto conv = (peer > convStartId);
+        bool group = false;
+
+        if(!conv && peer > longpollGimStartId) {
+            peer = -(peer - longpollGimStartId);
+            group = true;
+        }
+
         auto from = conv ? att["from"].str.to!int : ( outbox ? me.id : peer );
         auto first = (pb.dialogsBuffer[0].id == peer);
         auto old = first ? 0 : pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
         auto oldfound = (old != -1);
-        auto title = conv ? u[5].str : ( oldfound ? nc.getName(peer).strName : "" );
+        auto title = conv ? u[5].str : ( group || oldfound ? nc.getName(peer).strName : "" );
         auto haspeer = (peer in pb.chatBuffer);
 
         vkDialog nd = {
@@ -1194,7 +1203,7 @@ class VKapi {
                 if(!conv) nd.online = pb.dialogsBuffer[old].online;
                 pb.dialogsBuffer = nd ~ pb.dialogsBuffer[0..old] ~ pb.dialogsBuffer[(old+1)..pb.dialogsBuffer.length];
             } else {
-                if (!conv) {
+                if (!conv && !group) {
                     auto peerinfo = usersGet(peer, "online");
                     auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
                     nc.addToCache(peerinfo.id, peername);
