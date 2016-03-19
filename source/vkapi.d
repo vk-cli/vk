@@ -64,6 +64,7 @@ struct vkMessage {
     int rndid;
     bool ignore;
     int lineCount = -1;
+    int wrap = -1;
 }
 
 struct vkMessageLine {
@@ -190,10 +191,15 @@ struct apiRecentlyUpdated {
     bool checkedout;
 }
 
+struct apiLineCache {
+    vkMessageLine[] buf;
+    int wrap = -1;
+}
+
 struct apiChatBuffer {
     vkMessage[] buffer;
     apiBufferData data;
-    vkMessageLine[][int] linebuffer; // by mid
+    apiLineCache[int] linebuffer; // by mid
 }
 
 struct apiBuffers {
@@ -857,7 +863,7 @@ class VKapi {
         return buf[bufl-1];
     }
 
-    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrpawidth) {
+    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
         if(offset < 0) offset = 0;
         vkMessageLine ld = {
             text: getLocal("loading")
@@ -883,7 +889,7 @@ class VKapi {
 
             int i;
             foreach(m; cb.buffer.filter!(q => !q.ignore)) {
-                immutable auto lc = getMessageLinecount(m);
+                immutable auto lc = getMessageLinecount(m, wrapwidth);
                 lnsum += lc;
                 if(!offsetcatched && lnsum >= offset) {
                     start = i;
@@ -911,12 +917,12 @@ class VKapi {
         if(doneload) {
             auto dt = &(pb.chatBuffer[peer]);
             if(dt.data.linesCount == -1) {
-                dt.data.linesCount = dt.buffer.map!(q => getMessageLinecount(q)).sum;
+                dt.data.linesCount = dt.buffer.map!(q => getMessageLinecount(q, wrapwidth)).sum;
             }
         }
 
         vkMessageLine[] lnbf;
-        pb.chatBuffer[peer].buffer.filter!(q => !q.ignore).array[start..end+1].retro.map!(q => convertMessage(q)).each!(q => lnbf ~= q);
+        pb.chatBuffer[peer].buffer.filter!(q => !q.ignore).array[start..end+1].retro.map!(q => convertMessage(q, wrapwidth)).each!(q => lnbf ~= q);
 
         auto lcount = count+stoff;
         bool shortchat = doneload && (lnbf.length <= count);
@@ -927,8 +933,8 @@ class VKapi {
         text: "", isSpacing: true
     };
 
-    int getMessageLinecount(ref vkMessage inp) {
-        if(inp.lineCount == -1) return convertMessage(inp).length.to!int;
+    int getMessageLinecount(ref vkMessage inp, int ww) {
+        if(inp.lineCount == -1 || inp.wrap == -1 || inp.wrap != ww) return convertMessage(inp, ww).length.to!int;
         else return inp.lineCount;
     }
 
@@ -936,12 +942,12 @@ class VKapi {
         pb.chatBuffer[peer].linebuffer.remove(mid);
     }
 
-    vkMessageLine[] convertMessage(ref vkMessage inp) {
+    vkMessageLine[] convertMessage(ref vkMessage inp, int ww) {
         //auto ct = Clock.currTime();
         auto cb = &(pb.chatBuffer[inp.peer_id]);
         auto cached = inp.msg_id in cb.linebuffer;
-        if(cached) {
-            return *cached;
+        if(cached && cached.wrap == ww) {
+            return (*cached).buf;
         }
         vkMessageLine[] rt;
         rt ~= lspacing;
@@ -959,7 +965,9 @@ class VKapi {
 
         if(inp.body_lines.length != 0) {
             bool unrfl = inp.unread;
-            foreach(l; inp.body_lines) {
+            string[] wrapped;
+            inp.body_lines.map!(q => q.wrap(ww)).each!(q => wrapped ~= q.split("\n"));
+            foreach(l; wrapped) {
                 vkMessageLine msg = {
                     text: l,
                     unread: unrfl
@@ -973,8 +981,9 @@ class VKapi {
             rt ~= lspacing ~ renderFwd(inp.fwd, 0);
         }
 
-        cb.linebuffer[inp.msg_id] = rt;
+        cb.linebuffer[inp.msg_id] = apiLineCache(rt, ww);
         inp.lineCount = rt.length.to!int;
+        inp.wrap = ww;
         return rt;
     }
 
