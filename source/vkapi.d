@@ -417,6 +417,16 @@ class VKapi {
         return rt;
     }
 
+    bool setTypingStatus(int peer) {
+        try{
+            auto resp = vkget("messages.setActivity", [ "peer_id": peer.to!string, "type": "typing" ]);
+            return resp.integer.to!bool;
+        } catch (Exception e) {
+            dbm("catched at setTypingStatus: " ~ e.msg);
+            return false;
+        }
+    }
+
     vkDialog[] messagesGetDialogs(int count , int offset, out int serverCount) {
         auto exresp = vkget("execute.vkGetDialogs", [ "count": count.to!string, "offset": offset.to!string ]);
         auto resp = exresp["conv"];
