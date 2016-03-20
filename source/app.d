@@ -559,6 +559,7 @@ void chatEvents() {
     win.isMessageWriting = true;
   }
   if (win.scrollOffset < 0) win.scrollOffset = 0;
+  else if (activeBufferLen != -1 && win.scrollOffset > activeBufferLen-LINES+3) win.scrollOffset = activeBufferLen-LINES+3;
 }
 
 void checkBounds() {
