@@ -11,35 +11,28 @@ A console (ncurses) client for vk.com written in D
 ```
 git clone https://github.com/HaCk3Dq/vk
 cd vk
+dub
 ```
-If you want build one of specific versions instead of master upstream (alpha-1, for example), you need run
+builds `vk` binary for your platform.
+
+If you want build one of specific versions instead of master upstream (alpha-1, for example), you need to run
 ```
 git checkout ver
 ```
-where is `ver` - name of branch that you want to build
-
-```
-dub build
-```
-builds `vk` binary for your platform
+where `ver` - is the name of the branch that you want to build
 
 ## Dependencies
 
 + ncurses >= 5.7
++ dub
++ dmd
 
 Optional:
 
 + mplayer: for music playback
 + xclip: paste from X clipboard in chats (currently not implemented)
 
-For build:
-
-+ dub
-+ dmd
-
 # How to use
-
-## Navigation
 
 + Arrow Keys
 + W, A, S, D
