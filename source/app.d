@@ -773,8 +773,17 @@ void test() {
         return;
     }
 
-    readln();
-    //ticker();
+    int i = 0;
+    while(true) {
+        readln();
+        auto pr = 2000000012;
+        if(i > 4) {
+            i = 0;
+            pr = 2000000023;
+        }
+        api.setTypingStatus(pr);
+        ++i;
+    }
 }
 
 void stop() {

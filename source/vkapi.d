@@ -230,6 +230,7 @@ __gshared Mutex pbMutex;
 loadBlockThread lbThread;
 longpollThread lpThread;
 sendThread sndThread;
+typingThread tpThread;
 
 class VKapi {
 
@@ -264,6 +265,7 @@ class VKapi {
         lbThread = new loadBlockThread();
         lpThread = new longpollThread(this);
         sndThread = new sendThread(this);
+        tpThread = new typingThread(this);
 
         sndMutex = new Mutex();
         pbMutex = new Mutex();
@@ -417,13 +419,15 @@ class VKapi {
         return rt;
     }
 
-    bool setTypingStatus(int peer) {
+    void setTypingStatus(int peer) {
+        tpThread.setStatus(peer);
+    }
+
+    void setActivityStatusImpl(int peer, string type) {
         try{
-            auto resp = vkget("messages.setActivity", [ "peer_id": peer.to!string, "type": "typing" ]);
-            return resp.integer.to!bool;
+            vkget("messages.setActivity", [ "peer_id": peer.to!string, "type": type ]);
         } catch (Exception e) {
             dbm("catched at setTypingStatus: " ~ e.msg);
-            return false;
         }
     }
 
@@ -1019,11 +1023,11 @@ class VKapi {
         return rt;
     }
 
-    const int wwmultipiler = 3;
+    const int wwmultiplier = 3;
 
     private vkMessageLine[] renderFwd(vkFwdMessage[] inp, int depth, int ww) {
         ++depth;
-        auto lcww = ww - (depth * wwmultipiler);
+        auto lcww = ww - (depth * wwmultiplier);
         if(lcww <= 0) lcww = 1;
 
         vkMessageLine[] rt;
@@ -1521,6 +1525,47 @@ class sendThread : Thread {
             dbm("sndThread: order clear");
         }
     }
+}
+
+class typingThread : Thread {
+    VKapi api;
+
+    const type = "typing";
+    const wait = dur!"msecs"(100);
+    const waitmultiplier = 5*10;
+
+    int lastpeer;
+    bool updpeer;
+
+    this(VKapi api) {
+        this.api = api;
+        super(&asyncset);
+    }
+
+    void setStatus(int peer) {
+        if(lastpeer != peer) {
+            updpeer = true;
+            lastpeer = peer;
+        }
+        if(!this.isRunning) this.start();
+    }
+
+    private void asyncset() {
+        bool loop = true;
+        while(loop) {
+            api.setActivityStatusImpl(lastpeer, type);
+            loop = false;
+            updpeer = false;
+            for(int i; i < waitmultiplier; ++i) {
+                Thread.sleep(wait);
+                if(updpeer) {
+                    loop = true;
+                    break;
+                }
+            }
+        }
+    }
+
 }
 
 // ===== Exceptions =====
