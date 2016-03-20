@@ -45,22 +45,24 @@ private:
 
 const int 
   // func keys
-  k_pageup   = -10,
-  k_pagedown = -11,
-  k_home     = -6,
-  k_end      = -9,
-  // keys
-  k_esc      = 27,
-  k_q        = 113,
-  k_rus_q    = 185,
-  k_r        = 114,
-  k_rus_r    = 186,
-  k_enter    = 10,
-  k_bckspc   = 127,
   k_up       = -2,
   k_down     = -3,
   k_right    = -4,
   k_left     = -5,
+  k_home     = -6,
+  k_ins      = -7,
+  k_del      = -8,
+  k_end      = -9,
+  k_pageup   = -10,
+  k_pagedown = -11,
+  k_enter    =  10,
+  k_esc      =  27,
+  // keys
+  k_q        = 113,
+  k_rus_q    = 185,
+  k_r        = 114,
+  k_rus_r    = 186,
+  k_bckspc   = 127,
   k_w        = 119,
   k_s        = 115,
   k_a        = 97,
@@ -87,7 +89,7 @@ const int[]
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter],
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
-                k_pageup, k_pagedown];
+                k_pageup, k_pagedown, k_end, k_ins, k_del, k_home];
 
 const string 
   unread = "⚫ ",
@@ -522,11 +524,7 @@ void msgBufferController() {
   }
   else if (win.key == k_bckspc && win.msgBuffer.utfLength != 0) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
   else if (win.key != -1 && !canFind(kg_ignore, win.key)) win.msgBuffer ~= win.key.to!char;
-  else if (win.key == k_left) {
-    wmove(stdscr, 25, 13);
-    wnoutrefresh(stdscr);
-    refresh;
-  }
+  else if (win.key == k_left) {}
 }
 
 void nonChatEvents() {
