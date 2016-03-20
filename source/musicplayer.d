@@ -29,7 +29,7 @@ ListElement[] getMplayerUI(int cols) {
   playerUI ~= ListElement(" ".replicate((cols-16)/2-mplayer.currentTrack.artist.utfLength/2)~mplayer.currentTrack.artist);
   playerUI ~= ListElement(" ".replicate((cols-16)/2-mplayer.currentTrack.title.utfLength/2)~mplayer.currentTrack.title);
   playerUI ~= ListElement(center("0:00 / " ~ mplayer.currentTrack.duration, cols-16, ' '));
-  playerUI ~= ListElement(center("[========================|==========]", cols-16, ' '));
+  playerUI ~= ListElement(center("[========================|==========] ⟲ ⤮", cols-16, ' '));
   playerUI ~= ListElement("");
   return playerUI;
 }
