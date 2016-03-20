@@ -15,22 +15,54 @@ enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnrea
 Win win;
 VKapi api;
 
+public: 
+
+  struct ListElement {
+    string name, text;
+    void function(ref ListElement) callback;
+    ListElement[] function() getter;
+    bool flag;
+    int id;
+    bool isConference;
+  }
+
+  ulong utfLength(string inp) {
+    auto wstrInput = inp.to!wstring;
+    ulong s = wstrInput.walkLength;
+    foreach(w; wstrInput) {
+      auto c = (cast(ulong)w);
+      foreach(r; utfranges) {
+        if(c >= r.start && c <= r.end) {
+          s += r.spaces;
+          break;
+        }
+      }
+    }
+    return s;
+  }
+
+private:
+
 const int 
   // func keys
-  k_pageup   = 53,
-  k_pagedown = 54,
-  k_home     = 49,
-  k_end      = 52,
+  k_up       = -2,
+  k_down     = -3,
+  k_right    = -4,
+  k_left     = -5,
+  k_home     = -6,
+  k_ins      = -7,
+  k_del      = -8,
+  k_end      = -9,
+  k_pageup   = -10,
+  k_pagedown = -11,
+  k_enter    =  10,
+  k_esc      =  27,
   // keys
   k_q        = 113,
   k_rus_q    = 185,
   k_r        = 114,
   k_rus_r    = 186,
-  k_enter    = 10,
-  k_up       = 65,
-  k_down     = 66,
-  k_left     = 68,
-  k_right    = 67,
+  k_bckspc   = 127,
   k_w        = 119,
   k_s        = 115,
   k_a        = 97,
@@ -55,7 +87,9 @@ const int[]
   kg_up      = [k_up, k_w, k_k, k_rus_w, k_rus_k],
   kg_down    = [k_down, k_s, k_j, k_rus_s, k_rus_j],
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
-  kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter];
+  kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter],
+  kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
+                k_pageup, k_pagedown, k_end, k_ins, k_del, k_home];
 
 const string 
   unread = "⚫ ",
@@ -113,15 +147,6 @@ struct Win {
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting;
-}
-
-struct ListElement {
-  string name, text;
-  void function(ref ListElement) callback;
-  ListElement[] function() getter;
-  bool flag;
-  int id;
-  bool isConference;
 }
 
 void relocale() {
@@ -281,21 +306,6 @@ void drawMenu() {
     if (win.section == Sections.left) i == win.active ? name.selected : name.regular;
     else i == win.menuActive ? name.selected : name.regular;
   }
-}
-
-ulong utfLength(string inp) {
-  auto wstrInput = inp.to!wstring;
-  ulong s = wstrInput.walkLength;
-  foreach(w; wstrInput) {
-    auto c = (cast(ulong)w);
-    foreach(r; utfranges) {
-      if(c >= r.start && c <= r.end) {
-        s += r.spaces;
-        break;
-      }
-    }
-  }
-  return s;
 }
 
 string cut(ulong i, ListElement e) {
@@ -465,15 +475,37 @@ void jumpToEnd() {
   win.scrollOffset = activeBufferLen-LINES+2;
 }
 
+int _getch() {
+  int key = getch;
+  if (key == 27) {
+    if (getch == -1) return k_esc;
+    else {
+      switch (getch) {
+        case 65: return -2;         // Up
+        case 66: return -3;         // Down
+        case 67: return -4;         // Right
+        case 68: return -5;         // Left
+        case 49: getch; return -6;  // Home
+        case 50: getch; return -7;  // Ins
+        case 51: getch; return -8;  // Del
+        case 52: getch; return -9;  // End
+        case 53: getch; return -10; // Pg Up
+        case 54: getch; return -11; // Pg Down
+        default: return -1;
+      }
+    }
+  }
+  return key;
+}
+
 void controller() {
   while (true) {
-    timeout(1050);
-    auto ch = getch;
-    win.key = ch;
-    if(ch != -1) break;
+    timeout(100);
+    win.key = _getch;
+    if(win.key != -1) break;
     if(api.isSomethingUpdated) break;
   }
-  win.key.print;
+  //win.key.print;
   if (win.isMessageWriting) msgBufferController;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
@@ -484,13 +516,15 @@ void controller() {
 }
 
 void msgBufferController() {
-  if (win.key == 27 || win.key == 10) {
-    if (win.key == 10 && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
+  if (win.key == k_esc || win.key == k_enter) {
+    if (win.key == k_enter && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
     win.msgBuffer = "";
+    curs_set(0);
     win.isMessageWriting = false;
   }
-  else if (win.key == 127) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
-  else if (win.key > 0) win.msgBuffer ~= win.key.to!char;
+  else if (win.key == k_bckspc && win.msgBuffer.utfLength != 0) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
+  else if (win.key != -1 && !canFind(kg_ignore, win.key)) win.msgBuffer ~= win.key.to!char;
+  else if (win.key == k_left) {}
 }
 
 void nonChatEvents() {
@@ -520,7 +554,10 @@ void chatEvents() {
   else if (win.key == k_pagedown) win.scrollOffset -= LINES/2;
   else if (win.key == k_pageup) win.scrollOffset += LINES/2;
   else if (win.key == k_home) win.scrollOffset = 0;
-  else if (canFind(kg_right, win.key)) win.isMessageWriting = true;
+  else if (canFind(kg_right, win.key)) {
+    curs_set(1);
+    win.isMessageWriting = true;
+  }
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
