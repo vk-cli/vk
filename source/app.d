@@ -146,7 +146,7 @@ struct Win {
   bool
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
-    isMessageWriting;
+    isMessageWriting, showTyping;
 }
 
 void relocale() {
@@ -165,6 +165,7 @@ void parse(ref string[string] storage) {
   if ("lang" in storage) if (storage["lang"] == "1") swapLang;
   if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
   if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
+  if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
   relocale;
 }
 
@@ -175,6 +176,7 @@ void update(ref string[string] storage) {
   storage["message_setting"] = win.msgDrawSetting.to!string;
   storage["rainbow"] = win.isRainbowChat.to!string;
   storage["rainbow_in_chat"] = win.isRainbowOnlyInGroupChats.to!string;
+  storage["show_typing"] = win.showTyping.to!string;
 }
 
 void init() {
@@ -515,7 +517,10 @@ void msgBufferController() {
     win.isMessageWriting = false;
   }
   else if (win.key == k_bckspc && win.msgBuffer.utfLength != 0) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
-  else if (win.key != -1 && !canFind(kg_ignore, win.key)) win.msgBuffer ~= win.key.to!char;
+  else if (win.key != -1 && !canFind(kg_ignore, win.key)) {
+    win.msgBuffer ~= win.key.to!char;
+    if (win.showTyping) api.setTypingStatus(win.chatID);
+  }
   else if (win.key == k_left) {}
 }
 
@@ -665,6 +670,11 @@ void changeChatRender(ref ListElement le) {
   win.mbody = GenerateSettings;
 }
 
+void changeShowTyping(ref ListElement le) {
+  win.showTyping = !win.showTyping;
+  win.mbody = GenerateSettings;
+}
+
 void changeChatRenderOnlyGroup(ref ListElement le) {
   win.isRainbowOnlyInGroupChats = !win.isRainbowOnlyInGroupChats;
   le.name = "rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal;
@@ -693,6 +703,7 @@ ListElement[] GenerateSettings() {
     ListElement("rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal, "", &changeChatRender),
   ];
   if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &changeChatRenderOnlyGroup);
+  list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &changeShowTyping);
   return list;
 }
 
