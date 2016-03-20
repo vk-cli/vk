@@ -778,7 +778,7 @@ ListElement[] GetMusic() {
 
 ListElement[] GetChat() {
   ListElement[] list;
-  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID, COLS-10);
+  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID, COLS-12);
   foreach(e; chat) {
     if (e.isFwd) {
       ListElement line = {"    " ~ "| ".replicate(e.fwdDepth)};
