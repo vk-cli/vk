@@ -6,7 +6,7 @@ struct Track {
 }
 
 struct MusicPlayer {
-  File stdinPipe;
+  File delegate() stdinPipe;
   Track currentTrack;
   string currentPlayingTrack;
   bool musicState = false;
@@ -21,7 +21,11 @@ void exitMplayer() {
 }
 
 void send(string cmd) {
-  if (mplayer.currentPlayingTrack != "") mplayer.stdinPipe.writeln(cmd);
+  if (mplayer.currentPlayingTrack != ""){
+     auto stdin = mplayer.stdinPipe();
+     stdin.writeln(cmd);
+     stdin.flush();
+  }
 }
 
 ListElement[] getMplayerUI(int cols) {
@@ -38,6 +42,6 @@ void startPlayer(string url) {
   auto pipe = pipeProcess("sh", Redirect.stdin | Redirect.stdout);
   pipe.stdin.writeln("cat /dev/stdin | mplayer -slave -idle " ~ url ~ " 2> /dev/null");
   pipe.stdin.flush;
-  mplayer.stdinPipe = pipe.stdin;
+  mplayer.stdinPipe = &(pipe.stdin);
   foreach (line; pipe.stdout.byLine) mplayer.output ~= line.idup;
 }
