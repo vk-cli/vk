@@ -15,31 +15,31 @@ enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnrea
 Win win;
 VKapi api;
 
-public: 
+public:
 
-  struct ListElement {
-    string name, text;
-    void function(ref ListElement) callback;
-    ListElement[] function() getter;
-    bool flag;
-    int id;
-    bool isConference;
-  }
+struct ListElement {
+  string name, text;
+  void function(ref ListElement) callback;
+  ListElement[] function() getter;
+  bool flag;
+  int id;
+  bool isConference;
+}
 
-  ulong utfLength(string inp) {
-    auto wstrInput = inp.to!wstring;
-    ulong s = wstrInput.walkLength;
-    foreach(w; wstrInput) {
-      auto c = (cast(ulong)w);
-      foreach(r; utfranges) {
-        if(c >= r.start && c <= r.end) {
-          s += r.spaces;
-          break;
-        }
+ulong utfLength(string inp) {
+  auto wstrInput = inp.to!wstring;
+  ulong s = wstrInput.walkLength;
+  foreach(w; wstrInput) {
+    auto c = (cast(ulong)w);
+    foreach(r; utfranges) {
+      if(c >= r.start && c <= r.end) {
+        s += r.spaces;
+        break;
       }
     }
-    return s;
   }
+  return s;
+}
 
 private:
 
@@ -178,7 +178,6 @@ void update(ref string[string] storage) {
 }
 
 void init() {
-  initMplayer;
   setlocale(LC_CTYPE,"");
   win.lastBuffer = Buffers.none;
   localize;

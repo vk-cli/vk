@@ -6,6 +6,7 @@ struct Track {
 }
 
 struct MusicPlayer {
+  File stdinPipe;
   Track currentTrack;
   string currentPlayingTrack;
   bool musicState = false;
@@ -15,17 +16,12 @@ struct MusicPlayer {
 
 __gshared MusicPlayer mplayer;
 
-void initMplayer() {
-  execute(["rm", "/tmp/mplayerfifo"]);
-  execute(["mkfifo", "/tmp/mplayerfifo"]);
-}
-
 void exitMplayer() {
   send("quit");
 }
 
 void send(string cmd) {
-  if (mplayer.currentPlayingTrack != "") executeShell(`echo "` ~ cmd ~ `" > /tmp/mplayerfifo`);
+  if (mplayer.currentPlayingTrack != "") mplayer.stdinPipe.writeln(cmd);
 }
 
 ListElement[] getMplayerUI(int cols) {
@@ -40,7 +36,8 @@ ListElement[] getMplayerUI(int cols) {
 
 void startPlayer(string url) {
   auto pipe = pipeProcess("sh", Redirect.stdin | Redirect.stdout);
-  pipe.stdin.writeln("mplayer -slave -idle -input file=/tmp/mplayerfifo " ~ url ~ " 2> /dev/null");
+  pipe.stdin.writeln("mplayer -slave -idle " ~ url ~ " 2> /dev/null");
   pipe.stdin.flush;
+  mplayer.stdinPipe = pipe.stdin;
   foreach (line; pipe.stdout.byLine) mplayer.output ~= line.idup;
 }
