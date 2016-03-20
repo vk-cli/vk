@@ -142,7 +142,7 @@ struct Win {
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive;
   string
-    debugText, msgBuffer;
+    statusbarText, msgBuffer;
   bool
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
@@ -277,19 +277,14 @@ void white(string text) {
 }
 
 void statusbar() {
-  if (win.debugText == "") {
-    string notify = " " ~ win.counter.to!string ~ " ✉ ";
-    notify.selected;
-    center(" ", COLS+2-notify.length, ' ').selected;
-    "\n".print;
-  } else {
-    center(win.debugText, COLS, ' ').selected;
-    "\n".print;
-  }
+  string notify = " " ~ win.counter.to!string ~ " ✉ ";
+  notify.selected;
+  center(win.statusbarText, COLS+2-notify.length, ' ').selected;
+  "\n".print;
 }
 
 void SetStatusbar(string s = "") {
-  win.debugText = s;
+  win.statusbarText = s;
 }
 
 void setOffset() {
@@ -316,23 +311,21 @@ string cut(ulong i, ListElement e) {
 }
 
 void bodyToBuffer() {
-  if (win.mbody.length != 0) {
-    switch (win.activeBuffer) {
-      case Buffers.chat: win.mbody = GetChat; break;
-      case Buffers.dialogs: win.mbody = GetDialogs; break;
-      case Buffers.friends: win.mbody = GetFriends; break;
-      case Buffers.music: win.mbody = GetMusic; if (win.active < 5 && win.isMusicPlaying) win.active = 5; break;
-      default: break;
-    }
-    if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
-    else win.buffer = win.mbody.dup;
-    if (win.activeBuffer != Buffers.chat) {
-      foreach(i, e; win.buffer) {
-        if (e.name.utfLength.to!int + win.menuOffset+1 > COLS) 
-          win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-1].to!string;
-        else
-          win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
-      }
+  switch (win.activeBuffer) {
+    case Buffers.chat: win.mbody = GetChat; break;
+    case Buffers.dialogs: win.mbody = GetDialogs; break;
+    case Buffers.friends: win.mbody = GetFriends; break;
+    case Buffers.music: win.mbody = GetMusic; if (win.active < 5 && win.isMusicPlaying) win.active = 5; break;
+    default: break;
+  }
+  if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
+  else win.buffer = win.mbody.dup;
+  if (win.activeBuffer != Buffers.chat) {
+    foreach(i, e; win.buffer) {
+      if (e.name.utfLength.to!int + win.menuOffset+1 > COLS) 
+        win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-1].to!string;
+      else
+        win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
     }
   }
 }
@@ -608,7 +601,6 @@ void backEvent() {
       win.scrollOffset = win.lastScrollOffset;
       win.activeBuffer = win.lastBuffer;
       win.lastBuffer = Buffers.none;
-      SetStatusbar;
       win.isConferenceOpened = false;
       if (win.scrollOffset != 0) win.active = win.lastScrollActive;
     } else {
