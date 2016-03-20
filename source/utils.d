@@ -75,7 +75,7 @@ S[] wordwrap(S)(S s, size_t mln) {
             lines ~= crp[0];
         }
     }
-    return lines;
+    return lines[0..$-1];
 }
 
 private S[] cropstr(S)(S s, size_t mln) {

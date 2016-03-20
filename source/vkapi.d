@@ -1003,7 +1003,7 @@ class VKapi {
             bool unrfl = inp.unread;
             wstring[] wrapped;
             inp.body_lines.map!(q => q.to!wstring.wordwrap(ww)).each!(q => wrapped ~= q);
-            foreach(l; wrapped.filter!(q => q != "")) {
+            foreach(l; wrapped) {
                 vkMessageLine msg = {
                     text: l.to!string,
                     unread: unrfl
