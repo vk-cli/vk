@@ -904,7 +904,7 @@ class VKapi {
             }
 
             loadoffset = cb.buffer.length.to!int;
-            doneload = loadoffset == cb.data.serverCount;
+            doneload = loadoffset >= cb.data.serverCount;
 
             int i;
             foreach(m; cb.buffer) {
@@ -1278,13 +1278,14 @@ class VKapi {
 
             if(haspeer) {
                 auto cb = &(pb.chatBuffer[peer]);
+                cb.data.serverCount += 1;
                 auto realmsg = cb.buffer.filter!(q => !q.isZombie);
                 if(!realmsg.empty) {
                     auto lastm = realmsg.front;
                     nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
                 }
                 if(sentfnd == -1) cb.buffer = nm ~ cb.buffer;
-                else cb.buffer[sentfnd] = nm;
+                else cb.buffer[sentfnd] = nm; //todo delete and add instead of replace
             }
 
         }
