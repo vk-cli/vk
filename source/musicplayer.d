@@ -36,7 +36,7 @@ ListElement[] getMplayerUI(int cols) {
 
 void startPlayer(string url) {
   auto pipe = pipeProcess("sh", Redirect.stdin | Redirect.stdout);
-  pipe.stdin.writeln("mplayer -slave -idle " ~ url ~ " 2> /dev/null");
+  pipe.stdin.writeln("cat /dev/stdin | mplayer -slave -idle " ~ url ~ " 2> /dev/null");
   pipe.stdin.flush;
   mplayer.stdinPipe = pipe.stdin;
   foreach (line; pipe.stdout.byLine) mplayer.output ~= line.idup;
