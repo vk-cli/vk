@@ -1298,6 +1298,10 @@ class VKapi {
         auto peer = u[1].integer.to!int;
         auto mid = u[2].integer.to!int;
 
+        if(peer > longpollGimStartId && peer < convStartId) {
+            peer = -(peer-longpollGimStartId);
+        }
+
         auto haspeer = (peer in pb.chatBuffer);
         long mc = -1;
         bool upd = false;
