@@ -316,7 +316,11 @@ void bodyToBuffer() {
     case Buffers.chat: win.mbody = GetChat; break;
     case Buffers.dialogs: win.mbody = GetDialogs; break;
     case Buffers.friends: win.mbody = GetFriends; break;
-    case Buffers.music: win.mbody = GetMusic; if (win.active < 5 && win.isMusicPlaying) win.active = 5; break;
+    case Buffers.music: {
+      win.mbody = GetMusic;
+      if (win.active < 5 && win.isMusicPlaying) win.active = 5;
+      break;
+    }
     default: break;
   }
   if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
