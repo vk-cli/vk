@@ -62,7 +62,6 @@ struct vkMessage {
     bool isLoading;
     bool isZombie;
     int rndid;
-    bool ignore;
     int lineCount = -1;
     int wrap = -1;
 }
@@ -854,8 +853,7 @@ class VKapi {
         if(peer !in pb.chatBuffer) pb.chatBuffer[peer] = apiChatBuffer();
 
         bool outload;
-        auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload)
-                    .filter!(q => !q.ignore).array;
+        auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload);
 
         if(outload) return defaultrt;
 
@@ -906,10 +904,10 @@ class VKapi {
             }
 
             loadoffset = cb.buffer.length.to!int;
-            doneload = loadoffset == cb.data.serverCount;
+            doneload = loadoffset >= cb.data.serverCount;
 
             int i;
-            foreach(m; cb.buffer.filter!(q => !q.ignore)) {
+            foreach(m; cb.buffer) {
                 immutable auto lc = getMessageLinecount(m, wrapwidth);
                 lnsum += lc;
                 if(!offsetcatched && lnsum >= offset) {
@@ -950,7 +948,11 @@ class VKapi {
         }
 
         vkMessageLine[] lnbf;
-        pb.chatBuffer[peer].buffer.filter!(q => !q.ignore).array[start..end+1].retro.map!(q => convertMessage(q, wrapwidth)).each!(q => lnbf ~= q);
+        pb.chatBuffer[peer]
+                            .buffer[start..end+1]
+                            .retro
+                            .map!(q => convertMessage(q, wrapwidth))
+                            .each!(q => lnbf ~= q);
 
         auto lcount = count+stoff;
         bool shortchat = doneload && (lnbf.length <= count);
@@ -1001,7 +1003,7 @@ class VKapi {
             bool unrfl = inp.unread;
             wstring[] wrapped;
             inp.body_lines.map!(q => q.to!wstring.wordwrap(ww)).each!(q => wrapped ~= q);
-            foreach(l; wrapped.filter!(q => q != "")) {
+            foreach(l; wrapped) {
                 vkMessageLine msg = {
                     text: l.to!string,
                     unread: unrfl
@@ -1114,16 +1116,17 @@ class VKapi {
 
     const int zombiermtake = 30;
 
-    auto findzombie(sentMsg snt) {
+    int findzombie(sentMsg snt) {
         return pb.chatBuffer[snt.peer].buffer.take(zombiermtake)
-            .filter!(q => q.rndid == snt.rid);
+            .map!(q => q.rndid == snt.rid).countUntil(true).to!int;
     }
 
     void notifySendState(sentMsg m) {
         switch(m.state) {
             case sendState.failed:
                 auto fnd = findzombie(m);
-                if(!fnd.empty) fnd.front.time_str = getLocal("sendfailed");
+                auto cb = &(pb.chatBuffer[m.peer]);
+                if(fnd != -1) cb.buffer[fnd].time_str = getLocal("sendfailed");
                 toggleUpdate();
                 break;
             default: break;
@@ -1234,7 +1237,7 @@ class VKapi {
                     utime: utime, time_str: vktime(ct, utime),
                     author_name: nc.getName(from).strName,
                     body_lines: msg.split("\n"),
-                    fwd_depth: -1
+                    fwd_depth: -1, needName: true
                 };
                 nm = lpnm;
             } else {
@@ -1262,27 +1265,29 @@ class VKapi {
 
             }
 
+            int sentfnd = -1;
+
+            if(rndid != 0) synchronized(sndMutex) {
+                auto snt = rndid in ps.sent;
+                if(snt && snt.author == me.id) {
+                    dbm("lp nm: approved sent");
+                    sentfnd = findzombie(*snt);
+                    ps.sent.remove(rndid);
+                }
+            }
 
             if(haspeer) {
                 auto cb = &(pb.chatBuffer[peer]);
+                cb.data.serverCount += 1;
                 auto realmsg = cb.buffer.filter!(q => !q.isZombie);
                 if(!realmsg.empty) {
                     auto lastm = realmsg.front;
                     nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
-                    cb.buffer = nm ~ cb.buffer;
                 }
+                if(sentfnd == -1) cb.buffer = nm ~ cb.buffer;
+                else cb.buffer[sentfnd] = nm; //todo delete and add instead of replace
             }
 
-        }
-
-        if(rndid != 0) synchronized(sndMutex) {
-            auto snt = rndid in ps.sent;
-            if(snt && snt.author == me.id) {
-                dbm("lp nm: approved sent");
-                auto fnd = findzombie(*snt);
-                if(!fnd.empty) fnd.front.ignore = true; //.each!(q => q.ignore = true);
-                ps.sent.remove(rndid);
-            }
         }
 
         ps.lastlp = title ~ ": " ~ msg;
