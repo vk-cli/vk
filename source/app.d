@@ -306,8 +306,8 @@ void drawMenu() {
 
 string cut(ulong i, ListElement e) {
   wstring tempText = e.text.to!wstring;
-  int cut = (COLS-win.menuOffset-win.mbody[i].name.walkLength-1).to!int;
-  if (e.text.walkLength > cut) tempText = tempText[0..cut];
+  int cut = (COLS-win.menuOffset-win.mbody[i].name.utfLength-1).to!int;
+  if (e.text.utfLength > cut) tempText = tempText[0..cut];
   return tempText.to!string;
 }
 
@@ -500,7 +500,7 @@ void controller() {
     if(api.isSomethingUpdated) break;
   }
   //win.key.print;
-  if (win.isMessageWriting) msgBufferController;
+  if (win.isMessageWriting) msgBufferEvents;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
     if (win.activeBuffer != Buffers.chat) nonChatEvents;
@@ -509,7 +509,7 @@ void controller() {
   checkBounds;
 }
 
-void msgBufferController() {
+void msgBufferEvents() {
   if (win.key == k_esc || win.key == k_enter) {
     if (win.key == k_enter && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
     win.msgBuffer = "";
