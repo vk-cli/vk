@@ -502,6 +502,7 @@ void controller() {
     win.key = _getch;
     if(win.key != -1) break;
     if(api.isSomethingUpdated) break;
+    if(win.activeBuffer == Buffers.music) break;
   }
   //win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
