@@ -733,10 +733,14 @@ class VKapi {
             }
 
             if(bufd.serverCount != -1 && needln > bufd.serverCount) {
-                count = bufd.serverCount - offset;
+                if(count >= cl) {
+                    count = cl;
+                    offset = 0;
+                } else {
+                    offset = cl - count;
+                }
                 needln = count + offset;
-                dbm("needln greater than sc, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", sc: " ~ bufd.serverCount.to!string ~ ", needln: " ~ needln.to!string);
-                if(count < 0) throw new BackendException("Bad count on needln fix");
+                dbm("this needln too big for me((, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", sc: " ~ bufd.serverCount.to!string ~ ", needln: " ~ needln.to!string);
             }
 
             if(needln <= cl) {
@@ -761,6 +765,7 @@ class VKapi {
     vkFriend[] getBufferedFriends(int count, int offset) {
         const int block = 100;
         const int upd = 50;
+        if(offset < 0) offset = 0;
 
         immutable vkFriend ld = {
             first_name: getLocal("loading"),
@@ -785,6 +790,7 @@ class VKapi {
     vkAudio[] getBufferedMusic(int count, int offset) {
         const int block = 100;
         const int upd = 50;
+        if(offset < 0) offset = 0;
 
         immutable vkAudio ld = {
             artist: getLocal("loading"),
@@ -809,6 +815,7 @@ class VKapi {
     vkDialog[] getBufferedDialogs(int count, int offset) {
         const int block = 100;
         const int upd = 50;
+        if(offset < 0) offset = 0;
 
         immutable vkDialog ld = {
             name: getLocal("loading")
@@ -832,6 +839,7 @@ class VKapi {
     vkMessage[] getBufferedChat(int count, int offset, int peer) {
         const int block = chatBlock;
         const int upd = chatUpd;
+        if(offset < 0) offset = 0;
 
         vkMessage ld = {
             author_name: getLocal("loading"),
@@ -878,6 +886,7 @@ class VKapi {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
+        dbm("bfcl called, count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
         if(offset < 0) offset = 0;
         vkMessageLine ld = {
             text: getLocal("loading")
