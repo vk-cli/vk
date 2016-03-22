@@ -836,6 +836,10 @@ void stop() {
   exitMplayer;
 }
 
+void notify() {
+  api.getLastLongpollMessage.SetStatusbar;
+}
+
 void main(string[] args) {
   initdbm;
   //test;
@@ -866,6 +870,7 @@ void main(string[] args) {
     clear;
     win.counter = api.messagesCounter;
     statusbar;
+    notify;
     if (win.activeBuffer != Buffers.chat) drawMenu;
     bodyToBuffer;
     drawBuffer;
