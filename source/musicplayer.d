@@ -8,9 +8,11 @@ struct Track {
 class MusicPlayer : Thread {
   File delegate() stdinPipe;
   Track currentTrack;
-  bool musicState = false;
-  bool playtimeUpdated;
-  bool mplayerExit;
+  bool
+    musicState,
+    playtimeUpdated,
+    mplayerExit,
+    isInit;
   Track[] playlist;
   ulong lastOutputLn;
 
@@ -27,6 +29,7 @@ class MusicPlayer : Thread {
   }
 
   void send(string cmd) {
+    if(!isInit) return;
     auto stdin = mplayer.stdinPipe();
     stdin.writeln(cmd);
     stdin.flush();
@@ -44,8 +47,6 @@ class MusicPlayer : Thread {
     else mplayer.currentTrack.playtime = "0:00";
     playtimeUpdated = true;
   }
-
-
 
   string get(string cmd) {
     if (mplayer.output.length != 0) {
@@ -71,6 +72,7 @@ class MusicPlayer : Thread {
     pipe.stdin.writeln("cat /dev/stdin | mplayer -slave -idle 2> /dev/null");
     pipe.stdin.flush;
     stdinPipe = &(pipe.stdin);
+    mplayer.isInit = true;
     foreach (line; pipe.stdout.byLine) {
       output ~= line.idup;
     }
