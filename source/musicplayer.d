@@ -6,9 +6,10 @@ struct Track {
 }
 
 struct MusicPlayer {
+  bool
+    musicState, isInit;
   File delegate() stdinPipe;
   Track currentTrack;
-  bool musicState = false;
   Track[] playlist;
   string[] output;
 }
@@ -20,9 +21,11 @@ void exitMplayer() {
 }
 
 void send(string cmd) {
-  auto stdin = mplayer.stdinPipe();
-  stdin.writeln(cmd);
-  stdin.flush();
+  if (mplayer.isInit) {
+    auto stdin = mplayer.stdinPipe();
+    stdin.writeln(cmd);
+    stdin.flush();
+  }
 }
 
 string durToStr(string duration) {
@@ -61,6 +64,7 @@ void startPlayer(string url) {
   pipe.stdin.writeln("cat /dev/stdin | mplayer -slave -idle " ~ url ~ " 2> /dev/null");
   pipe.stdin.flush;
   mplayer.stdinPipe = &(pipe.stdin);
+  mplayer.isInit = true;
   foreach (line; pipe.stdout.byLine) {
     mplayer.output ~= line.idup;
     get("get_time_pos").setPlaytime;
