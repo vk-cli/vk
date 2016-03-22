@@ -502,7 +502,7 @@ void controller() {
     win.key = _getch;
     if(win.key != -1) break;
     if(api.isSomethingUpdated) break;
-    if(win.activeBuffer == Buffers.music && mplayer.musicState) break;
+    if(win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
   //win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
@@ -744,11 +744,11 @@ ListElement[] setCurrentTrack() {
     win.active += 5;
     win.isMusicPlaying = true;
     track = api.getBufferedMusic(1, win.active-5)[0];
-    spawn(&startPlayer, track.url);
+    mplayer.send("loadfile " ~ track.url);
     mplayer.musicState = true;
   } else {
     track = api.getBufferedMusic(1, win.active-5)[0];
-    send("loadfile " ~ track.url);
+    mplayer.send("loadfile " ~ track.url);
   }
   mplayer.currentTrack.artist   = track.artist;
   mplayer.currentTrack.title    = track.title;
@@ -764,7 +764,7 @@ ListElement[] GetMusic() {
 
   if (win.isMusicPlaying) {
     music = api.getBufferedMusic(LINES-6, win.scrollOffset);
-    list ~= getMplayerUI(COLS);
+    list ~= mplayer.getMplayerUI(COLS);
   } else
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
@@ -834,7 +834,7 @@ void test() {
 void stop() {
   dbmclose;
   endwin;
-  exitMplayer;
+  mplayer.exitMplayer;
 }
 
 void notify() {
@@ -865,7 +865,10 @@ void main(string[] args) {
     "e_wrong_token".getLocal.print;
     api = storage.get_token;
   }
+
   api.asyncLongpoll();
+  mplayer = new MusicPlayer();
+  mplayer.startPlayer();
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
     clear;
