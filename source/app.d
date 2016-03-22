@@ -147,6 +147,7 @@ struct Win {
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping;
+  string[] notifyStack;
 }
 
 void relocale() {
@@ -277,10 +278,27 @@ void white(string text) {
   attroff(A_BOLD);
 }
 
+void notify() {
+  string notifyMsg = api.getLastLongpollMessage;
+  if (notifyMsg != "") win.notifyStack ~= notifyMsg;
+}
+
+string getNotify() {
+  if (win.notifyStack.length != 0 && !win.isConferenceOpened) {
+    string temp = win.notifyStack[0];
+    win.notifyStack.remove(0);
+    return temp;
+  } else
+    return "";
+}
+
 void statusbar() {
-  string notify = " " ~ win.counter.to!string ~ " ✉ ";
-  notify.selected;
-  center(win.statusbarText, COLS+2-notify.length, ' ').selected;
+  string
+    counter = " " ~ win.counter.to!string ~ " ✉ ",
+    notif   = getNotify;
+  counter.selected;
+  if (notif != "") center(notif, COLS+2-counter.length, ' ').selected;
+  center(win.statusbarText, COLS+2-counter.length, ' ').selected;
   "\n".print;
 }
 
@@ -611,6 +629,7 @@ void backEvent() {
       win.activeBuffer = win.lastBuffer;
       win.lastBuffer = Buffers.none;
       win.isConferenceOpened = false;
+      SetStatusbar;
       if (win.scrollOffset != 0) win.active = win.lastScrollActive;
     } else {
       win.scrollOffset = 0;
@@ -835,10 +854,6 @@ void stop() {
   dbmclose;
   endwin;
   exitMplayer;
-}
-
-void notify() {
-  api.getLastLongpollMessage.SetStatusbar;
 }
 
 void main(string[] args) {
