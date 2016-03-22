@@ -502,7 +502,7 @@ void controller() {
     win.key = _getch;
     if(win.key != -1) break;
     if(api.isSomethingUpdated) break;
-    if(win.activeBuffer == Buffers.music) break;
+    if(win.activeBuffer == Buffers.music && mplayer.musicState) break;
   }
   //win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
@@ -745,11 +745,11 @@ ListElement[] setCurrentTrack() {
     win.isMusicPlaying = true;
     track = api.getBufferedMusic(1, win.active-5)[0];
     spawn(&startPlayer, track.url);
+    mplayer.musicState = true;
   } else {
     track = api.getBufferedMusic(1, win.active-5)[0];
     send("loadfile " ~ track.url);
   }
-  mplayer.currentPlayingTrack   = track.artist ~ " - " ~ track.title;
   mplayer.currentTrack.artist   = track.artist;
   mplayer.currentTrack.title    = track.title;
   mplayer.currentTrack.duration = track.duration_str;
@@ -769,7 +769,7 @@ ListElement[] GetMusic() {
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
   foreach(e; music) {
-    string indicator = mplayer.currentPlayingTrack == e.artist ~ " - " ~ e.title ? mplayer.musicState ? pause : play : "    ";
+    string indicator = (mplayer.currentTrack.artist == e.artist && mplayer.currentTrack.title == e.title) ? mplayer.musicState ? pause : play : "    ";
     artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
     if (artistAndSong.utfLength > COLS-9-win.menuOffset-e.duration_str.length.to!int) {
       artistAndSong = artistAndSong[0..COLS-9-win.menuOffset-e.duration_str.length.to!int];

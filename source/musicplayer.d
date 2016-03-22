@@ -8,7 +8,6 @@ struct Track {
 struct MusicPlayer {
   File delegate() stdinPipe;
   Track currentTrack;
-  string currentPlayingTrack;
   bool musicState = false;
   Track[] playlist;
   string[] output;
@@ -21,11 +20,9 @@ void exitMplayer() {
 }
 
 void send(string cmd) {
-  if (mplayer.currentPlayingTrack != ""){
-     auto stdin = mplayer.stdinPipe();
-     stdin.writeln(cmd);
-     stdin.flush();
-  }
+  auto stdin = mplayer.stdinPipe();
+  stdin.writeln(cmd);
+  stdin.flush();
 }
 
 string durToStr(string duration) {
