@@ -767,6 +767,7 @@ ListElement[] setCurrentTrack() {
     mplayer.musicState = true;
   } else {
     track = api.getBufferedMusic(1, win.active-5)[0];
+    (mplayer.currentTrack.artist == track.artist && mplayer.currentTrack.title == track.title).to!string.SetStatusbar;
     mplayer.send("loadfile " ~ track.url);
   }
   mplayer.currentTrack.artist   = track.artist;
@@ -788,7 +789,7 @@ ListElement[] GetMusic() {
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
   foreach(e; music) {
-    string indicator = (mplayer.currentTrack.artist == e.artist && mplayer.currentTrack.title == e.title) ? mplayer.musicState ? pause : play : "    ";
+    string indicator = (mplayer.currentTrack.artist == e.artist && mplayer.currentTrack.title == e.title) ? mplayer.musicState ? play : pause : "    ";
     artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
     if (artistAndSong.utfLength > COLS-9-win.menuOffset-e.duration_str.length.to!int) {
       artistAndSong = artistAndSong[0..COLS-9-win.menuOffset-e.duration_str.length.to!int];
@@ -881,9 +882,9 @@ void main(string[] args) {
     api = storage.get_token;
   }
 
-  api.asyncLongpoll();
-  mplayer = new MusicPlayer();
-  mplayer.startPlayer();
+  api.asyncLongpoll;
+  mplayer = new MusicPlayer;
+  mplayer.startPlayer;
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
     clear;

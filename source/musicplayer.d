@@ -73,15 +73,13 @@ class MusicPlayer : Thread {
     pipe.stdin.flush;
     stdinPipe = &(pipe.stdin);
     mplayer.isInit = true;
-    foreach (line; pipe.stdout.byLine) {
-      output ~= line.idup;
-    }
+    foreach (line; pipe.stdout.byLine) output ~= line.idup;
     mplayerExit = true;
   }
 
   void listenStdout() {
-    while(!mplayerExit) {
-      if(output.length != lastOutputLn) {
+    while (!mplayerExit) {
+      if (output.length != lastOutputLn) {
         lastOutputLn = output.length;
         setPlaytime(get("get_time_pos"));
       }
@@ -91,8 +89,8 @@ class MusicPlayer : Thread {
 
   void startPlayer() {
     listen = new Thread(&listenStdout);
-    listen.start();
-    this.start();
+    listen.start;
+    this.start;
   }
 
 }
