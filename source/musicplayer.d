@@ -5,6 +5,8 @@ struct Track {
   string artist, title, duration, playtime;
 }
 
+__gshared MusicPlayer mplayer;
+
 class MusicPlayer : Thread {
   File delegate() stdinPipe;
   Track currentTrack;
@@ -81,7 +83,7 @@ class MusicPlayer : Thread {
     while (!mplayerExit) {
       if (output.length != lastOutputLn) {
         lastOutputLn = output.length;
-        setPlaytime(get("get_time_pos"));
+        if (mplayer.musicState) setPlaytime(get("get_time_pos"));
       }
       Thread.sleep(listenWait);
     }
@@ -94,5 +96,3 @@ class MusicPlayer : Thread {
   }
 
 }
-
-__gshared MusicPlayer mplayer;

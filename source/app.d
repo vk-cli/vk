@@ -148,7 +148,7 @@ struct Win {
   bool
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
-    isMessageWriting, showTyping;
+    isMessageWriting, showTyping, selectFlag;
   string[] notifyStack;
 }
 
@@ -520,9 +520,10 @@ void controller() {
   while (true) {
     timeout(100);
     win.key = _getch;
-    if(win.key != -1) break;
-    if(api.isSomethingUpdated) break;
-    if(win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
+    if (win.key == -1) win.selectFlag = false;
+    if (win.key != -1) break;
+    if (api.isSomethingUpdated) break;
+    if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
   //win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
@@ -552,7 +553,10 @@ void msgBufferEvents() {
 void nonChatEvents() {
   if (canFind(kg_down, win.key)) downEvent;
   else if (canFind(kg_up, win.key)) upEvent;
-  else if (canFind(kg_right, win.key)) selectEvent;
+  else if (canFind(kg_right, win.key) && !win.selectFlag) {
+    win.selectFlag = true;
+    selectEvent;
+  }
   else if (win.section == Sections.right) {
     if (canFind(kg_refresh, win.key)) bodyToBuffer;
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
@@ -618,7 +622,6 @@ void selectEvent() {
     win.lastScrollOffset = win.scrollOffset;
     win.lastScrollActive = win.active;
     if (win.isMusicPlaying && win.activeBuffer == Buffers.music) {
-      setCurrentTrack;
       win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
     } else if (win.mbody[win.active-win.scrollOffset].callback) win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
   }
@@ -769,8 +772,13 @@ ListElement[] setCurrentTrack() {
     mplayer.musicState = true;
   } else {
     track = api.getBufferedMusic(1, win.active-5)[0];
-    (mplayer.currentTrack.artist == track.artist && mplayer.currentTrack.title == track.title).to!string.SetStatusbar;
-    mplayer.send("loadfile " ~ track.url);
+    if (mplayer.currentTrack.artist == track.artist && mplayer.currentTrack.title == track.title) {
+      mplayer.send("pause");
+      mplayer.musicState = !mplayer.musicState;
+    } else {
+      mplayer.musicState = true;
+      mplayer.send("loadfile " ~ track.url);
+    }
   }
   mplayer.currentTrack.artist   = track.artist;
   mplayer.currentTrack.title    = track.title;
