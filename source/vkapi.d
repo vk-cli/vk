@@ -1299,8 +1299,7 @@ class VKapi {
 
         }
 
-        //if(from != me.id)
-        ps.lastlp = title ~ ": " ~ msg;
+        if(from != me.id) ps.lastlp = title ~ ": " ~ msg;
 
         toggleUpdate();
         dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
