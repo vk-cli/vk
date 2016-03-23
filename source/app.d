@@ -4,7 +4,8 @@ import deimos.ncurses.ncurses;
 import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
-       std.range, std.algorithm, std.concurrency;
+       std.range, std.algorithm, std.concurrency,
+       std.datetime;
 import vkapi, cfg, localization, utils, namecache, musicplayer;
 
 // INIT VARS
@@ -24,6 +25,13 @@ struct ListElement {
   bool flag;
   int id;
   bool isConference;
+}
+
+struct Notify {
+  string text;
+  TimeOfDay
+    currentTime,
+    clearTime;
 }
 
 ulong utfLength(string inp) {
@@ -135,6 +143,7 @@ struct Win {
     {callback:&exit}
   ], 
   buffer, mbody;
+  Notify notify;
   int
     namecolor = Colors.white,
     textcolor = Colors.gray,
@@ -149,7 +158,6 @@ struct Win {
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag;
-  string[] notifyStack;
 }
 
 void relocale() {
@@ -280,27 +288,24 @@ void white(string text) {
   attroff(A_BOLD);
 }
 
-void notify() {
+void notifyManager() {
   string notifyMsg = api.getLastLongpollMessage;
-  if (notifyMsg != "") win.notifyStack ~= notifyMsg;
-}
-
-string getNotify() {
-  if (win.notifyStack.length != 0 && !win.isConferenceOpened) {
-    string temp = win.notifyStack[0];
-    win.notifyStack.remove(0);
-    return temp;
-  } else
-    return "";
+  win.notify.currentTime = cast(TimeOfDay)Clock.currTime;
+  if (notifyMsg != "") {
+    win.notify.text = notifyMsg;
+    win.notify.clearTime = win.notify.currentTime + seconds(3);
+  }
+  if (win.notify.currentTime > win.notify.clearTime) {
+    win.notify.clearTime = TimeOfDay(23, 59, 59);
+    win.notify.text = "";
+  }
 }
 
 void statusbar() {
-  string
-    counter = " " ~ win.counter.to!string ~ " ✉ ",
-    notif   = getNotify;
+  string counter = " " ~ win.counter.to!string ~ " ✉ ";
   counter.selected;
-  if (notif != "") center(notif, COLS+2-counter.length, ' ').selected;
-  center(win.statusbarText, COLS+2-counter.length, ' ').selected;
+  if (win.notify.text != "") center(win.notify.text, COLS+2-counter.length, ' ').selected;
+  else center(win.statusbarText, COLS+2-counter.length, ' ').selected;
   "\n".print;
 }
 
@@ -900,7 +905,7 @@ void main(string[] args) {
     clear;
     win.counter = api.messagesCounter;
     statusbar;
-    notify;
+    notifyManager;
     if (win.activeBuffer != Buffers.chat) drawMenu;
     bodyToBuffer;
     drawBuffer;
