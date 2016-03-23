@@ -1086,6 +1086,10 @@ class VKapi {
         getData(tp).forceUpdate = true;
     }
 
+    void toggleChatForceUpdate(int peer) {
+        pb.chatBuffer[peer].data.forceUpdate = true;
+    }
+
     int getServerCount(blockType tp) {
         return getData(tp).serverCount;
     }
