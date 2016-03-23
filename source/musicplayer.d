@@ -5,6 +5,8 @@ struct Track {
   string artist, title, duration, playtime;
 }
 
+__gshared MusicPlayer mplayer;
+
 class MusicPlayer : Thread {
   File delegate() stdinPipe;
   Track currentTrack;
@@ -15,6 +17,10 @@ class MusicPlayer : Thread {
     isInit;
   Track[] playlist;
   ulong lastOutputLn;
+  string
+    stockProgress = "========================================",
+    realProgress  = "|=======================================";
+  int position;
 
   __gshared string[] output;
   Thread listen;
@@ -29,7 +35,8 @@ class MusicPlayer : Thread {
   }
 
   void send(string cmd) {
-    if(!isInit) return;
+    if (!isInit) return;
+    if (canFind("loadfile", cmd)) mplayer.realProgress  = "|=======================================";
     auto stdin = mplayer.stdinPipe();
     stdin.writeln(cmd);
     stdin.flush();
@@ -42,9 +49,25 @@ class MusicPlayer : Thread {
     return min.to!string ~ ":" ~ sec.tzr;
   }
 
+  int strToDur(string duration) {
+    auto temp = duration.split(":");
+    return temp[0].to!int*60 + temp[1].to!int;
+  }
+
   void setPlaytime(string answer) {
-    if (answer != "") mplayer.currentTrack.playtime = durToStr(answer[18..$-2]);
-    else mplayer.currentTrack.playtime = "0:00";
+    if (answer != "") {
+      mplayer.currentTrack.playtime = durToStr(answer[18..$-2]);
+      int
+        sec = answer[18..$-2].to!int,
+        dur = strToDur(mplayer.currentTrack.duration) / 40,
+        newPos = sec / dur;
+      if (mplayer.position != newPos) {
+        mplayer.position    = newPos;
+        auto newProgress  = mplayer.stockProgress.dup; 
+        newProgress[newPos] = '|';
+        mplayer.realProgress = newProgress.to!string;
+      }
+    }
     playtimeUpdated = true;
   }
 
@@ -62,7 +85,7 @@ class MusicPlayer : Thread {
     playerUI ~= ListElement(" ".replicate((cols-16)/2-mplayer.currentTrack.artist.utfLength/2)~mplayer.currentTrack.artist);
     playerUI ~= ListElement(" ".replicate((cols-16)/2-mplayer.currentTrack.title.utfLength/2)~mplayer.currentTrack.title);
     playerUI ~= ListElement(center(mplayer.currentTrack.playtime ~ " / " ~ mplayer.currentTrack.duration, cols-16, ' '));
-    playerUI ~= ListElement(center("[========================|===============] ⟲ ⤮", cols-16, ' '));
+    playerUI ~= ListElement(center("[" ~ mplayer.realProgress ~ "] ⟲ ⤮", cols-16, ' '));
     playerUI ~= ListElement("");
     return playerUI;
   }
@@ -73,6 +96,7 @@ class MusicPlayer : Thread {
     pipe.stdin.flush;
     stdinPipe = &(pipe.stdin);
     mplayer.isInit = true;
+    mplayer.currentTrack.playtime = "0:00";
     foreach (line; pipe.stdout.byLine) output ~= line.idup;
     mplayerExit = true;
   }
@@ -81,7 +105,7 @@ class MusicPlayer : Thread {
     while (!mplayerExit) {
       if (output.length != lastOutputLn) {
         lastOutputLn = output.length;
-        setPlaytime(get("get_time_pos"));
+        if (mplayer.musicState) setPlaytime(get("get_time_pos"));
       }
       Thread.sleep(listenWait);
     }
@@ -94,5 +118,3 @@ class MusicPlayer : Thread {
   }
 
 }
-
-__gshared MusicPlayer mplayer;
