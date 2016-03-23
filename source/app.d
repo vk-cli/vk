@@ -27,7 +27,7 @@ struct ListElement {
 }
 
 ulong utfLength(string inp) {
-  auto wstrInput = inp.to!wstring;
+  auto wstrInput = inp.to!dstring;
   ulong s = wstrInput.walkLength;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
