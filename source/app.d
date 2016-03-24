@@ -563,7 +563,10 @@ void nonChatEvents() {
     selectEvent;
   }
   else if (win.section == Sections.right) {
-    if (canFind(kg_refresh, win.key)) bodyToBuffer;
+    if (canFind(kg_refresh, win.key)) {
+      //api.toggleForceUpdate(blockType);
+      bodyToBuffer;
+    }
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
     else if (win.key == k_end) jumpToEnd;
     else if (win.key == k_pagedown) {
@@ -589,6 +592,7 @@ void chatEvents() {
     curs_set(1);
     win.isMessageWriting = true;
   }
+  else if (canFind(kg_refresh, win.key)) api.toggleChatForceUpdate(win.chatID);
   if (win.scrollOffset < 0) win.scrollOffset = 0;
   else if (activeBufferLen != -1 && win.scrollOffset > activeBufferLen-LINES+3) win.scrollOffset = activeBufferLen-LINES+3;
 }
@@ -885,7 +889,7 @@ void main(string[] args) {
   auto storage = load;
   storage.parse;
 
-  try{
+  try {
     api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   } catch (BackendException e) {
     stop;
