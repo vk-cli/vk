@@ -297,17 +297,6 @@ class VKapi {
         ps.somethingUpdated = true;
     }
 
-    private bool checkToken(string token) {
-        if(token.length != 85) return false;
-        try{
-            me = usersGet();
-        } catch (ApiErrorException e) {
-            dbm("ApiErrorException: " ~ e.msg);
-            return false;
-        }
-        return true;
-    }
-
     string httpget(string addr, Duration timeout) {
         string content = "";
         auto client = HTTP();

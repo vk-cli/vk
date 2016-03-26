@@ -1,0 +1,8 @@
+root = true
+
+[vkapi.d]
+ident_style = space
+ident_size = 4
+dfmt_brace_style = otbs
+dfmt_space_after_cast = false
+dfmt_space_after_keywords = true
