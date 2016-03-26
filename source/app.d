@@ -226,12 +226,8 @@ void color() {
   }
   start_color;
   use_default_colors;
-  for (short i = 0; i < Colors.max; i++) {
-    init_pair(i, i, -1);
-  }
-  for (short i = 1; i < Colors.max+1; i++) {
-    init_pair((Colors.max+1+i).to!short, i, -1.to!short);
-  }
+  for (short i = 0; i < Colors.max; i++) init_pair(i, i, -1);
+  for (short i = 1; i < Colors.max+1; i++) init_pair((Colors.max+1+i).to!short, i, -1.to!short);
   init_pair(Colors.max, 0, -1);
   init_pair(Colors.max+1, -1, -1);
   init_pair(Colors.max*2+1, 0, -1);
@@ -493,6 +489,14 @@ bool activeBufferEventsAllowed() {
   }
 }
 
+blockType forceRefresh() {
+  final switch (win.activeBuffer) {
+    case Buffers.dialogs: return blockType.dialogs;
+    case Buffers.friends: return blockType.friends;
+    case Buffers.music: return blockType.music;
+  }
+}
+
 void jumpToEnd() {
   win.active = activeBufferLen-1;
   win.scrollOffset = activeBufferLen-LINES+2;
@@ -564,7 +568,7 @@ void nonChatEvents() {
   }
   else if (win.section == Sections.right) {
     if (canFind(kg_refresh, win.key)) {
-      //api.toggleForceUpdate(blockType);
+      api.toggleForceUpdate(forceRefresh);
       bodyToBuffer;
     }
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
