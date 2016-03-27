@@ -469,7 +469,7 @@ void drawChat() {
   }
 }
 
-int activeBufferLen() {
+int activeBufferMaxLen() {
   switch (win.activeBuffer) {
     case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
     case Buffers.friends: return api.getServerCount(blockType.friends);
@@ -498,8 +498,8 @@ blockType forceRefresh() {
 }
 
 void jumpToEnd() {
-  win.active = activeBufferLen-1;
-  win.scrollOffset = activeBufferLen-LINES+2;
+  win.active = activeBufferMaxLen-1;
+  win.scrollOffset = activeBufferMaxLen-LINES+2;
 }
 
 int _getch() {
@@ -534,7 +534,7 @@ void controller() {
     if (api.isSomethingUpdated) break;
     if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
-  //win.key.print;
+  //win.key.print
   if (win.isMessageWriting) msgBufferEvents;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
@@ -598,11 +598,11 @@ void chatEvents() {
   }
   else if (canFind(kg_refresh, win.key)) api.toggleChatForceUpdate(win.chatID);
   if (win.scrollOffset < 0) win.scrollOffset = 0;
-  else if (activeBufferLen != -1 && win.scrollOffset > activeBufferLen-LINES+3) win.scrollOffset = activeBufferLen-LINES+3;
+  else if (activeBufferMaxLen != -1 && win.scrollOffset > activeBufferMaxLen-LINES+3) win.scrollOffset = activeBufferMaxLen-LINES+3;
 }
 
 void checkBounds() {
-  if (win.activeBuffer != Buffers.none && activeBufferLen > 0 && win.active > activeBufferLen-1) jumpToEnd;
+  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToEnd;
 }
 
 void downEvent() {
