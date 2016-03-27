@@ -20,7 +20,7 @@ class MusicPlayer : Thread {
   string
     stockProgress = "========================================",
     realProgress  = "|=======================================";
-  int position;
+  int position, trackNum;
 
   __gshared string[] output;
   Thread listen;
