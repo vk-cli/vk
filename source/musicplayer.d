@@ -60,11 +60,11 @@ class MusicPlayer : Thread {
       int
         sec = answer[18..$-2].to!int,
         dur = strToDur(mplayer.currentTrack.duration) / 40,
-        newPos = sec / dur;
-      if (mplayer.position != newPos) {
-        mplayer.position    = newPos;
+        step = sec / dur;
+      if (mplayer.position != step) {
+        mplayer.position    = step;
         auto newProgress  = mplayer.stockProgress.dup; 
-        newProgress[newPos] = '|';
+        newProgress[step] = '|';
         mplayer.realProgress = newProgress.to!string;
       }
     }
