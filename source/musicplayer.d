@@ -1,4 +1,6 @@
-import std.process, std.stdio, std.string, std.array, std.algorithm, std.conv, core.thread;
+import std.process, std.stdio, std.string,
+       std.array, std.algorithm, std.conv;
+import core.thread;
 import app, utils;
 import vkapi: VKapi;
 
@@ -19,8 +21,8 @@ class MusicPlayer : Thread {
   Track[] playlist;
   ulong lastOutputLn;
   string
-    stockProgress = "========================================",
-    realProgress  = "|=======================================";
+    stockProgress = "=".replicate(50),
+    realProgress  = "|" ~ "=".replicate(49);
   int position, trackNum;
 
   __gshared string[] output;
@@ -117,20 +119,23 @@ class MusicPlayer : Thread {
 
   bool sameTrack(VKapi api, int position) {
     auto track = api.getBufferedMusic(1, position)[0];
-    return mplayer.currentTrack.artist == track.artist && mplayer.currentTrack.title == track.title;
+    return currentTrack.artist == track.artist && currentTrack.title == track.title;
   }
 
   void pause() {
-    mplayer.send("pause");
-    mplayer.musicState = !mplayer.musicState;
+    send("pause");
+    musicState = !musicState;
   }
 
   void play(VKapi api, int position) {
     auto track = api.getBufferedMusic(1, position)[0];
-    mplayer.send("loadfile " ~ track.url);
-    mplayer.musicState = true;
-    mplayer.currentTrack.artist   = track.artist;
-    mplayer.currentTrack.title    = track.title;
-    mplayer.currentTrack.duration = track.duration_str;
+    send("loadfile " ~ track.url);
+    musicState = true;
+    currentTrack.artist   = track.artist;
+    currentTrack.title    = track.title;
+    currentTrack.duration = track.duration_str;
   }
 }
+
+// get_file_name   -> to capture end of track
+// get_percent_pos -> change '|' position selector
