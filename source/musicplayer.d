@@ -1,5 +1,6 @@
 import std.process, std.stdio, std.string, std.array, std.algorithm, std.conv, core.thread;
 import app, utils;
+import vkapi: VKapi;
 
 struct Track {
   string artist, title, duration, playtime;
@@ -62,8 +63,8 @@ class MusicPlayer : Thread {
         step = strToDur(mplayer.currentTrack.duration) / 40,
         newPos = sec / step;
       if (mplayer.position != newPos) {
-        mplayer.position    = newPos;
-        auto newProgress  = mplayer.stockProgress.dup; 
+        mplayer.position = newPos;
+        auto newProgress = mplayer.stockProgress.dup; 
         newProgress[newPos] = '|';
         mplayer.realProgress = newProgress.to!string;
       }
@@ -72,12 +73,9 @@ class MusicPlayer : Thread {
   }
 
   string get(string cmd) {
-    if (mplayer.output.length != 0) {
-      send(cmd);
-      if (mplayer.output[$-1].canFind("ANS")) return mplayer.output[$-1];
-      else return "";
-    } else
-      return "";
+    send(cmd);
+    if (mplayer.output[$-1].canFind("ANS")) return mplayer.output[$-1];
+    return "";
   }
 
   ListElement[] getMplayerUI(int cols) {
@@ -117,4 +115,22 @@ class MusicPlayer : Thread {
     this.start;
   }
 
+  bool sameTrack(VKapi api, int position) {
+    auto track = api.getBufferedMusic(1, position)[0];
+    return mplayer.currentTrack.artist == track.artist && mplayer.currentTrack.title == track.title;
+  }
+
+  void pause() {
+    mplayer.send("pause");
+    mplayer.musicState = !mplayer.musicState;
+  }
+
+  void play(VKapi api, int position) {
+    auto track = api.getBufferedMusic(1, position)[0];
+    mplayer.send("loadfile " ~ track.url);
+    mplayer.musicState = true;
+    mplayer.currentTrack.artist   = track.artist;
+    mplayer.currentTrack.title    = track.title;
+    mplayer.currentTrack.duration = track.duration_str;
+  }
 }

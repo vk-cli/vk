@@ -780,23 +780,11 @@ ListElement[] setCurrentTrack() {
     }
     win.active += 5;
     win.isMusicPlaying = true;
-    //mplayer.play(win.active-5)
-    track = api.getBufferedMusic(1, win.active-5)[0];
-    mplayer.send("loadfile " ~ track.url);
-    mplayer.musicState = true;
+    mplayer.play(api, win.active-5);
   } else {
-    track = api.getBufferedMusic(1, win.active-5)[0];
-    if (mplayer.currentTrack.artist == track.artist && mplayer.currentTrack.title == track.title) {
-      mplayer.send("pause");
-      mplayer.musicState = !mplayer.musicState;
-    } else {
-      mplayer.musicState = true;
-      mplayer.send("loadfile " ~ track.url);
-    }
+    if (mplayer.sameTrack(api, win.active-5)) mplayer.pause;
+    else mplayer.play(api, win.active-5);
   }
-  mplayer.currentTrack.artist   = track.artist;
-  mplayer.currentTrack.title    = track.title;
-  mplayer.currentTrack.duration = track.duration_str;
   return new ListElement[0];
 }
 
