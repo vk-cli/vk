@@ -903,6 +903,118 @@ class VkMan {
 
 }
 
+// ===== Model =====
+
+abstract class ClObject {}
+
+abstract class Block(T : ClObject) {
+
+    private {
+        VkApi api;
+        uint
+            ordernum,
+            blocksz;
+        bool filled;
+        T[] block;
+    }
+
+    T[] download(uint offset, uint count);
+
+    this(VkApi api, uint ord) {
+        this.api = api;
+        ordernum = ord;
+        blocksz = getBlocksize();
+    }
+
+    T[] getBlock() {
+        if(!filled) {
+            block = download(blocksz*ordernum, blocksz);
+            filled = true;
+        }
+        return block;
+    }
+
+    uint getBlocksize() {
+        return blocksz;
+    }
+}
+
+class BlockFactory(O, T : Block!O) {
+
+    static BlockFactory getDialogsFactory(VkApi api, uint offset) {
+        return new BlockFactory!(ClDialog, DialogsBlock)(api, offset);
+    }
+
+    private {
+        VkApi api;
+        uint
+            offset,
+            start,
+            reloffset,
+            blocksz;
+        T[uint] blockst;
+    }
+
+    this(VkApi api, uint offset) {
+        this.api = api;
+        this.offset = offset;
+        this.blocksz = T.getBlocksize();
+        reloffset = offset % blocksz;
+        start = (offset-reloffset) / blocksz;
+    }
+
+    uint getReloffset() {
+        return reloffset;
+    }
+
+    int opApply ( int delegate ( ref T ) dg ) {
+        uint i = start;
+        while(true) {
+            int dres;
+            auto c = i in blockst;
+            if(c) dres = dg(c);
+            else {
+                blockst[i] = new T(api, i);
+                dres = dg(i in blockst);
+            }
+            if(dres) break;
+        }
+    }
+
+}
+
+// ===== Implement blocks =====
+
+class DialogsBlock : Block!ClDialog {
+
+    const uint dialogsBlocksz = 100;
+
+    this(VkApi wapi, uint ord) {
+        blocksz = dialogsBlocksz;
+        super(wapi, ord);
+    }
+
+    override ClDialog[] download(uint off, uint c) {
+        auto dt = &(pb.dialogsData);
+        return api.messagesGetDialogs(c, off, dt.serverCount).map!(q => new ClDialog(q)).array;
+    }
+}
+
+// ===== Implement objects =====
+
+class ClDialog : ClObject {
+
+    private vkDialog obj;
+
+    this(vkDialog o) {
+        obj = o;
+    }
+
+    vkDialog getObject() {
+        return obj;
+    }
+}
+
 // ===== Exceptions =====
 
 class BackendException : Exception {
