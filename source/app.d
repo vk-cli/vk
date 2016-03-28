@@ -780,6 +780,7 @@ ListElement[] setCurrentTrack() {
     }
     win.active += 5;
     win.isMusicPlaying = true;
+    //mplayer.play(win.active-5)
     track = api.getBufferedMusic(1, win.active-5)[0];
     mplayer.send("loadfile " ~ track.url);
     mplayer.musicState = true;
