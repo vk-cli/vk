@@ -38,7 +38,7 @@ class MusicPlayer : Thread {
 
   void send(string cmd) {
     if (!isInit) return;
-    if (canFind("loadfile", cmd)) realProgress  = "|=======================================";
+    if (canFind("loadfile", cmd)) realProgress = realProgress = "|" ~ "=".replicate(49);
     auto stdin = stdinPipe();
     stdin.writeln(cmd);
     stdin.flush();
