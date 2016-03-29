@@ -620,9 +620,11 @@ void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
     if (win.activeBuffer != Buffers.none && activeBufferEventsAllowed) {
-      win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
-      win.active == 0 ? win.active += 0 : win.active--;
-    } else win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
+      if (win.active != 0) {
+        if (win.scrollOffset == win.active) win.scrollOffset--;
+        win.active--;
+      }
+    }
   }
 }
 
