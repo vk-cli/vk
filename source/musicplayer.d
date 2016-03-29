@@ -2,7 +2,7 @@ import std.process, std.stdio, std.string,
        std.array, std.algorithm, std.conv;
 import core.thread;
 import app, utils;
-import vkapi: VKapi;
+//import vkapi: VKapi;
 
 struct Track {
   string artist, title, duration, playtime;
@@ -117,7 +117,7 @@ class MusicPlayer : Thread {
     this.start;
   }
 
-  bool sameTrack(VKapi api, int position) {
+  bool sameTrack(int position) {
     auto track = api.getBufferedMusic(1, position)[0];
     return currentTrack.artist == track.artist && currentTrack.title == track.title;
   }
@@ -127,13 +127,12 @@ class MusicPlayer : Thread {
     musicState = !musicState;
   }
 
-  void play(VKapi api, int position) {
+  void play(int position) {
+    trackNum = position;
     auto track = api.getBufferedMusic(1, position)[0];
     send("loadfile " ~ track.url);
     musicState = true;
-    currentTrack.artist   = track.artist;
-    currentTrack.title    = track.title;
-    currentTrack.duration = track.duration_str;
+    currentTrack = Track(track.artist, track.title, track.duration_str);
   }
 }
 

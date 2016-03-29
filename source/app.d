@@ -14,9 +14,10 @@ enum Buffers { none, friends, dialogs, music, chat }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 Win win;
-VKapi api;
 
 public:
+
+VKapi api;
 
 struct ListElement {
   string name, text;
@@ -780,10 +781,10 @@ ListElement[] setCurrentTrack() {
     }
     win.active += 5;
     win.isMusicPlaying = true;
-    mplayer.play(api, win.active-5);
+    mplayer.play(win.active-5);
   } else {
-    if (mplayer.sameTrack(api, win.active-5)) mplayer.pause;
-    else mplayer.play(api, win.active-5);
+    if (mplayer.sameTrack(win.active-5)) mplayer.pause;
+    else mplayer.play(win.active-5);
   }
   return new ListElement[0];
 }
