@@ -57,12 +57,14 @@ class MusicPlayer : Thread {
     return temp[0].to!int*60 + temp[1].to!int;
   }
 
-  void setPlaytime(string answer) {
-    if (answer != "") {
+  void setPlaytime() {
+    send("get_time_pos");
+    string answer = mplayer.output[$-1];
+    if (answer != "" && answer.canFind("ANS")) {
       mplayer.currentTrack.playtime = durToStr(answer[18..$-2]);
       int
         sec = answer[18..$-2].to!int,
-        step = strToDur(mplayer.currentTrack.duration) / 40,
+        step = strToDur(mplayer.currentTrack.duration) / 50,
         newPos = sec / step;
       if (mplayer.position != newPos) {
         mplayer.position = newPos;
@@ -74,11 +76,13 @@ class MusicPlayer : Thread {
     playtimeUpdated = true;
   }
 
-  string get(string cmd) {
-    send(cmd);
-    if (mplayer.output[$-1].canFind("ANS")) return mplayer.output[$-1];
-    return "";
+  void isTrackOver() {
+    send("get_percent_pos");
+    string answer = mplayer.output[$-1];
+    currentTrack.artist = answer;
+    playtimeUpdated = true;
   }
+
 
   ListElement[] getMplayerUI(int cols) {
     ListElement[] playerUI;
@@ -105,7 +109,10 @@ class MusicPlayer : Thread {
     while (!mplayerExit) {
       if (output.length != lastOutputLn) {
         lastOutputLn = output.length;
-        if (mplayer.musicState) setPlaytime(get("get_time_pos"));
+        if (mplayer.musicState) {
+          //setPlaytime;
+          isTrackOver;
+        }
       }
       Thread.sleep(listenWait);
     }
@@ -135,6 +142,3 @@ class MusicPlayer : Thread {
     currentTrack = Track(track.artist, track.title, track.duration_str);
   }
 }
-
-// get_file_name   -> to capture end of track
-// get_percent_pos -> change '|' position selector
