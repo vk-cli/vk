@@ -14,10 +14,9 @@ enum Buffers { none, friends, dialogs, music, chat }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 Win win;
+VKapi api;
 
 public:
-
-VKapi api;
 
 struct ListElement {
   string name, text;
@@ -621,7 +620,8 @@ void upEvent() {
   else {
     if (win.activeBuffer != Buffers.none && activeBufferEventsAllowed) {
       if (win.active != 0) {
-        if (win.scrollOffset == win.active) win.scrollOffset--;
+        if (win.scrollOffset == win.active || win.activeBuffer == Buffers.music && win.isMusicPlaying && win.active-win.scrollOffset == 5) win.scrollOffset--;
+        if (win.scrollOffset < 0) win.scrollOffset = 0;
         win.active--;
       }
     }
@@ -781,9 +781,9 @@ ListElement[] setCurrentTrack() {
       if (win.scrollOffset == 0) win.scrollOffset += win.active-LINES+8;
       else win.scrollOffset += 5;
     }
+    mplayer.play(win.active);
     win.active += 5;
     win.isMusicPlaying = true;
-    mplayer.play(win.active-5);
   } else {
     if (mplayer.sameTrack(win.active-5)) mplayer.pause;
     else mplayer.play(win.active-5);
@@ -899,7 +899,7 @@ void main(string[] args) {
 
   api.asyncLongpoll;
   mplayer = new MusicPlayer;
-  mplayer.startPlayer;
+  mplayer.startPlayer(api);
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
     clear;

@@ -2,12 +2,14 @@ import std.process, std.stdio, std.string,
        std.array, std.algorithm, std.conv;
 import core.thread;
 import app, utils;
+import vkapi: VKapi;
 
 struct Track {
   string artist, title, duration, playtime;
 }
 
 __gshared MusicPlayer mplayer;
+__gshared VKapi api;
 
 class MusicPlayer : Thread {
   File delegate() stdinPipe;
@@ -77,15 +79,16 @@ class MusicPlayer : Thread {
 
   void isTrackOver() {
     send("get_percent_pos");
-    string answer = output[$-1];
-    if (musicState && answer == "") {
+    if (musicState && output[$-1] == "") {
+      currentTrack.artist = "load";
       auto track = api.getBufferedMusic(1, ++trackNum)[0];
-      send("loadfile " ~ track.url);
-      currentTrack = Track(track.artist, track.title, track.duration_str);
+      currentTrack.artist = "done";
+      currentTrack.artist = track.artist;
+      //send("loadfile " ~ track.url);
+      //currentTrack = Track(track.artist, track.title, track.duration_str);
     }
     playtimeUpdated = true;
   }
-
 
   ListElement[] getMplayerUI(int cols) {
     ListElement[] playerUI;
@@ -121,7 +124,8 @@ class MusicPlayer : Thread {
     }
   }
 
-  void startPlayer() {
+  void startPlayer(VKapi vkapi) {
+    api = vkapi;
     listen = new Thread(&listenStdout);
     listen.start;
     this.start;
