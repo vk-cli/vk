@@ -3,7 +3,7 @@ module vkapi;
 import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
-import std.algorithm, std.range, std.experimental.ndslice;
+import std.algorithm, std.range;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, namecache, localization;
 
