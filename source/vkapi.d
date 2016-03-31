@@ -15,6 +15,8 @@ const int convStartId = 2000000000;
 const int mailStartId = convStartId*-1;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
+
+const uint dialogsBlock = 100;
 const int chatBlock = 100;
 const int chatUpd = 50;
 
@@ -202,7 +204,7 @@ struct apiChatBuffer {
 }
 
 struct apiBuffers {
-    vkDialog[] dialogsBuffer;
+    ClDialog[uint] dialogsBuffer;
     apiBufferData dialogsData;
 
     vkFriend[] friendsBuffer;
@@ -792,16 +794,21 @@ class AsyncMan {
 
 class VkMan {
 
-    __gshared VkApi api;
-    __gshared vkUser* me;
-    __gshared AsyncMan a;
+    __gshared {
+        VkApi api;
+        vkUser* me;
+        AsyncMan a;
+    }
+
+    alias DialogsFactoryType = BlockFactory!(ClDialog, DialogsBlock);
+    DialogsFactoryType dialogsFactory;
 
     this(string token) {
         a = new AsyncMan();
         api = new VkApi(token);
         baseInit();
-        a.singleAsync(a.S_SELF_RESOLVE, () => accountInit());
-        //accountInit();
+        //a.singleAsync(a.S_SELF_RESOLVE, () => accountInit());
+        accountInit();
     }
 
     private void accountInit() {
@@ -811,17 +818,19 @@ class VkMan {
             //todo warn about token
             return;
         }
+
         api.addMeNC();
         me = &(api.me);
         ps = &(api.ps);
         pb = &(api.pb);
+
+        dialogsFactory = BlockFactoryGenerator.getDialogsFactory(api);
     }
 
     private void baseInit() {
         sndMutex = new Mutex();
         pbMutex = new Mutex();
     }
-
 
     bool isSomethingUpdated() {
         if(ps.somethingUpdated){
@@ -891,7 +900,15 @@ class VkMan {
 
     vkAudio[] getBufferedMusic(int count, int offset) {return [];}
 
-    vkDialog[] getBufferedDialogs(int count, int offset) {return [];}
+    vkDialog[] getBufferedDialogs(int count, int offset) {
+        dialogsFactory.setOffset(offset);
+        return bf.map!(q => q.getBlock())
+                 .joiner
+                 .drop(bf.getReloffset)
+                 .take(count)
+                 .map!(q => q.getObject)
+                 .array;
+    }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {return [];}
 
@@ -928,7 +945,7 @@ abstract class Block(T : ClObject) {
 
     T[] getBlock() {
         if(!filled) {
-            block = download(blocksz*ordernum, blocksz);
+            block = download(blocksz*ordernum, blocksz); //todo async
             filled = true;
         }
         return block;
@@ -939,46 +956,64 @@ abstract class Block(T : ClObject) {
     }
 }
 
-class BlockFactory(O, T : Block!O) {
-
-    static BlockFactory getDialogsFactory(VkApi api, uint offset) {
-        return new BlockFactory!(ClDialog, DialogsBlock)(api, offset);
+class BlockFactoryGenerator {
+    static auto getDialogsFactory(VkApi api, uint offset) {
+        return new BlockFactory!(ClDialog, DialogsBlock)(api, dialogsBlock);
     }
+}
+
+class BlockFactory(O, T : Block!O) {
 
     private {
         VkApi api;
         uint
             offset,
             start,
+            iter,
             reloffset,
             blocksz;
         T[uint] blockst;
     }
 
-    this(VkApi api, uint offset) {
-        this.api = api;
-        this.offset = offset;
-        this.blocksz = T.getBlocksize();
+    enum bool empty = false;
+
+    this(VkApi wapi, uint blocksize) {
+        assert(blocksize != 0);
+        blocksz = blocksize;
+        api = wapi;
+        offset = 0;
+    }
+
+    private void rebuildOffsets() {
         reloffset = offset % blocksz;
         start = (offset-reloffset) / blocksz;
+        iter = start;
+    }
+
+    private T getblk(uint i) {
+        auto c = i in blockst;
+        if(c) return *c;
+        else {
+            blockst[i] = new T(api, i);
+            return blockst[i];
+        }
+    }
+
+    void setOffset(uint woffset) {
+        offset = woffset;
+        rebuildOffsets();
     }
 
     uint getReloffset() {
         return reloffset;
     }
 
-    int opApply ( int delegate ( ref T ) dg ) {
-        uint i = start;
-        while(true) {
-            int dres;
-            auto c = i in blockst;
-            if(c) dres = dg(c);
-            else {
-                blockst[i] = new T(api, i);
-                dres = dg(i in blockst);
-            }
-            if(dres) break;
-        }
+    T front() {
+        return getblk(iter);
+    }
+
+    void popFront() {
+        ++iter;
     }
 
 }
@@ -987,10 +1022,8 @@ class BlockFactory(O, T : Block!O) {
 
 class DialogsBlock : Block!ClDialog {
 
-    const uint dialogsBlocksz = 100;
-
     this(VkApi wapi, uint ord) {
-        blocksz = dialogsBlocksz;
+        blocksz = dialogsBlock;
         super(wapi, ord);
     }
 
@@ -1059,4 +1092,8 @@ class InternalException : Exception {
             super(msg, file, line, next);
         }
     }
+}
+
+void debugThrow() {
+    throw new InternalException(228, "DEBUGPOINT");
 }

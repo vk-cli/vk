@@ -35,9 +35,9 @@ struct Notify {
 }
 
 ulong utfLength(string inp) {
-  dbm("utfln: " ~ inp);
+  //dbm("utfln: " ~ inp);
   auto wstrInput = inp.to!dstring;
-  dbm("utfln done");
+  //dbm("utfln done");
   ulong s = wstrInput.walkLength;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);

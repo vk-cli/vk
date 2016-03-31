@@ -82,3 +82,4 @@ private S[] cropstr(S)(S s, size_t mln) {
     if(s.length > mln) return [ s[0..mln], s[mln..$] ];
     else return [s];
 }
+
