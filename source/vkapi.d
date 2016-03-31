@@ -1082,7 +1082,7 @@ class VKapi {
         }
     }
 
-    void toggleForeceUpdate(blockType tp) {
+    void toggleForceUpdate(blockType tp) {
         getData(tp).forceUpdate = true;
     }
 

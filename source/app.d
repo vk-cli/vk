@@ -226,12 +226,8 @@ void color() {
   }
   start_color;
   use_default_colors;
-  for (short i = 0; i < Colors.max; i++) {
-    init_pair(i, i, -1);
-  }
-  for (short i = 1; i < Colors.max+1; i++) {
-    init_pair((Colors.max+1+i).to!short, i, -1.to!short);
-  }
+  for (short i = 0; i < Colors.max; i++) init_pair(i, i, -1);
+  for (short i = 1; i < Colors.max+1; i++) init_pair((Colors.max+1+i).to!short, i, -1.to!short);
   init_pair(Colors.max, 0, -1);
   init_pair(Colors.max+1, -1, -1);
   init_pair(Colors.max*2+1, 0, -1);
@@ -473,7 +469,7 @@ void drawChat() {
   }
 }
 
-int activeBufferLen() {
+int activeBufferMaxLen() {
   switch (win.activeBuffer) {
     case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
     case Buffers.friends: return api.getServerCount(blockType.friends);
@@ -493,9 +489,17 @@ bool activeBufferEventsAllowed() {
   }
 }
 
+blockType forceRefresh() {
+  final switch (win.activeBuffer) {
+    case Buffers.dialogs: return blockType.dialogs;
+    case Buffers.friends: return blockType.friends;
+    case Buffers.music: return blockType.music;
+  }
+}
+
 void jumpToEnd() {
-  win.active = activeBufferLen-1;
-  win.scrollOffset = activeBufferLen-LINES+2;
+  win.active = activeBufferMaxLen-1;
+  win.scrollOffset = activeBufferMaxLen-LINES+2;
 }
 
 int _getch() {
@@ -530,7 +534,7 @@ void controller() {
     if (api.isSomethingUpdated) break;
     if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
-  //win.key.print;
+  //win.key.print
   if (win.isMessageWriting) msgBufferEvents;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
@@ -563,7 +567,10 @@ void nonChatEvents() {
     selectEvent;
   }
   else if (win.section == Sections.right) {
-    if (canFind(kg_refresh, win.key)) bodyToBuffer;
+    if (canFind(kg_refresh, win.key)) {
+      api.toggleForceUpdate(forceRefresh);
+      bodyToBuffer;
+    }
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
     else if (win.key == k_end) jumpToEnd;
     else if (win.key == k_pagedown) {
@@ -589,12 +596,13 @@ void chatEvents() {
     curs_set(1);
     win.isMessageWriting = true;
   }
+  else if (canFind(kg_refresh, win.key)) api.toggleChatForceUpdate(win.chatID);
   if (win.scrollOffset < 0) win.scrollOffset = 0;
-  else if (activeBufferLen != -1 && win.scrollOffset > activeBufferLen-LINES+3) win.scrollOffset = activeBufferLen-LINES+3;
+  else if (activeBufferMaxLen != -1 && win.scrollOffset > activeBufferMaxLen-LINES+3) win.scrollOffset = activeBufferMaxLen-LINES+3;
 }
 
 void checkBounds() {
-  if (win.activeBuffer != Buffers.none && activeBufferLen > 0 && win.active > activeBufferLen-1) jumpToEnd;
+  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToEnd;
 }
 
 void downEvent() {
@@ -611,9 +619,12 @@ void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
     if (win.activeBuffer != Buffers.none && activeBufferEventsAllowed) {
-      win.scrollOffset > 0 ? win.scrollOffset -= 1 : win.scrollOffset += 0;
-      win.active == 0 ? win.active += 0 : win.active--;
-    } else win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
+      if (win.active != 0) {
+        if (win.scrollOffset == win.active || win.activeBuffer == Buffers.music && win.isMusicPlaying && win.active-win.scrollOffset == 5) win.scrollOffset--;
+        if (win.scrollOffset < 0) win.scrollOffset = 0;
+        win.active--;
+      }
+    }
   }
 }
 
@@ -770,24 +781,13 @@ ListElement[] setCurrentTrack() {
       if (win.scrollOffset == 0) win.scrollOffset += win.active-LINES+8;
       else win.scrollOffset += 5;
     }
+    mplayer.play(win.active);
     win.active += 5;
     win.isMusicPlaying = true;
-    track = api.getBufferedMusic(1, win.active-5)[0];
-    mplayer.send("loadfile " ~ track.url);
-    mplayer.musicState = true;
   } else {
-    track = api.getBufferedMusic(1, win.active-5)[0];
-    if (mplayer.currentTrack.artist == track.artist && mplayer.currentTrack.title == track.title) {
-      mplayer.send("pause");
-      mplayer.musicState = !mplayer.musicState;
-    } else {
-      mplayer.musicState = true;
-      mplayer.send("loadfile " ~ track.url);
-    }
+    if (mplayer.sameTrack(win.active-5)) mplayer.pause;
+    else mplayer.play(win.active-5);
   }
-  mplayer.currentTrack.artist   = track.artist;
-  mplayer.currentTrack.title    = track.title;
-  mplayer.currentTrack.duration = track.duration_str;
   return new ListElement[0];
 }
 
@@ -885,7 +885,7 @@ void main(string[] args) {
   auto storage = load;
   storage.parse;
 
-  try{
+  try {
     api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
   } catch (BackendException e) {
     stop;
@@ -899,7 +899,7 @@ void main(string[] args) {
 
   api.asyncLongpoll;
   mplayer = new MusicPlayer;
-  mplayer.startPlayer;
+  mplayer.startPlayer(api);
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
     clear;
