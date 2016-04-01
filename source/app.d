@@ -806,10 +806,13 @@ ListElement[] GetMusic() {
   foreach(e; music) {
     string indicator = (mplayer.currentTrack.artist == e.artist && mplayer.currentTrack.title == e.title) ? mplayer.musicState ? play : pause : "    ";
     artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
-    if (artistAndSong.utfLength > COLS-9-win.menuOffset-e.duration_str.length.to!int) {
-      artistAndSong = artistAndSong[0..COLS-9-win.menuOffset-e.duration_str.length.to!int];
+
+    int width = COLS-4-win.menuOffset-e.duration_str.length.to!int;
+    if (artistAndSong.utfLength > width) {
+      artistAndSong = artistAndSong[0..width];
       amount = COLS-6-win.menuOffset-artistAndSong.utfLength.to!int;
     } else amount = COLS-9-win.menuOffset-e.artist.utfLength.to!int-e.title.utfLength.to!int-e.duration_str.length.to!int;
+
     space = " ".replicate(amount);
     list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url, &run, &setCurrentTrack);
   }
