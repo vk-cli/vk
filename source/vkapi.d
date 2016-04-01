@@ -800,8 +800,7 @@ class VkMan {
         AsyncMan a;
     }
 
-    alias DialogsFactoryType = BlockFactory!(ClDialog, DialogsBlock);
-    DialogsFactoryType dialogsFactory;
+    BlockFactory!ClDialog dialogsFactory;
 
     this(string token) {
         a = new AsyncMan();
@@ -824,7 +823,7 @@ class VkMan {
         ps = &(api.ps);
         pb = &(api.pb);
 
-        dialogsFactory = BlockFactoryGenerator.getDialogsFactory(api);
+        dialogsFactory = ClDialog.makeFactory(api);
     }
 
     private void baseInit() {
@@ -902,12 +901,13 @@ class VkMan {
 
     vkDialog[] getBufferedDialogs(int count, int offset) {
         dialogsFactory.setOffset(offset);
-        return bf.map!(q => q.getBlock())
-                 .joiner
-                 .drop(bf.getReloffset)
-                 .take(count)
-                 .map!(q => q.getObject)
-                 .array;
+        return dialogsFactory
+                .map!(q => q.getBlock())
+                .joiner
+                .drop(dialogsFactory.getReloffset)
+                .take(count)
+                .map!(q => q.getObject)
+                .array;
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {return [];}
@@ -924,28 +924,28 @@ class VkMan {
 
 abstract class ClObject {}
 
-abstract class Block(T : ClObject) {
+class Block(T : ClObject) {
+
+    alias downloader = T[] delegate(uint, uint);
 
     private {
-        VkApi api;
         uint
             ordernum,
             blocksz;
         bool filled;
         T[] block;
+        downloader ldfunc;
     }
 
-    T[] download(uint offset, uint count);
-
-    this(VkApi api, uint ord) {
-        this.api = api;
+    this(uint ord, uint blocksize, downloader ld) {
         ordernum = ord;
-        blocksz = getBlocksize();
+        blocksz = blocksize;
+        ldfunc = ld;
     }
 
     T[] getBlock() {
         if(!filled) {
-            block = download(blocksz*ordernum, blocksz); //todo async
+            block = ldfunc(blocksz, blocksz*ordernum); //todo async
             filled = true;
         }
         return block;
@@ -956,32 +956,29 @@ abstract class Block(T : ClObject) {
     }
 }
 
-class BlockFactoryGenerator {
-    static auto getDialogsFactory(VkApi api, uint offset) {
-        return new BlockFactory!(ClDialog, DialogsBlock)(api, dialogsBlock);
-    }
-}
+class BlockFactory(T : ClObject) {
 
-class BlockFactory(O, T : Block!O) {
+    alias downloader = T[] delegate(uint, uint);
 
     private {
-        VkApi api;
         uint
             offset,
             start,
             iter,
             reloffset,
             blocksz;
-        T[uint] blockst;
+        Block!T[uint] blockst;
+        downloader ldfunc;
     }
 
     enum bool empty = false;
 
-    this(VkApi wapi, uint blocksize) {
+    this(uint blocksize, downloader ld) {
         assert(blocksize != 0);
         blocksz = blocksize;
-        api = wapi;
         offset = 0;
+        rebuildOffsets();
+        ldfunc = ld;
     }
 
     private void rebuildOffsets() {
@@ -990,11 +987,11 @@ class BlockFactory(O, T : Block!O) {
         iter = start;
     }
 
-    private T getblk(uint i) {
+    private Block!T getblk(uint i) {
         auto c = i in blockst;
         if(c) return *c;
         else {
-            blockst[i] = new T(api, i);
+            blockst[i] = new Block!T(i, blocksz, ldfunc);
             return blockst[i];
         }
     }
@@ -1008,7 +1005,7 @@ class BlockFactory(O, T : Block!O) {
         return reloffset;
     }
 
-    T front() {
+    Block!T front() {
         return getblk(iter);
     }
 
@@ -1018,24 +1015,16 @@ class BlockFactory(O, T : Block!O) {
 
 }
 
-// ===== Implement blocks =====
-
-class DialogsBlock : Block!ClDialog {
-
-    this(VkApi wapi, uint ord) {
-        blocksz = dialogsBlock;
-        super(wapi, ord);
-    }
-
-    override ClDialog[] download(uint off, uint c) {
-        auto dt = &(pb.dialogsData);
-        return api.messagesGetDialogs(c, off, dt.serverCount).map!(q => new ClDialog(q)).array;
-    }
-}
-
 // ===== Implement objects =====
 
 class ClDialog : ClObject {
+
+    static auto makeFactory(VkApi api) {
+        int sc;
+        auto load = (uint c, uint o) => api.messagesGetDialogs(c, o, sc).map!(q => new ClDialog(q)).array;
+        pragma(msg, "load fn type: " ~ typeof(load).stringof);
+        return new BlockFactory!ClDialog(dialogsBlock, load);
+    }
 
     private vkDialog obj;
 
