@@ -3,7 +3,7 @@ module vkapi;
 import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
-import std.algorithm, std.range, std.experimental.ndslice;
+import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, namecache, localization;
 
@@ -16,7 +16,7 @@ const int mailStartId = convStartId*-1;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
 
-const uint dialogsBlock = 100;
+const uint defaultBlock = 100;
 const int chatBlock = 100;
 const int chatUpd = 50;
 
@@ -133,20 +133,25 @@ struct vkNextLp {
 
 // === API state and meta =====
 
-struct apiTransfer {
-    string token;
-    bool tokenvalid;
-    vkUser user;
-}
-
 struct apiState {
     bool lp80got = true;
     int latestUnreadMsg = 0;
     bool somethingUpdated = false;
     bool chatloading = false;
     string lastlp = "";
-    sendOrderMsg[] order;
-    sentMsg[int] sent; //by rid
+
+    //sendOrderMsg[] order;
+    //sentMsg[int] sent; //by rid
+}
+
+struct ldFuncResult {
+    bool success;
+    int servercount = -1;
+}
+
+struct factoryData {
+    int serverCount = -1;
+    bool forceUpdate;
 }
 
 struct sendOrderMsg {
@@ -178,59 +183,18 @@ enum sendState {
     ok
 }
 
-struct apiBufferData {
-    int serverCount = -1;
-    int linesCount = -1;
-    bool forceUpdate = true;
-    bool loading = false;
-    bool updated = false;
-
-}
-
-struct apiRecentlyUpdated {
-    long updated;
-    bool checkedout;
-}
-
-struct apiLineCache {
-    vkMessageLine[] buf;
-    int wrap = -1;
-}
-
-struct apiChatBuffer {
-    vkMessage[] buffer;
-    apiBufferData data;
-    apiLineCache[int] linebuffer; // by mid
-}
-
-struct apiBuffers {
-    ClDialog[uint] dialogsBuffer;
-    apiBufferData dialogsData;
-
-    vkFriend[] friendsBuffer;
-    apiBufferData friendsData;
-
-    vkAudio[] audioBuffer;
-    apiBufferData audioData;
-
-    apiChatBuffer[int] chatBuffer;
-}
-
 struct apiFwdIter {
     vkFwdMessage[] fwd;
     int md;
 }
 
-__gshared auto emptyPs = apiState();
-__gshared auto emptyPb = apiBuffers();
-
-__gshared nameCache nc;
-__gshared apiState* ps = &emptyPs;
-__gshared apiBuffers* pb = &emptyPb;
-
-__gshared Mutex
-    sndMutex,
-    pbMutex;
+__gshared {
+    nameCache nc;
+    apiState ps;
+    Mutex
+        sndMutex,
+        pbMutex;
+}
 
 
 class VkApi {
@@ -241,13 +205,9 @@ class VkApi {
     bool isTokenValid;
 
     vkUser me;
-    apiBuffers pb;
-    apiState ps;
 
     this(string token) {
         vktoken = token;
-        pb = apiBuffers();
-        ps = apiState();
     }
 
     void addMeNC() {
@@ -798,9 +758,11 @@ class VkMan {
         VkApi api;
         vkUser* me;
         AsyncMan a;
-    }
 
-    BlockFactory!ClDialog dialogsFactory;
+        BlockFactory!ClDialog dialogsFactory;
+        BlockFactory!ClFriend friendsFactory;
+        BlockFactory!ClAudio musicFactory;
+    }
 
     this(string token) {
         a = new AsyncMan();
@@ -820,15 +782,16 @@ class VkMan {
 
         api.addMeNC();
         me = &(api.me);
-        ps = &(api.ps);
-        pb = &(api.pb);
 
         dialogsFactory = ClDialog.makeFactory(api);
+        friendsFactory = ClFriend.makeFactory(api);
+        musicFactory = ClAudio.makeFactory(api);
     }
 
     private void baseInit() {
         sndMutex = new Mutex();
         pbMutex = new Mutex();
+        ps = apiState();
     }
 
     bool isSomethingUpdated() {
@@ -843,11 +806,11 @@ class VkMan {
         ps.somethingUpdated = true;
     }
 
-    private apiBufferData* getData(blockType tp) {
+    private auto getData(blockType tp) {
         switch(tp){
-            case blockType.dialogs: return &pb.dialogsData;
-            case blockType.friends: return &pb.friendsData;
-            case blockType.music: return &pb.audioData;
+            case blockType.dialogs: return &(dialogsFactory.data);
+            case blockType.friends: return &(friendsFactory.data);
+            case blockType.music: return &(musicFactory.data);
             default: assert(0);
         }
     }
@@ -857,7 +820,7 @@ class VkMan {
     }
 
     void toggleChatForceUpdate(int peer) {
-        pb.chatBuffer[peer].data.forceUpdate = true;
+        //pb.chatBuffer[peer].data.forceUpdate = true;
     }
 
     int getServerCount(blockType tp) {
@@ -865,34 +828,27 @@ class VkMan {
     }
 
     bool isScrollAllowed(blockType tp) {
-        return !getData(tp).loading;
+        return true;
     }
 
     bool isChatScrollAllowed(int peer) {
-        return !pb.chatBuffer[peer].data.loading;
+        return true;
     }
 
     int getChatServerCount(int peer) {
-        return pb.chatBuffer[peer].data.serverCount;
+        //return pb.chatBuffer[peer].data.serverCount;
+        return -1;
     }
 
     int getChatLineCount(int peer) {
-        return pb.chatBuffer[peer].data.linesCount;
+        //return pb.chatBuffer[peer].data.linesCount;
+        return -1;
     }
 
     string getLastLongpollMessage() {
         auto last = ps.lastlp;
         ps.lastlp = "";
         return last;
-    }
-
-    bool isUpdated(blockType tp) {
-        auto data = getData(tp);
-        if(data.updated) {
-            data.updated = false;
-            return true;
-        }
-        return false;
     }
 
     vkFriend[] getBufferedFriends(int count, int offset) {return [];}
@@ -926,7 +882,7 @@ abstract class ClObject {}
 
 class Block(T : ClObject) {
 
-    alias downloader = T[] delegate(uint, uint);
+    alias downloader = T[] delegate(uint, uint, out ldFuncResult);
 
     private {
         uint
@@ -935,18 +891,25 @@ class Block(T : ClObject) {
         bool filled;
         T[] block;
         downloader ldfunc;
+        factoryData* fdata;
     }
 
-    this(uint ord, uint blocksize, downloader ld) {
+    this(uint ord, uint blocksize, downloader ld, factoryData* fdt, bool filledblk = false) {
         ordernum = ord;
         blocksz = blocksize;
         ldfunc = ld;
+        fdata = fdt;
+        filled = filledblk;
     }
 
     T[] getBlock() {
         if(!filled) {
-            block = ldfunc(blocksz, blocksz*ordernum); //todo async
-            filled = true;
+            ldFuncResult res;
+            block = ldfunc(blocksz, blocksz*ordernum, res); //todo async
+            if(res.success) {
+                filled = true;
+                fdata.serverCount = res.servercount;
+            }
         }
         return block;
     }
@@ -954,11 +917,15 @@ class Block(T : ClObject) {
     uint getBlocksize() {
         return blocksz;
     }
+
+    uint length() {
+        return block.length.to!uint;
+    }
 }
 
 class BlockFactory(T : ClObject) {
 
-    alias downloader = T[] delegate(uint, uint);
+    alias downloader = T[] delegate(uint, uint, out ldFuncResult);
 
     private {
         uint
@@ -971,6 +938,8 @@ class BlockFactory(T : ClObject) {
         downloader ldfunc;
     }
 
+    factoryData data;
+
     enum bool empty = false;
 
     this(uint blocksize, downloader ld) {
@@ -979,6 +948,7 @@ class BlockFactory(T : ClObject) {
         offset = 0;
         rebuildOffsets();
         ldfunc = ld;
+        data = factoryData();
     }
 
     private void rebuildOffsets() {
@@ -988,10 +958,24 @@ class BlockFactory(T : ClObject) {
     }
 
     private Block!T getblk(uint i) {
+        bool doneload;
+        immutable auto sc = data.serverCount;
+        immutable auto ln = blockst.keys.length == 0 ? 0 : sort(blockst.keys).takeOne[0];
+        if(sc != -1) {
+            if(ln > 1 && ((ln-1)*blocksz)+blockst[ln-1].length >= sc) doneload = true;
+            else if (ln == 1 && blockst[ln-1].length >= sc) doneload = true;
+            else if (ln == 0 && sc == 0) doneload = true;
+        }
+
+        if(doneload && i > ln-1) {
+            if(ln == 0) return new Block!T(0, 0, ldfunc, &data, true);
+            return blockst[ln-1];
+        }
+
         auto c = i in blockst;
         if(c) return *c;
         else {
-            blockst[i] = new Block!T(i, blocksz, ldfunc);
+            blockst[i] = new Block!T(i, blocksz, ldfunc, &data);
             return blockst[i];
         }
     }
@@ -1015,24 +999,92 @@ class BlockFactory(T : ClObject) {
 
 }
 
+ldFuncResult apiCheck(VkApi api) {
+    return ldFuncResult(api.isTokenValid);
+}
+
 // ===== Implement objects =====
 
 class ClDialog : ClObject {
 
-    static auto makeFactory(VkApi api) {
-        int sc;
-        auto load = (uint c, uint o) => api.messagesGetDialogs(c, o, sc).map!(q => new ClDialog(q)).array;
-        pragma(msg, "load fn type: " ~ typeof(load).stringof);
-        return new BlockFactory!ClDialog(dialogsBlock, load);
+    alias objt = vkDialog;
+    alias clt = typeof(this);
+
+    static auto getLoadFunc(VkApi api) {
+        return (uint c, uint o, out ldFuncResult r) {
+            r = apiCheck(api);
+            if(!r.success) return new clt[0];
+            return api.messagesGetDialogs(c, o, r.servercount).map!(q => new clt(q)).array;
+        };
     }
 
-    private vkDialog obj;
+    static auto makeFactory(VkApi api) {
+        return new BlockFactory!clt(defaultBlock, getLoadFunc(api));
+    }
 
-    this(vkDialog o) {
+    private objt obj;
+
+    this(objt o) {
         obj = o;
     }
 
-    vkDialog getObject() {
+    objt getObject() {
+        return obj;
+    }
+}
+
+class ClFriend : ClObject {
+
+    alias objt = vkFriend;
+    alias clt = typeof(this);
+
+    static auto getLoadFunc(VkApi api) {
+        return (uint c, uint o, out ldFuncResult r) {
+            r = apiCheck(api);
+            if(!r.success) return new clt[0];
+            return api.friendsGet(c, o, r.servercount).map!(q => new clt(q)).array;
+        };
+    }
+
+    static auto makeFactory(VkApi api) {
+        return new BlockFactory!clt(defaultBlock, getLoadFunc(api));
+    }
+
+    private objt obj;
+
+    this(objt o) {
+        obj = o;
+    }
+
+    objt getObject() {
+        return obj;
+    }
+}
+
+class ClAudio : ClObject {
+
+    alias objt = vkAudio;
+    alias clt = typeof(this);
+
+    static auto getLoadFunc(VkApi api) {
+        return (uint c, uint o, out ldFuncResult r) {
+            r = apiCheck(api);
+            if(!r.success) return new clt[0];
+            return api.audioGet(c, o, r.servercount).map!(q => new clt(q)).array;
+        };
+    }
+
+    static auto makeFactory(VkApi api) {
+        return new BlockFactory!clt(defaultBlock, getLoadFunc(api));
+    }
+
+    private objt obj;
+
+    this(objt o) {
+        obj = o;
+    }
+
+    objt getObject() {
         return obj;
     }
 }
