@@ -914,6 +914,10 @@ class Block(T : ClObject) {
         return block;
     }
 
+    bool isFilled() {
+        return filled;
+    }
+
     uint getBlocksize() {
         return blocksz;
     }
@@ -940,8 +944,6 @@ class BlockFactory(T : ClObject) {
 
     factoryData data;
 
-    enum bool empty = false;
-
     this(uint blocksize, downloader ld) {
         assert(blocksize != 0);
         blocksz = blocksize;
@@ -958,26 +960,31 @@ class BlockFactory(T : ClObject) {
     }
 
     private Block!T getblk(uint i) {
-        bool doneload;
-        immutable auto sc = data.serverCount;
-        immutable auto ln = blockst.keys.length == 0 ? 0 : sort(blockst.keys).takeOne[0];
-        if(sc != -1) {
-            if(ln > 1 && ((ln-1)*blocksz)+blockst[ln-1].length >= sc) doneload = true;
-            else if (ln == 1 && blockst[ln-1].length >= sc) doneload = true;
-            else if (ln == 0 && sc == 0) doneload = true;
-        }
-
-        if(doneload && i > ln-1) {
-            if(ln == 0) return new Block!T(0, 0, ldfunc, &data, true);
-            return blockst[ln-1];
-        }
-
         auto c = i in blockst;
         if(c) return *c;
         else {
             blockst[i] = new Block!T(i, blocksz, ldfunc, &data);
             return blockst[i];
         }
+    }
+
+    uint objectCount() {
+        return blockst.values.map!(q => q.length).sum();
+    }
+
+    auto getLoadedBlocks() {
+        return blockst.keys.map!(q => q in blockst).filter!(q => q.isFilled);
+    }
+
+    bool empty() {
+        immutable auto sc = data.serverCount;
+        if(sc == -1) return false;
+
+        immutable auto lastsz = sc % blocksz;
+        auto lastblk = ((sc - lastsz) / blocksz) - 1;
+        if(lastsz > 0) ++lastblk;
+
+        return iter > lastblk;
     }
 
     void setOffset(uint woffset) {
