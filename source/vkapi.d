@@ -851,19 +851,16 @@ class VkMan {
         return last;
     }
 
-    vkFriend[] getBufferedFriends(int count, int offset) {return [];}
+    vkFriend[] getBufferedFriends(int count, int offset) {
+        return bufferedGet!vkFriend(friendsFactory, count, offset);
+    }
 
-    vkAudio[] getBufferedMusic(int count, int offset) {return [];}
+    vkAudio[] getBufferedMusic(int count, int offset) {
+        return bufferedGet!vkAudio(musicFactory, count, offset);
+    }
 
     vkDialog[] getBufferedDialogs(int count, int offset) {
-        dialogsFactory.setOffset(offset);
-        return dialogsFactory
-                .map!(q => q.getBlock())
-                .joiner
-                .drop(dialogsFactory.getReloffset)
-                .take(count)
-                .map!(q => q.getObject)
-                .array;
+        return bufferedGet!vkDialog(dialogsFactory, count, offset);
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {return [];}
@@ -874,6 +871,17 @@ class VkMan {
 
     void setTypingStatus(int peer) {}
 
+    R[] bufferedGet(R, T)(T factory, int count, int offset) {
+        factory.setOffset(offset);
+        return factory
+                .map!(q => q.getBlock())
+                .joiner
+                .drop(factory.getReloffset)
+                .take(count)
+                .map!(q => q.getObject)
+                .array;
+    }
+
 }
 
 // ===== Model =====
@@ -883,6 +891,7 @@ abstract class ClObject {}
 class Block(T : ClObject) {
 
     alias downloader = T[] delegate(uint, uint, out ldFuncResult);
+    alias objectType = T;
 
     private {
         uint
