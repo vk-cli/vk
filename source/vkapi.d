@@ -615,6 +615,7 @@ class VkApi {
 
 class AsyncOrder : Thread {
     struct Task {
+        int id;
         void delegate() dg;
     }
 
@@ -627,10 +628,15 @@ class AsyncOrder : Thread {
         super(&procOrder);
     }
 
-    void addToOrder(void delegate() d) {
+    void addToOrder(void delegate() d, int ordid) {
         synchronized(orderAccess) {
-            order ~= Task(d);
+            immutable auto has = order.map!(q => q.id).canFind(ordid);
+            if(!has) order ~= Task(ordid, d);
         }
+    }
+
+    bool hasId(int ordid) {
+        return order.map!(q => q.id).canFind(ordid);
     }
 
     private void procOrder() {
@@ -718,19 +724,20 @@ class AsyncMan {
     }
 
     const string
-        S_SELF_RESOLVE = "s_self_resolve";
+        S_SELF_RESOLVE = "s_self_resolve",
+        O_LOADBLOCK = "o_loadblock";
 
     AsyncOrder[string] orders;
     AsyncSingle[string] singles;
 
-    void orderedAsync(string orderkey, void delegate() d) {
+    void orderedAsync(string orderkey, int ordid, void delegate() d) {
         auto so = orderkey in orders;
         if(!so) {
             orders[orderkey] = new AsyncOrder();
             so = orderkey in orders;
         }
 
-        so.addToOrder(d);
+        so.addToOrder(d, ordid);
         if(!so.isRunning)
             so.start();
     }
@@ -783,9 +790,9 @@ class VkMan {
         api.addMeNC();
         me = &(api.me);
 
-        dialogsFactory = ClDialog.makeFactory(api);
-        friendsFactory = ClFriend.makeFactory(api);
-        musicFactory = ClAudio.makeFactory(api);
+        dialogsFactory = ClDialog.makeFactory(api, a);
+        friendsFactory = ClFriend.makeFactory(api, a);
+        musicFactory = ClAudio.makeFactory(api, a);
     }
 
     private void baseInit() {
@@ -897,29 +904,33 @@ class Block(T : ClObject) {
         uint
             ordernum,
             blocksz;
+        int oid;
         bool filled;
         T[] block;
         downloader ldfunc;
         factoryData* fdata;
+        AsyncMan a;
     }
 
-    this(uint ord, uint blocksize, downloader ld, factoryData* fdt, bool filledblk = false) {
+    this(uint ord, uint blocksize, downloader ld, AsyncMan asyncm, factoryData* fdt, int woid, bool filledblk = false) {
         ordernum = ord;
         blocksz = blocksize;
         ldfunc = ld;
         fdata = fdt;
         filled = filledblk;
+        oid = woid;
+        a = asyncm;
     }
 
     T[] getBlock() {
-        if(!filled) {
+        if(!filled) a.orderedAsync(a.O_LOADBLOCK, oid, () {
             ldFuncResult res;
-            block = ldfunc(blocksz, blocksz*ordernum, res); //todo async
+            block = ldfunc(blocksz, blocksz*ordernum, res);
             if(res.success) {
                 filled = true;
                 fdata.serverCount = res.servercount;
             }
-        }
+        });
         return block;
     }
 
@@ -947,19 +958,23 @@ class BlockFactory(T : ClObject) {
             iter,
             reloffset,
             blocksz;
+        int oid;
         Block!T[uint] blockst;
         downloader ldfunc;
+        AsyncMan a;
     }
 
     factoryData data;
 
-    this(uint blocksize, downloader ld) {
+    this(uint blocksize, int woid, AsyncMan asyncm, downloader ld) {
         assert(blocksize != 0);
         blocksz = blocksize;
         offset = 0;
         rebuildOffsets();
         ldfunc = ld;
         data = factoryData();
+        oid = woid;
+        a = asyncm;
     }
 
     private void rebuildOffsets() {
@@ -972,7 +987,7 @@ class BlockFactory(T : ClObject) {
         auto c = i in blockst;
         if(c) return *c;
         else {
-            blockst[i] = new Block!T(i, blocksz, ldfunc, &data);
+            blockst[i] = new Block!T(i, blocksz, ldfunc, a, &data, oid);
             return blockst[i];
         }
     }
@@ -1034,8 +1049,8 @@ class ClDialog : ClObject {
         };
     }
 
-    static auto makeFactory(VkApi api) {
-        return new BlockFactory!clt(defaultBlock, getLoadFunc(api));
+    static auto makeFactory(VkApi api, AsyncMan a) {
+        return new BlockFactory!clt(defaultBlock, 1, a, getLoadFunc(api));
     }
 
     private objt obj;
@@ -1062,8 +1077,8 @@ class ClFriend : ClObject {
         };
     }
 
-    static auto makeFactory(VkApi api) {
-        return new BlockFactory!clt(defaultBlock, getLoadFunc(api));
+    static auto makeFactory(VkApi api, AsyncMan a) {
+        return new BlockFactory!clt(defaultBlock, 2, a, getLoadFunc(api));
     }
 
     private objt obj;
@@ -1090,8 +1105,8 @@ class ClAudio : ClObject {
         };
     }
 
-    static auto makeFactory(VkApi api) {
-        return new BlockFactory!clt(defaultBlock, getLoadFunc(api));
+    static auto makeFactory(VkApi api, AsyncMan a) {
+        return new BlockFactory!clt(defaultBlock, 3, a, getLoadFunc(api));
     }
 
     private objt obj;
