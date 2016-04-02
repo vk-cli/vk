@@ -775,8 +775,8 @@ class VkMan {
         a = new AsyncMan();
         api = new VkApi(token);
         baseInit();
-        //a.singleAsync(a.S_SELF_RESOLVE, () => accountInit());
-        accountInit();
+        a.singleAsync(a.S_SELF_RESOLVE, () => accountInit());
+        //accountInit();
     }
 
     private void accountInit() {
@@ -793,6 +793,8 @@ class VkMan {
         dialogsFactory = ClDialog.makeFactory(api, a);
         friendsFactory = ClFriend.makeFactory(api, a);
         musicFactory = ClAudio.makeFactory(api, a);
+
+        toggleUpdate();
     }
 
     private void baseInit() {
