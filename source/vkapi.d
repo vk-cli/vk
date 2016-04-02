@@ -113,6 +113,18 @@ struct vkAudio {
     string url;
 }
 
+struct vkAccountInit {
+    int id;
+    string
+        first_name,
+        last_name;
+    uint
+        c_messages,
+        sc_dialogs,
+        sc_friends,
+        sc_audio;
+}
+
 struct vkGroup {
     int id;
     string name;
@@ -139,6 +151,7 @@ struct apiState {
     bool somethingUpdated = false;
     bool chatloading = false;
     string lastlp = "";
+    uint countermsg;
 
     //sendOrderMsg[] order;
     //sentMsg[int] sent; //by rid
@@ -205,6 +218,7 @@ class VkApi {
     bool isTokenValid;
 
     vkUser me;
+    vkAccountInit initdata;
 
     this(string token) {
         vktoken = token;
@@ -221,7 +235,8 @@ class VkApi {
     private bool checkToken(string token) {
         if(token.length != 85) return false;
         try{
-            me = usersGet();
+            initdata = executeAccountInit();
+            me = vkUser(initdata.first_name, initdata.last_name, initdata.id);
         } catch (ApiErrorException e) {
             dbm("ApiErrorException: " ~ e.msg);
             return false;
@@ -285,6 +300,21 @@ class VkApi {
     }
 
     // ===== API method wrappers =====
+
+    vkAccountInit executeAccountInit() {
+        string[string] params;
+        auto resp = vkget("execute.accountInit", params);
+        vkAccountInit rt = {
+            id:resp["me"]["id"].integer.to!int,
+            first_name:resp["me"]["first_name"].str,
+            last_name:resp["me"]["last_name"].str,
+            c_messages:resp["counters"]["messages"].integer.to!int,
+            sc_dialogs:resp["sc"]["dialogs"].integer.to!int,
+            sc_friends:resp["sc"]["friends"].integer.to!int,
+            sc_audio:resp["sc"]["audio"].integer.to!int
+        };
+        return rt;
+    }
 
     vkUser usersGet(int userId = 0, string fields = "", string nameCase = "nom") {
         string[string] params;
@@ -794,6 +824,12 @@ class VkMan {
         friendsFactory = ClFriend.makeFactory(api, a);
         musicFactory = ClAudio.makeFactory(api, a);
 
+        dialogsFactory.data.serverCount = api.initdata.sc_dialogs;
+        friendsFactory.data.serverCount = api.initdata.sc_friends;
+        musicFactory.data.serverCount = api.initdata.sc_audio;
+
+        ps.countermsg = api.initdata.c_messages;
+
         toggleUpdate();
     }
 
@@ -874,7 +910,9 @@ class VkMan {
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {return [];}
 
-    int messagesCounter() {return 0;}
+    int messagesCounter() {
+        return ps.countermsg;
+    }
 
     void asyncSendMessage(int peer, string msg) {}
 
