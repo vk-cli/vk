@@ -791,6 +791,8 @@ class AsyncMan {
 
 class VkMan {
 
+    alias ChatBlockFactory = BlockFactory!ClMessage;
+
     __gshared {
         VkApi api;
         vkUser* me;
@@ -799,6 +801,7 @@ class VkMan {
         BlockFactory!ClDialog dialogsFactory;
         BlockFactory!ClFriend friendsFactory;
         BlockFactory!ClAudio musicFactory;
+        ChatBlockFactory[int] chatFactory; //by peer
     }
 
     this(string token) {
@@ -908,7 +911,24 @@ class VkMan {
         return bufferedGet!vkDialog(dialogsFactory, count, offset);
     }
 
-    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {return [];}
+    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
+        auto f = peer in chatFactory;
+        if(!f) {
+            chatFactory[peer] = ClMessage.makeFactory(api, a, peer);
+            f = peer in chatFactory;
+        }
+
+        f.setOffset(0);
+        return f
+                .map!(q => q.getBlock())
+                .joiner
+                .map!(q => q.getLines(wrapwidth))
+                //.retro
+                .joiner
+                .drop(offset)
+                .take(count)
+                .array;
+    }
 
     int messagesCounter() {
         return ps.countermsg;
@@ -963,7 +983,12 @@ class Block(T : ClObject) {
     }
 
     T[] getBlock() {
-        if(!filled) a.orderedAsync(a.O_LOADBLOCK, oid, () {
+        downloadBlock();
+        return block;
+    }
+
+    void downloadBlock(bool force = false) {
+        if(!filled || force) a.orderedAsync(a.O_LOADBLOCK, oid, () {
             ldFuncResult res;
             block = ldfunc(blocksz, blocksz*ordernum, res);
             if(res.success) {
@@ -971,7 +996,6 @@ class Block(T : ClObject) {
                 fdata.serverCount = res.servercount;
             }
         });
-        return block;
     }
 
     bool isFilled() {
@@ -1002,6 +1026,7 @@ class BlockFactory(T : ClObject) {
         Block!T[uint] blockst;
         downloader ldfunc;
         AsyncMan a;
+        bool ffront = true;
     }
 
     factoryData data;
@@ -1013,7 +1038,8 @@ class BlockFactory(T : ClObject) {
         rebuildOffsets();
         ldfunc = ld;
         data = factoryData();
-        oid = woid;
+        //oid = woid;
+        oid = genId();
         a = asyncm;
     }
 
@@ -1040,7 +1066,7 @@ class BlockFactory(T : ClObject) {
         return blockst.keys.map!(q => q in blockst).filter!(q => q.isFilled);
     }
 
-    bool empty() {
+    private uint getlastblk() {
         immutable auto sc = data.serverCount;
         if(sc == -1) return false;
 
@@ -1048,7 +1074,16 @@ class BlockFactory(T : ClObject) {
         auto lastblk = ((sc - lastsz) / blocksz) - 1;
         if(lastsz > 0) ++lastblk;
 
-        return iter > lastblk;
+        return lastblk;
+    }
+
+    private void downloadNext(int n = -1) {
+        uint i = (n == -1) ? iter+1 : n.to!uint;
+        if(i <= getlastblk) getblk(i).downloadBlock();
+    }
+
+    bool empty() {
+        return iter > getlastblk();
     }
 
     void setOffset(uint woffset) {
@@ -1061,17 +1096,36 @@ class BlockFactory(T : ClObject) {
     }
 
     Block!T front() {
+        if(ffront && iter == 0) {
+            downloadNext(iter); //dw first
+            downloadNext(); //next
+            ffront = false;
+        }
         return getblk(iter);
     }
 
     void popFront() {
         ++iter;
+        downloadNext();
     }
 
 }
 
 ldFuncResult apiCheck(VkApi api) {
     return ldFuncResult(api.isTokenValid);
+}
+
+const uint maxuint = 4_294_967_295;
+const uint maxint = 2_147_483_647;
+const uint ridstart = 1;
+
+int genId() {
+    long rnd = uniform(ridstart, maxuint);
+    if(rnd > maxint) {
+        rnd = -(rnd-maxint);
+    }
+    dbm("rid: " ~ rnd.to!string);
+    return rnd.to!int;
 }
 
 // ===== Implement objects =====
@@ -1158,6 +1212,137 @@ class ClAudio : ClObject {
     objt getObject() {
         return obj;
     }
+}
+
+class ClMessage : ClObject {
+
+    alias objt = vkMessage;
+    alias clt = typeof(this);
+
+    static auto getLoadFunc(VkApi api, int peer) {
+        return (uint c, uint o, out ldFuncResult r) {
+            r = apiCheck(api);
+            if(!r.success) return new clt[0];
+            return api.messagesGetHistory(peer, c, o, r.servercount).map!(q => new clt(q)).array;
+        };
+    }
+
+    static auto makeFactory(VkApi api, AsyncMan a, int peer) {
+        return new BlockFactory!clt(defaultBlock, 4, a, getLoadFunc(api, peer));
+    }
+
+    private {
+        objt obj;
+        vkMessageLine[] lines;
+        int lastww;
+    }
+
+    this(objt o) {
+        obj = o;
+    }
+
+    objt getObject() {
+        return obj;
+    }
+
+    ulong getLineCount(int ww) {
+        fillLines(ww);
+        return lines.length;
+    }
+
+    vkMessageLine[] getLines(int ww) {
+        fillLines(ww);
+        return lines;
+    }
+
+    private void fillLines(int ww) {
+        if(lines.length == 0 || lastww != ww) {
+            lastww = ww;
+            lines = convertMessage(obj, ww);
+        }
+    }
+
+    vkMessageLine lspacing = {
+        text: "", isSpacing: true
+    };
+
+    const int wwmultiplier = 3;
+
+    private vkMessageLine[] convertMessage(ref vkMessage inp, int ww) {
+        immutable bool zombie = inp.isZombie || inp.msg_id < 1;
+
+        vkMessageLine[] rt;
+        rt ~= lspacing;
+        bool nofwd = (inp.fwd_depth == -1);
+
+        if(inp.needName) {
+            vkMessageLine name = {
+                text: inp.author_name,
+                time: inp.time_str,
+                isName: true
+            };
+            rt ~= name;
+            rt ~= lspacing;
+        }
+
+        if(inp.body_lines.length != 0) {
+            bool unrfl = inp.unread;
+            wstring[] wrapped;
+            inp.body_lines.map!(q => q.to!wstring.wordwrap(ww)).each!(q => wrapped ~= q);
+            foreach(l; wrapped) {
+                vkMessageLine msg = {
+                    text: l.to!string,
+                    unread: unrfl
+                };
+                rt ~= msg;
+                if(unrfl) unrfl = false;
+            }
+        } else if (nofwd) rt ~= lspacing;
+
+        if(!nofwd) {
+            rt ~= lspacing ~ renderFwd(inp.fwd, 0, ww);
+        }
+
+        return rt;
+    }
+
+    private vkMessageLine[] renderFwd(vkFwdMessage[] inp, int depth, int ww) {
+        ++depth;
+        auto lcww = ww - (depth * wwmultiplier);
+        if(lcww <= 0) lcww = 1;
+
+        vkMessageLine[] rt;
+        foreach(fm; inp) {
+            vkMessageLine name = {
+                text: fm.author_name,
+                time: fm.time_str,
+                isFwd: true, isName: true, fwdDepth: depth
+            };
+            rt ~= name;
+            wstring[] wrapped;
+            fm.body_lines.map!(q => q.to!wstring.wordwrap(lcww)).each!(q => wrapped ~= q);
+            foreach(l; wrapped) {
+                vkMessageLine msg = {
+                    text: l.to!string,
+                    isFwd: true, fwdDepth: depth
+                };
+                rt ~= msg;
+            }
+
+            vkMessageLine fwdspc;
+            fwdspc.isFwd = true; fwdspc.isSpacing = true;
+            fwdspc.fwdDepth = depth;
+            rt ~= fwdspc;
+
+            if(fm.fwd.length != 0) {
+                rt ~= renderFwd(fm.fwd, depth, ww);
+                rt ~= fwdspc;
+            }
+
+        }
+        return rt;
+    }
+
 }
 
 // ===== Exceptions =====
