@@ -634,6 +634,7 @@ void selectEvent() {
     win.menuActive = win.active;
     win.active = 0;
     win.section = Sections.right;
+    if (win.mbody.length == 0) backEvent;
   } else {
     win.lastScrollOffset = win.scrollOffset;
     win.lastScrollActive = win.active;
