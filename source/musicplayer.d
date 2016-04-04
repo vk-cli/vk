@@ -116,8 +116,8 @@ class MusicPlayer : Thread {
       if (output.length != lastOutputLn) {
         lastOutputLn = output.length;
         if (musicState) {
-          //setPlaytime;
-          isTrackOver;
+          setPlaytime;
+          //isTrackOver;
         }
       }
       Thread.sleep(listenWait);
