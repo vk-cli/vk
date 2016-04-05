@@ -632,7 +632,8 @@ void selectEvent() {
   if (win.section == Sections.left) {
     if (win.menu[win.active].callback) win.menu[win.active].callback(win.menu[win.active]);
     win.menuActive = win.active;
-    win.active = 0;
+    if (win.activeBuffer == Buffers.music) win.active = mplayer.trackNum;
+    else win.active = 0;
     win.section = Sections.right;
   } else {
     win.lastScrollOffset = win.scrollOffset;
@@ -785,9 +786,11 @@ ListElement[] setCurrentTrack() {
     win.active += 5;
     win.isMusicPlaying = true;
   } else {
-    if (mplayer.sameTrack(win.active-5)) mplayer.pause;
-    else mplayer.play(win.active-5);
+    int real_active = win.active-5;
+    if (mplayer.sameTrack(real_active)) mplayer.pause;
+    else mplayer.play(real_active);
   }
+  mplayer.trackNum = win.active;
   return new ListElement[0];
 }
 
