@@ -664,7 +664,7 @@ void backEvent() {
       win.mbody = new ListElement[0];
       win.buffer = new ListElement[0];
     }
-  }
+  } else resizeterm(30, 130);
 }
 
 void exit(ref ListElement le) {
