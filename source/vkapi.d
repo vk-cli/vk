@@ -921,14 +921,16 @@ class VkMan {
         f.setOffset(0);
         if(!f.isReady) return [];
 
+        dbm("takeback " ~ ror.joinerBidirectional.takeBackArray(8).to!string);
+
         return (*f)
                 .map!(q => q.getBlock())
-                .joinerBidirectional
-                .retro
+                .joiner
+                //.retro
                 .map!(q => q.getLines(wrapwidth))
-                .joinerBidirectional
-                .dropBack(offset)
-                .takeBack(count)
+                .joiner
+                .drop(offset)
+                .take(count)
                 .array;
     }
 

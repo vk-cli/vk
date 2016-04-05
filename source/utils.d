@@ -1,6 +1,8 @@
 module utils;
 
-import std.stdio, std.array, std.range, std.string, std.file, core.thread, core.sync.mutex, core.exception, std.datetime, std.conv;
+import std.stdio, std.array, std.range, std.string, std.file;
+import core.thread, core.sync.mutex, core.exception;
+import std.datetime, std.conv, std.algorithm;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -193,62 +195,21 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
     return Result(r);
 }
 
-class TakeBackResult(R)
-    if(isBidirectionalRange!R)
-{
-    R _range;
-    size_t _hm;
-
-    private {
-        int
-            iter;
-    }
-
-    this(R range, size_t hm) {
-        _range = range;
-        _hm = hm;
-    }
-
-    @property bool empty() {
-        return _range.empty || iter > _hm;
-    }
-
-    void popBack() {
-        _range.popBack();
+auto takeBackArray(R)(R range, size_t hm) {
+    ElementType!R[] outr;
+    size_t iter;
+    while(iter < hm && !range.empty) {
+        outr ~= range.back();
+        range.popBack();
         ++iter;
     }
-
-    void popFront() {
-        _range.popFront();
-        ++iter;
-    }
-
-    @property auto back() {
-        assert(!empty);
-        return _range.back;
-    }
-
-    @property auto front() {
-        assert(!empty);
-        return _range.front;
-    }
-
-    auto moveBack() {
-        return back();
-    }
-
-    auto save() {
-        return this;
-    }
-
-}
-
-TakeBackResult!R takeBack(R)(R range, size_t hm) {
-    return new TakeBackResult!R(range, hm);
+    reverse(outr);
+    return outr;
 }
 
 auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
-pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
+//pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
 pragma(msg, "isBidirectional joinerBidirectional "
                     ~ isBidirectionalRange!((joinerBidirectional(ror)).ResultType).stringof);
+
 
