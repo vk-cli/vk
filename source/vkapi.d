@@ -921,17 +921,14 @@ class VkMan {
         f.setOffset(0);
         if(!f.isReady) return [];
 
-        dbm("takeback " ~ ror.joinerBidirectional.takeBackArray(8).to!string);
-
         return (*f)
                 .map!(q => q.getBlock())
-                .joiner
-                //.retro
+                .joinerBidirectional
+                .retro
                 .map!(q => q.getLines(wrapwidth))
-                .joiner
-                .drop(offset)
-                .take(count)
-                .array;
+                .joinerBidirectional
+                .dropBack(offset)
+                .takeBackArray(count);
     }
 
     int messagesCounter() {
