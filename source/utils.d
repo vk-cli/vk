@@ -173,7 +173,6 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
         @property auto ref front()
         {
             if(!initialized) {
-                //mixin(prepare);
                 prepareFun();
                 initialized = true;
             }
@@ -189,14 +188,12 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
                 assert(!_items.empty);
                 _items.popFront();
                 mixin(prepare);
-                //prepareFun();
             }
         }
 
         @property auto ref back()
         {
             if(!initialized) {
-                //mixin(prepareBack);
                 prepareBackFun();
                 initialized = true;
             }
@@ -212,7 +209,6 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
                 assert(!_items.empty);
                 _items.popBack();
                 mixin(prepareBack);
-                //prepareBackFun();
             }
         }
 
