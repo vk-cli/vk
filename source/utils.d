@@ -1,6 +1,6 @@
 module utils;
 
-import std.stdio, std.array, std.string, std.file, core.thread, core.sync.mutex, core.exception, std.datetime, std.conv;
+import std.stdio, std.array, std.range, std.string, std.file, core.thread, core.sync.mutex, core.exception, std.datetime, std.conv;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -82,4 +82,173 @@ private S[] cropstr(S)(S s, size_t mln) {
     if(s.length > mln) return [ s[0..mln], s[mln..$] ];
     else return [s];
 }
+
+auto joinerBidirectional(RoR)(RoR r)
+if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
+{
+    static struct Result
+    {
+    alias ResultType = typeof(this);
+    private:
+        RoR _items;
+        ElementType!RoR _current;
+        enum prepare =
+        q{
+            // Skip over empty subranges.
+            if (_items.empty) return;
+            /*while (_items.front.empty)
+            {
+                _items.popFront();
+                if (_items.empty) return;
+            }*/
+            // We cannot export .save method unless we ensure subranges are not
+            // consumed when a .save'd copy of ourselves is iterated over. So
+            // we need to .save each subrange we traverse.
+            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
+                _current = _items.front.save;
+            else
+                _current = _items.front;
+        };
+    public:
+        this(RoR r)
+        {
+            _items = r;
+            //mixin(prepare); // _current should be initialized in place
+
+            // Skip over empty subranges.
+            /*while (!_items.empty && _items.front.empty)
+                _items.popFront();*/
+
+            if (_items.empty)
+                _current = _current.init;   // set invalid state
+            else
+            {
+                // We cannot export .save method unless we ensure subranges are not
+                // consumed when a .save'd copy of ourselves is iterated over. So
+                // we need to .save each subrange we traverse.
+                static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
+                    _current = _items.front.save;
+                else
+                    _current = _items.front;
+            }
+        }
+        static if (isInfinite!RoR)
+        {
+            enum bool empty = false;
+        }
+        else
+        {
+            @property auto empty()
+            {
+                return _items.empty;
+            }
+        }
+
+        @property auto ref front()
+        {
+            assert(!empty);
+            return _current.front;
+        }
+        void popFront()
+        {
+            assert(!_current.empty);
+            _current.popFront();
+            if (_current.empty)
+            {
+                assert(!_items.empty);
+                _items.popFront();
+                mixin(prepare);
+            }
+        }
+
+        @property auto ref back()
+        {
+            assert(!empty);
+            return _current.back;
+        }
+        void popBack()
+        {
+            assert(!_current.empty);
+            _current.popBack();
+            if(_current.empty)
+            {
+                assert(!_items.empty);
+                _items.popBack();
+                mixin(prepare);
+            }
+        }
+
+
+        static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
+        {
+            @property auto save()
+            {
+                Result copy = this;
+                copy._items = _items.save;
+                copy._current = _current.save;
+                return copy;
+            }
+        }
+    }
+    return Result(r);
+}
+
+class TakeBackResult(R)
+    if(isBidirectionalRange!R)
+{
+    R _range;
+    size_t _hm;
+
+    private {
+        int
+            iter;
+    }
+
+    this(R range, size_t hm) {
+        _range = range;
+        _hm = hm;
+    }
+
+    @property bool empty() {
+        return _range.empty || iter > _hm;
+    }
+
+    void popBack() {
+        _range.popBack();
+        ++iter;
+    }
+
+    void popFront() {
+        _range.popFront();
+        ++iter;
+    }
+
+    @property auto back() {
+        assert(!empty);
+        return _range.back;
+    }
+
+    @property auto front() {
+        assert(!empty);
+        return _range.front;
+    }
+
+    auto moveBack() {
+        return back();
+    }
+
+    auto save() {
+        return this;
+    }
+
+}
+
+TakeBackResult!R takeBack(R)(R range, size_t hm) {
+    return new TakeBackResult!R(range, hm);
+}
+
+auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
+pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
+pragma(msg, "isBidirectional joinerBidirectional "
+                    ~ isBidirectionalRange!((joinerBidirectional(ror)).ResultType).stringof);
 

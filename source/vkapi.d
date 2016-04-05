@@ -919,14 +919,16 @@ class VkMan {
         }
 
         f.setOffset(0);
-        return f
+        if(!f.isReady) return [];
+
+        return (*f)
                 .map!(q => q.getBlock())
-                .joiner
+                .joinerBidirectional
+                .retro
                 .map!(q => q.getLines(wrapwidth))
-                //.retro
-                .joiner
-                .drop(offset)
-                .take(count)
+                .joinerBidirectional
+                .dropBack(offset)
+                .takeBack(count)
                 .array;
     }
 
@@ -940,6 +942,7 @@ class VkMan {
 
     R[] bufferedGet(R, T)(T factory, int count, int offset) {
         factory.setOffset(offset);
+        if(!factory.isReady) return [];
         return factory
                 .map!(q => q.getBlock())
                 .joiner
@@ -1017,12 +1020,15 @@ class BlockFactory(T : ClObject) {
 
     private {
         uint
+            clastblk,
             offset,
             start,
-            iter,
             reloffset,
             blocksz;
-        int oid;
+        int
+            oid,
+            iter,
+            backiter;
         Block!T[uint] blockst;
         downloader ldfunc;
         AsyncMan a;
@@ -1047,6 +1053,8 @@ class BlockFactory(T : ClObject) {
         reloffset = offset % blocksz;
         start = (offset-reloffset) / blocksz;
         iter = start;
+        clastblk = getlastblk();
+        backiter = clastblk;
     }
 
     private Block!T getblk(uint i) {
@@ -1066,9 +1074,21 @@ class BlockFactory(T : ClObject) {
         return blockst.keys.map!(q => q in blockst).filter!(q => q.isFilled);
     }
 
-    private uint getlastblk() {
-        immutable auto sc = data.serverCount;
-        if(sc == -1) return false;
+    bool isReady() {
+        auto zeroblk = getblk(0);
+        if(!zeroblk.isFilled || data.serverCount == -1) {
+            zeroblk.downloadBlock();
+            return false;
+        }
+        if(backiter < 0) {
+            return false;
+        }
+        return true;
+    }
+
+    private int getlastblk() {
+        auto sc = data.serverCount;
+        if(sc == -1) return -1;
 
         immutable auto lastsz = sc % blocksz;
         auto lastblk = ((sc - lastsz) / blocksz) - 1;
@@ -1077,13 +1097,12 @@ class BlockFactory(T : ClObject) {
         return lastblk;
     }
 
-    private void downloadNext(int n = -1) {
-        uint i = (n == -1) ? iter+1 : n.to!uint;
-        if(i <= getlastblk) getblk(i).downloadBlock();
+    private void downloadBlock(int i) {
+        if(i <= clastblk && i >= 0) getblk(i).downloadBlock();
     }
 
     bool empty() {
-        return iter > getlastblk();
+        return iter > backiter;
     }
 
     void setOffset(uint woffset) {
@@ -1096,17 +1115,37 @@ class BlockFactory(T : ClObject) {
     }
 
     Block!T front() {
-        if(ffront && iter == 0) {
-            downloadNext(iter); //dw first
-            downloadNext(); //next
-            ffront = false;
+        auto rtblock = getblk(iter);
+        if(iter == 0) {
+            downloadBlock(1);
         }
-        return getblk(iter);
+        return rtblock;
     }
 
     void popFront() {
         ++iter;
-        downloadNext();
+        downloadBlock(iter + 1);
+    }
+
+    Block!T back() {
+        auto rtblock = getblk(backiter);
+        if(backiter == clastblk) {
+            downloadBlock(clastblk - 1);
+        }
+        return rtblock;
+    }
+
+    void popBack() {
+        --backiter;
+        downloadBlock(backiter-1);
+    }
+
+    Block!T moveBack() {
+        return back();
+    }
+
+    typeof(this) save() {
+        return this;
     }
 
 }
