@@ -618,12 +618,14 @@ void downEvent() {
 void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
-    if (win.activeBuffer != Buffers.none && activeBufferEventsAllowed) {
-      if (win.active != 0) {
+    if (win.activeBuffer != Buffers.none) {
+      if (win.active != 0 && activeBufferEventsAllowed) {
         if (win.scrollOffset == win.active || win.activeBuffer == Buffers.music && win.isMusicPlaying && win.active-win.scrollOffset == 5) win.scrollOffset--;
         if (win.scrollOffset < 0) win.scrollOffset = 0;
         win.active--;
       }
+    } else {
+      win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
     }
   }
 }
