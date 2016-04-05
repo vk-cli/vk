@@ -92,47 +92,59 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
     {
     alias ResultType = typeof(this);
     private:
+        bool initialized;
         RoR _items;
         ElementType!RoR _current;
         enum prepare =
         q{
-            // Skip over empty subranges.
             if (_items.empty) return;
+            // Skip over empty subranges.
             /*while (_items.front.empty)
             {
                 _items.popFront();
                 if (_items.empty) return;
             }*/
-            // We cannot export .save method unless we ensure subranges are not
-            // consumed when a .save'd copy of ourselves is iterated over. So
-            // we need to .save each subrange we traverse.
             static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
                 _current = _items.front.save;
             else
                 _current = _items.front;
         };
+        enum prepareBack =
+        q{
+            if (_items.empty) return;
+            // Skip over empty subranges.
+            /*while (_items.front.empty)
+            {
+                _items.popFront();
+                if (_items.empty) return;
+            }*/
+            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
+                _current = _items.back.save;
+            else
+                _current = _items.back;
+        };
+
+        void prepareFun() {
+            if (_items.empty) return;
+            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
+                _current = _items.front.save;
+            else
+                _current = _items.front;
+        }
+
+        void prepareBackFun() {
+            if (_items.empty) return;
+            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
+                _current = _items.back.save;
+            else
+                _current = _items.back.front;
+        }
+
     public:
         this(RoR r)
         {
             _items = r;
-            //mixin(prepare); // _current should be initialized in place
-
-            // Skip over empty subranges.
-            /*while (!_items.empty && _items.front.empty)
-                _items.popFront();*/
-
-            if (_items.empty)
-                _current = _current.init;   // set invalid state
-            else
-            {
-                // We cannot export .save method unless we ensure subranges are not
-                // consumed when a .save'd copy of ourselves is iterated over. So
-                // we need to .save each subrange we traverse.
-                static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
-                    _current = _items.front.save;
-                else
-                    _current = _items.front;
-            }
+            _current = _current.init;
         }
         static if (isInfinite!RoR)
         {
@@ -148,6 +160,11 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
 
         @property auto ref front()
         {
+            if(!initialized) {
+                //mixin(prepare);
+                prepareFun();
+                initialized = true;
+            }
             assert(!empty);
             return _current.front;
         }
@@ -159,12 +176,18 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
             {
                 assert(!_items.empty);
                 _items.popFront();
-                mixin(prepare);
+                //mixin(prepare);
+                prepareFun();
             }
         }
 
         @property auto ref back()
         {
+            if(!initialized) {
+                //mixin(prepareBack);
+                prepareBackFun();
+                initialized = true;
+            }
             assert(!empty);
             return _current.back;
         }
@@ -176,7 +199,8 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
             {
                 assert(!_items.empty);
                 _items.popBack();
-                mixin(prepare);
+                //mixin(prepareBack);
+                prepareBackFun();
             }
         }
 
