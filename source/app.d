@@ -478,7 +478,7 @@ int activeBufferLen() {
     case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
     case Buffers.friends: return api.getServerCount(blockType.friends);
     case Buffers.music: return api.getServerCount(blockType.music);
-    case Buffers.chat: return api.getChatLineCount(win.chatID);
+    case Buffers.chat: return api.getChatLineCount(win.chatID, COLS-12);
     default: return 0;
   }
 }

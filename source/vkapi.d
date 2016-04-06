@@ -884,13 +884,15 @@ class VkMan {
     }
 
     int getChatServerCount(int peer) {
-        //return pb.chatBuffer[peer].data.serverCount;
-        return -1;
+        auto c = peer in chatFactory;
+        if(c) return c.data.serverCount;
+        else return -1;
     }
 
-    int getChatLineCount(int peer) {
-        //return pb.chatBuffer[peer].data.linesCount;
-        return -1;
+    int getChatLineCount(int peer, int ww) {
+        auto c = peer in chatFactory;
+        if(c) return (*c).getServerLineCount(ww);
+        else return -1;
     }
 
     string getLastLongpollMessage() {
@@ -1145,6 +1147,26 @@ class BlockFactory(T : ClObject) {
 
     typeof(this) save() {
         return this;
+    }
+
+    // ===== special magic =====
+
+    //pragma(msg, "T: " ~ T.stringof ~ ", equals ClMessage: " ~ is(T == ClMessage).stringof);
+
+    static if (is(T == ClMessage)) {
+        private int serverLineCount = -1;
+
+        int getServerLineCount(int ww) {
+            if(serverLineCount == -1 && objectCount == data.serverCount) {
+                serverLineCount = blockst.values
+                                    .map!(q => q.getBlock())
+                                    .joiner
+                                    .map!(q => q.getLineCount(ww))
+                                    .sum.to!int;
+            }
+            return serverLineCount;
+        }
+
     }
 
 }
