@@ -823,9 +823,9 @@ class VkMan {
         api.addMeNC();
         me = &(api.me);
 
-        dialogsFactory = ClDialog.makeFactory(api, a);
-        friendsFactory = ClFriend.makeFactory(api, a);
-        musicFactory = ClAudio.makeFactory(api, a);
+        dialogsFactory = ClDialog.makeFactory(this, api, a);
+        friendsFactory = ClFriend.makeFactory(this, api, a);
+        musicFactory = ClAudio.makeFactory(this, api, a);
 
         dialogsFactory.data.serverCount = api.initdata.sc_dialogs;
         friendsFactory.data.serverCount = api.initdata.sc_friends;
@@ -901,6 +901,15 @@ class VkMan {
         return last;
     }
 
+    void notifyBlockDownloadDone() {
+        toggleUpdate();
+    }
+
+    void notifyChatBlockDownloadDone(int peer) {
+        resolveNeedName(peer);
+        toggleUpdate();
+    }
+
     vkFriend[] getBufferedFriends(int count, int offset) {
         return bufferedGet!vkFriend(friendsFactory, count, offset);
     }
@@ -916,7 +925,7 @@ class VkMan {
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
         auto f = peer in chatFactory;
         if(!f) {
-            chatFactory[peer] = ClMessage.makeFactory(api, a, peer);
+            chatFactory[peer] = ClMessage.makeFactory(this, api, a, peer);
             f = peer in chatFactory;
         }
 
@@ -941,6 +950,17 @@ class VkMan {
 
     void setTypingStatus(int peer) {}
 
+    private void resolveNeedName(int peer) {
+        int lastfid;
+        long lastut;
+        foreach(ref m; chatFactory[peer].getLoadedBlocks.map!(q => q.getBlock()).joiner.map!(q => q.getObject())) {
+            bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
+            m.needName = nm;
+            lastfid = m.author_id;
+            lastut = m.utime;
+        }
+    }
+
     R[] bufferedGet(R, T)(T factory, int count, int offset) {
         factory.setOffset(offset);
         if(!factory.isReady) return [];
@@ -962,6 +982,7 @@ abstract class ClObject {}
 class Block(T : ClObject) {
 
     alias downloader = T[] delegate(uint, uint, out ldFuncResult);
+    alias loadnotify = void delegate();
     alias objectType = T;
 
     private {
@@ -972,14 +993,16 @@ class Block(T : ClObject) {
         bool filled;
         T[] block;
         downloader ldfunc;
+        loadnotify ldnfunc;
         factoryData* fdata;
         AsyncMan a;
     }
 
-    this(uint ord, uint blocksize, downloader ld, AsyncMan asyncm, factoryData* fdt, int woid, bool filledblk = false) {
+    this(uint ord, uint blocksize, downloader ld, loadnotify ldn, AsyncMan asyncm, factoryData* fdt, int woid, bool filledblk = false) {
         ordernum = ord;
         blocksz = blocksize;
         ldfunc = ld;
+        ldnfunc = ldn;
         fdata = fdt;
         filled = filledblk;
         oid = woid;
@@ -998,6 +1021,7 @@ class Block(T : ClObject) {
             if(res.success) {
                 filled = true;
                 fdata.serverCount = res.servercount;
+                ldnfunc();
             }
         });
     }
@@ -1018,6 +1042,7 @@ class Block(T : ClObject) {
 class BlockFactory(T : ClObject) {
 
     alias downloader = T[] delegate(uint, uint, out ldFuncResult);
+    alias loadnotify = void delegate();
 
     private {
         uint
@@ -1032,18 +1057,20 @@ class BlockFactory(T : ClObject) {
             backiter;
         Block!T[uint] blockst;
         downloader ldfunc;
+        loadnotify ldnfunc;
         AsyncMan a;
         bool ffront = true;
     }
 
     factoryData data;
 
-    this(uint blocksize, int woid, AsyncMan asyncm, downloader ld) {
+    this(uint blocksize, int woid, AsyncMan asyncm, downloader ld, loadnotify ldn) {
         assert(blocksize != 0);
         blocksz = blocksize;
         offset = 0;
         rebuildOffsets();
         ldfunc = ld;
+        ldnfunc = ldn;
         data = factoryData();
         //oid = woid;
         oid = genId();
@@ -1062,7 +1089,7 @@ class BlockFactory(T : ClObject) {
         auto c = i in blockst;
         if(c) return *c;
         else {
-            blockst[i] = new Block!T(i, blocksz, ldfunc, a, &data, oid);
+            blockst[i] = new Block!T(i, blocksz, ldfunc, ldnfunc, a, &data, oid);
             return blockst[i];
         }
     }
@@ -1203,8 +1230,14 @@ class ClDialog : ClObject {
         };
     }
 
-    static auto makeFactory(VkApi api, AsyncMan a) {
-        return new BlockFactory!clt(defaultBlock, 1, a, getLoadFunc(api));
+    static auto getLoadnotifyFunc(VkMan man) {
+        return () {
+            man.notifyBlockDownloadDone();
+        };
+    }
+
+    static auto makeFactory(VkMan man, VkApi api, AsyncMan a) {
+        return new BlockFactory!clt(defaultBlock, 1, a, getLoadFunc(api), getLoadnotifyFunc(man));
     }
 
     private objt obj;
@@ -1231,8 +1264,14 @@ class ClFriend : ClObject {
         };
     }
 
-    static auto makeFactory(VkApi api, AsyncMan a) {
-        return new BlockFactory!clt(defaultBlock, 2, a, getLoadFunc(api));
+    static auto getLoadnotifyFunc(VkMan man) {
+        return () {
+            man.notifyBlockDownloadDone();
+        };
+    }
+
+    static auto makeFactory(VkMan man, VkApi api, AsyncMan a) {
+        return new BlockFactory!clt(defaultBlock, 2, a, getLoadFunc(api), getLoadnotifyFunc(man));
     }
 
     private objt obj;
@@ -1259,8 +1298,14 @@ class ClAudio : ClObject {
         };
     }
 
-    static auto makeFactory(VkApi api, AsyncMan a) {
-        return new BlockFactory!clt(defaultBlock, 3, a, getLoadFunc(api));
+    static auto getLoadnotifyFunc(VkMan man) {
+        return () {
+            man.notifyBlockDownloadDone();
+        };
+    }
+
+    static auto makeFactory(VkMan man, VkApi api, AsyncMan a) {
+        return new BlockFactory!clt(defaultBlock, 3, a, getLoadFunc(api), getLoadnotifyFunc(man));
     }
 
     private objt obj;
@@ -1287,8 +1332,14 @@ class ClMessage : ClObject {
         };
     }
 
-    static auto makeFactory(VkApi api, AsyncMan a, int peer) {
-        return new BlockFactory!clt(defaultBlock, 4, a, getLoadFunc(api, peer));
+    static auto getLoadnotifyFunc(VkMan man, int peer) {
+        return () {
+            man.notifyChatBlockDownloadDone(peer);
+        };
+    }
+
+    static auto makeFactory(VkMan man, VkApi api, AsyncMan a, int peer) {
+        return new BlockFactory!clt(defaultBlock, 4, a, getLoadFunc(api, peer), getLoadnotifyFunc(man, peer));
     }
 
     private {

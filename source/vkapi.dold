@@ -826,7 +826,7 @@ class VKapi {
     }
 
     vkMessage[] getBufferedChat(int count, int offset, int peer) {
-        const int block = chatBlock;
+        const int block = chatBlock;F
         const int upd = chatUpd;
         if(offset < 0) offset = 0;
 
