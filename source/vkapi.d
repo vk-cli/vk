@@ -905,11 +905,6 @@ class VkMan {
         toggleUpdate();
     }
 
-    void notifyChatBlockDownloadDone(int peer) {
-        resolveNeedName(peer);
-        toggleUpdate();
-    }
-
     vkFriend[] getBufferedFriends(int count, int offset) {
         return bufferedGet!vkFriend(friendsFactory, count, offset);
     }
@@ -949,17 +944,6 @@ class VkMan {
     void asyncSendMessage(int peer, string msg) {}
 
     void setTypingStatus(int peer) {}
-
-    private void resolveNeedName(int peer) {
-        int lastfid;
-        long lastut;
-        foreach(ref m; chatFactory[peer].getLoadedBlocks.map!(q => q.getBlock()).joiner.map!(q => q.getObject())) {
-            bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
-            m.needName = nm;
-            lastfid = m.author_id;
-            lastut = m.utime;
-        }
-    }
 
     R[] bufferedGet(R, T)(T factory, int count, int offset) {
         factory.setOffset(offset);
@@ -1099,7 +1083,7 @@ class BlockFactory(T : ClObject) {
     }
 
     auto getLoadedBlocks() {
-        return blockst.keys.map!(q => q in blockst).filter!(q => q.isFilled);
+        return blockst.keys.map!(q => q in blockst).filterBidirectional!(q => q.isFilled);
     }
 
     bool isReady() {
@@ -1324,22 +1308,36 @@ class ClMessage : ClObject {
     alias objt = vkMessage;
     alias clt = typeof(this);
 
+    static private void resolveNeedNameLocal(ref vkMessage[] mw) {
+        int lastfid;
+        long lastut;
+        foreach(ref m; mw) {
+            bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
+            //m.author_name = "huj";
+            m.needName = nm;
+            lastfid = m.author_id;
+            lastut = m.utime;
+        }
+    }
+
     static auto getLoadFunc(VkApi api, int peer) {
         return (uint c, uint o, out ldFuncResult r) {
             r = apiCheck(api);
             if(!r.success) return new clt[0];
-            return api.messagesGetHistory(peer, c, o, r.servercount).map!(q => new clt(q)).array;
+            auto h = api.messagesGetHistory(peer, c, o, r.servercount);
+            resolveNeedNameLocal(h);
+            return h.map!(q => new clt(q)).array;
         };
     }
 
-    static auto getLoadnotifyFunc(VkMan man, int peer) {
+    static auto getLoadnotifyFunc(VkMan man) {
         return () {
-            man.notifyChatBlockDownloadDone(peer);
+            man.notifyBlockDownloadDone();
         };
     }
 
     static auto makeFactory(VkMan man, VkApi api, AsyncMan a, int peer) {
-        return new BlockFactory!clt(defaultBlock, 4, a, getLoadFunc(api, peer), getLoadnotifyFunc(man, peer));
+        return new BlockFactory!clt(defaultBlock, 4, a, getLoadFunc(api, peer), getLoadnotifyFunc(man));
     }
 
     private {
