@@ -85,146 +85,93 @@ private S[] cropstr(S)(S s, size_t mln) {
     else return [s];
 }
 
-auto joinerBidirectional(RoR)(RoR r)
+class JoinerBidirectionalResult(RoR)
 if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
 {
-    static struct Result
-    {
-    alias ResultType = typeof(this);
-    private:
-        bool initialized;
-        RoR _items;
-        ElementType!RoR _current;
-        enum prepare =
-        q{
-            if (_items.empty) return;
-            // Skip over empty subranges.
-            while (_items.front.empty)
-            {
-                _items.popFront();
-                if (_items.empty) return;
-            }
-            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
-                _current = _items.front.save;
-            else
-                _current = _items.front;
-        };
-        enum prepareBack =
-        q{
-            if (_items.empty) return;
-            // Skip over empty subranges.
-            while (_items.back.empty)
-            {
-                _items.popBack();
-                if (_items.empty) return;
-            }
-            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
-                _current = _items.back.save;
-            else
-                _current = _items.back;
-        };
 
-        void prepareFun() {
-            if (_items.empty) return;
-            // Skip over empty subranges.
-            while (_items.front.empty)
-            {
-                _items.popFront();
-                if (_items.empty) return;
-            }
-            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
-                _current = _items.front.save;
-            else
-                _current = _items.front;
-        }
+    alias rortype = ElementType!RoR;
 
-        void prepareBackFun() {
-            if (_items.empty) return;
-            // Skip over empty subranges.
-            while (_items.back.empty)
-            {
-                _items.popBack();
-                if (_items.empty) return;
-            }
-            static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
-                _current = _items.back.save;
-            else
-                _current = _items.back.front;
-        }
+    private {
+        RoR range;
+        rortype
+            rfront = null,
+            rback = null;
+}
 
-    public:
-        this(RoR r)
-        {
-            _items = r;
-            _current = _current.init;
-        }
-        static if (isInfinite!RoR)
-        {
-            enum bool empty = false;
-        }
-        else
-        {
-            @property auto empty()
-            {
-                return _items.empty;
-            }
-        }
+    this(RoR r) {
+        range = r;
+    }
 
-        @property auto ref front()
-        {
-            if(!initialized) {
-                prepareFun();
-                initialized = true;
-            }
-            assert(!empty);
-            return _current.front;
+    private void prepareFront() {
+        if(range.empty) return;
+        while(range.front.empty) {
+            range.popFront();
+            if(range.empty) return;
         }
-        void popFront()
-        {
-            assert(!_current.empty);
-            _current.popFront();
-            if (_current.empty)
-            {
-                assert(!_items.empty);
-                _items.popFront();
-                mixin(prepare);
-            }
-        }
+        rfront = range.front;
+    }
 
-        @property auto ref back()
-        {
-            if(!initialized) {
-                prepareBackFun();
-                initialized = true;
-            }
-            assert(!empty);
-            return _current.back;
+    private void prepareBack() {
+        if(range.empty) return;
+        while(range.back.empty) {
+            range.popBack();
+            if(range.empty) return;
         }
-        void popBack()
-        {
-            assert(!_current.empty);
-            _current.popBack();
-            if(_current.empty)
-            {
-                assert(!_items.empty);
-                _items.popBack();
-                mixin(prepareBack);
-            }
-        }
+        rback = range.back;
+    }
 
+    @property bool empty() {
+        return range.empty;
+    }
 
-        static if (isForwardRange!RoR && isForwardRange!(ElementType!RoR))
-        {
-            @property auto save()
-            {
-                Result copy = this;
-                copy._items = _items.save;
-                copy._current = _current.save;
-                return copy;
+    @property auto front() {
+        if(rfront is null) prepareFront();
+        assert(!empty);
+        assert(!rfront.empty);
+        return rfront.front;
+    }
+
+    @property auto back() {
+        if(rback is null) prepareBack();
+        assert(!empty);
+        assert(!rback.empty);
+        return rback.back;
+    }
+
+    void popFront() {
+        if(rfront is null) prepareFront();
+        else {
+            rfront.popFront();
+            if(rfront.empty) {
+                range.popFront();
+                prepareFront();
             }
         }
     }
-    return Result(r);
+
+    void popBack() {
+        if(rback is null) prepareBack();
+        else {
+            rback.popBack();
+            if(rback.empty) {
+                range.popBack();
+                prepareBack();
+            }
+        }
+    }
+
+    auto moveBack() {
+        return back;
+    }
+
+    auto save() {
+        return this;
+    }
+
+}
+
+auto joinerBidirectional(RoR)(RoR range) {
+    return new JoinerBidirectionalResult!RoR(range);
 }
 
 auto takeBackArray(R)(R range, size_t hm) {
@@ -240,8 +187,9 @@ auto takeBackArray(R)(R range, size_t hm) {
 }
 
 auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
+alias rortp = typeof(ror);
 //pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
 pragma(msg, "isBidirectional joinerBidirectional "
-                    ~ isBidirectionalRange!((joinerBidirectional(ror)).ResultType).stringof);
+                    ~ isBidirectionalRange!(JoinerBidirectionalResult!rortp).stringof);
 
 
