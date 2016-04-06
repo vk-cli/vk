@@ -664,7 +664,14 @@ void backEvent() {
       win.mbody = new ListElement[0];
       win.buffer = new ListElement[0];
     }
-  } else resizeterm(30, 130);
+  } else run(["resize", "-s", "130", "30"]);
+}
+
+wstring[] run(string[] args) {
+  wstring[] output;
+  auto pipe = pipeProcess(args, Redirect.stdout);
+  foreach(line; pipe.stdout.byLine) output ~= to!wstring(line.idup);
+  return output;
 }
 
 void exit(ref ListElement le) {
