@@ -533,8 +533,10 @@ void menuSelect(int position) {
   if (win.activeBuffer == Buffers.music) {
     win.active = mplayer.trackNum;
     win.scrollOffset = mplayer.offset;
+  } else {
+    win.active = 0;
+    win.scrollOffset = 0;
   }
-  else win.active = 0;
   win.section = Sections.right;
 }
 
