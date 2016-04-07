@@ -634,7 +634,10 @@ void selectEvent() {
   if (win.section == Sections.left) {
     if (win.menu[win.active].callback) win.menu[win.active].callback(win.menu[win.active]);
     win.menuActive = win.active;
-    if (win.activeBuffer == Buffers.music) win.active = mplayer.trackNum;
+    if (win.activeBuffer == Buffers.music) {
+      win.active = mplayer.trackNum;
+      win.scrollOffset = mplayer.offset;
+    }
     else win.active = 0;
     win.section = Sections.right;
   } else {
@@ -664,7 +667,7 @@ void backEvent() {
       win.mbody = new ListElement[0];
       win.buffer = new ListElement[0];
     }
-  } else run(["resize", "-s", "130", "30"]);
+  } // else run(["resize", "-s", "130", "30"]);
 }
 
 wstring[] run(string[] args) {
@@ -799,6 +802,7 @@ ListElement[] setCurrentTrack() {
     if (mplayer.sameTrack(real_active)) mplayer.pause;
     else mplayer.play(real_active);
   }
+  mplayer.offset = win.scrollOffset;
   mplayer.trackNum = win.active;
   return new ListElement[0];
 }

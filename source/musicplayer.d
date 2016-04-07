@@ -24,7 +24,7 @@ class MusicPlayer : Thread {
   string
     stockProgress = "=".replicate(50),
     realProgress  = "|" ~ "=".replicate(49);
-  int position, trackNum;
+  int position, trackNum, offset;
 
   __gshared string[] output;
   Thread listen;
