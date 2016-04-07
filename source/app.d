@@ -759,6 +759,8 @@ ListElement[] GenerateHelp() {
     ListElement("help_jump".getLocal),
     ListElement("help_homend".getLocal),
     ListElement("help_exit".getLocal),
+    ListElement("help_refr".getLocal),
+    ListElement("help_123".getLocal),
   ];
 }
 

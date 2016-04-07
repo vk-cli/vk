@@ -47,6 +47,8 @@ void localize() {
   local["help_jump"]   = lang("Page Up/Down                   ->   Scroll up/down for a half of screen", "Page Up/Down                  ->   Прокрутить вверх/вниз на половину экрана");
   local["help_homend"] = lang("Home/End                       ->   Jump to the beginning/end", "Home/End                      ->   Прыгнуть в начало/конец");
   local["help_exit"]   = lang("Q                              ->   Exit", "Q                             ->   Выход");
+  local["help_refr"]   = lang("R                              ->   Refresh window", "R                             ->   Обновить окно");
+  local["help_123"]   = lang("1-3                            ->   Friends, Chats, Music", "1-3                           ->   Друзья, Сообщения, Музыка");
   local["rainbow"] = lang("Render rainbow in chat: ", "Рисовать радугу в диалогах: ");
   local["true"] = lang("On", "Да");
   local["false"] = lang("Off", "Нет");
