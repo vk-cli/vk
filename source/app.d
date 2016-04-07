@@ -525,16 +525,30 @@ int _getch() {
   return key;
 }
 
+void menuSelect(int position) {
+  win.section = Sections.left;
+  win.active  = position;
+  win.menu[win.active].callback(win.menu[win.active]);
+  win.menuActive = win.active;
+  if (win.activeBuffer == Buffers.music) {
+    win.active = mplayer.trackNum;
+    win.scrollOffset = mplayer.offset;
+  }
+  else win.active = 0;
+  win.section = Sections.right;
+}
+
 void controller() {
   while (true) {
     timeout(100);
     win.key = _getch;
     if (win.key == -1) win.selectFlag = false;
-    if (win.key != -1) break;
-    if (api.isSomethingUpdated) break;
-    if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
+    if (win.key == 49 || win.key == 50 || win.key == 51) { menuSelect(win.key-49); break; }
+    else if (win.key != -1) break;
+    else if (api.isSomethingUpdated) break;
+    else if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
-  //win.key.print
+  //win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
@@ -567,10 +581,7 @@ void nonChatEvents() {
     selectEvent;
   }
   else if (win.section == Sections.right) {
-    if (canFind(kg_refresh, win.key)) {
-      api.toggleForceUpdate(forceRefresh);
-      bodyToBuffer;
-    }
+    if (canFind(kg_refresh, win.key)) api.toggleForceUpdate(forceRefresh);
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
     else if (win.key == k_end) jumpToEnd;
     else if (win.key == k_pagedown) {
