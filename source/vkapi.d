@@ -1293,9 +1293,8 @@ class ClMessage : ClObject!vkMessage {
     static private void resolveNeedNameLocal(ref vkMessage[] mw) {
         int lastfid;
         long lastut;
-        foreach(ref m; mw) {
+        foreach(ref m; mw.retro) {
             immutable bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
-            //m.author_name = "huj";
             m.needName = nm;
             lastfid = m.author_id;
             lastut = m.utime;
