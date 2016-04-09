@@ -13,6 +13,7 @@ import utils, namecache, localization;
 
 const int convStartId = 2000000000;
 const int mailStartId = convStartId*-1;
+const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
 
@@ -147,7 +148,6 @@ struct vkNextLp {
 
 struct apiState {
     bool lp80got = true;
-    int latestUnreadMsg = 0;
     bool somethingUpdated = false;
     bool chatloading = false;
     string lastlp = "";
@@ -444,10 +444,10 @@ class VkApi {
     }
 
     int messagesCounter() {
-        int u = ps.latestUnreadMsg;
+        int u = ps.countermsg;
         if(ps.lp80got) {
             u = accountGetCounters("messages").messages;
-            ps.latestUnreadMsg = u;
+            ps.countermsg = u;
             ps.lp80got = false;
         }
         return u;
@@ -784,6 +784,119 @@ class AsyncMan {
 
 }
 
+
+class Longpoll : Thread {
+
+    private {
+        VkMan man;
+        VkApi api;
+    }
+
+    this(VkMan vkman) {
+        man = vkman;
+        api = man.api;
+        super(&startSync);
+    }
+
+    void startSync() {
+        if(!api.isTokenValid) {
+            dbm("longpoll is waiting for api init...");
+            while(!api.isTokenValid) {
+                Thread.sleep(dur!"msecs"(300));
+            }
+        }
+        dbm("longpoll is starting...");
+        while(true) {
+            try {
+                doLongpoll(getLongpollServer());
+            } catch (ApiErrorException e) {
+                dbm("longpoll ApiErrorException: " ~ e.msg);
+            }
+            dbm("longpoll is restarting...");
+        }
+    }
+
+
+    vkLongpoll getLongpollServer() {
+        auto resp = api.vkget("messages.getLongPollServer", [ "use_ssl": "1", "need_pts": "1" ]);
+        //dbm("longpoll server: \n" ~ resp.toPrettyString() ~ "\n");
+        vkLongpoll rt = {
+            server: resp["server"].str,
+            key: resp["key"].str,
+            ts: resp["ts"].integer.to!int
+        };
+        return rt;
+    }
+
+
+    void doLongpoll(vkLongpoll start) {
+        auto tm = dur!timeoutFormat(longpollCurlTimeout);
+        int cts = start.ts;
+        auto mode = (2 + 128).to!string; //attaches + random_id
+        bool ok = true;
+        dbm("longpoll works");
+        while(ok) {
+            try {
+                if(cts < 1) break;
+                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=" ~ mode;
+                auto resp = AsyncMan.httpget(url, tm);
+                immutable auto next = parseLongpoll(resp);
+                if(next.failed == 2 || next.failed == 3) ok = false; //get new server
+                cts = next.ts;
+            } catch(Exception e) {
+                dbm("longpoll exception: " ~ e.msg);
+                ok = false;
+            }
+        }
+    }
+
+    vkNextLp parseLongpoll(string resp) {
+        JSONValue j = parseJSON(resp);
+        vkNextLp rt;
+        auto ct = Clock.currTime();
+        auto failed = ("failed" in j ? j["failed"].integer.to!int : -1 );
+        auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
+        if(failed == -1) {
+            auto upd = j["updates"].array;
+            dbm("new lp: " ~ j.toPrettyString());
+            foreach(u; upd) {
+                switch(u[0].integer.to!int) {
+                    case 4: //new message
+                        //triggerNewMessage(u, ct);
+                        break;
+                    case 80: //counter update
+                        if(return80mc) {
+                            ps.countermsg = u[1].integer.to!int;
+                        } else {
+                            ps.lp80got = true;
+                        }
+                        man.toggleUpdate();
+                        break;
+                    case 6: //inbox read
+                        //triggerRead(u);
+                        break;
+                    case 7: //outbox read
+                        //triggerRead(u);
+                        break;
+                    case 8: //online\offline
+                        //triggerOnline(u);
+                        break;
+                    case 9: //online\offline
+                        //triggerOnline(u);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        rt.ts = ts;
+        rt.failed = failed;
+        return rt;
+    }
+
+
+}
+
 class VkMan {
 
     alias ChatBlockFactory = BlockFactory!ClMessage;
@@ -797,6 +910,8 @@ class VkMan {
         BlockFactory!ClFriend friendsFactory;
         BlockFactory!ClAudio musicFactory;
         ChatBlockFactory[int] chatFactory; //by peer
+
+        Longpoll longpollThread;
     }
 
     this(string token) {
@@ -840,6 +955,7 @@ class VkMan {
         sndMutex = new Mutex();
         pbMutex = new Mutex();
         ps = apiState();
+        longpollThread = new Longpoll(this);
     }
 
     bool isSomethingUpdated() {
@@ -861,6 +977,10 @@ class VkMan {
             case blockType.music: return &(musicFactory.data);
             default: assert(0);
         }
+    }
+
+    void asyncLongpoll() {
+        longpollThread.start();
     }
 
     void toggleForeceUpdate(blockType tp) {
@@ -1030,6 +1150,14 @@ class Block(T) {
     uint length() {
         return block.length.to!uint;
     }
+
+    void addBack(T obj) {
+        block = obj ~ block;
+    }
+
+    void addFront(T obj) {
+        block ~= obj;
+    }
 }
 
 class BlockObjectParameters(O) {
@@ -1083,6 +1211,7 @@ class BlockFactory(T) {
             iter,
             backiter;
         Block!T[uint] blockst;
+        Block!T backBlock;
         paramsType params;
         bool ffront = true;
     }
@@ -1093,9 +1222,14 @@ class BlockFactory(T) {
         params = objectParams;
         blocksz = params.blockSize;
         offset = 0;
-        rebuildOffsets();
         data = factoryData();
         oid = genId();
+        rebuildOffsets();
+        initBackBlock();
+    }
+
+    private void initBackBlock() {
+        backBlock = new Block!T(-1, params, &data, oid, true);
     }
 
     private void rebuildOffsets() {
@@ -1148,6 +1282,11 @@ class BlockFactory(T) {
 
     private void downloadBlock(int i) {
         if(i <= clastblk && i >= 0) getblk(i).downloadBlock();
+    }
+
+    void addBack(T obj) {
+        backBlock.addBack(obj);
+        data.serverCount += 1;
     }
 
     bool empty() {

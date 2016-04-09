@@ -897,7 +897,7 @@ void main(string[] args) {
     api = storage.get_token;
   }*/
 
-  //api.asyncLongpoll;
+  api.asyncLongpoll;
   mplayer = new MusicPlayer;
   mplayer.startPlayer;
 
