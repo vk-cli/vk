@@ -142,6 +142,7 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
         if(rfront is null) prepareFront();
         else {
             rfront.popFront();
+
             if(rfront.empty) {
                 range.popFront();
                 prepareFront();

@@ -819,7 +819,7 @@ class Longpoll : Thread {
 
     vkLongpoll getLongpollServer() {
         auto resp = api.vkget("messages.getLongPollServer", [ "use_ssl": "1", "need_pts": "1" ]);
-        //dbm("longpoll server: \n" ~ resp.toPrettyString() ~ "\n");
+        dbm("longpoll server: \n" ~ resp.toPrettyString() ~ "\n");
         vkLongpoll rt = {
             server: resp["server"].str,
             key: resp["key"].str,
@@ -862,7 +862,7 @@ class Longpoll : Thread {
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
                     case 4: //new message
-                        //triggerNewMessage(u, ct);
+                        triggerNewMessage(u, ct);
                         break;
                     case 80: //counter update
                         if(return80mc) {
@@ -889,11 +889,114 @@ class Longpoll : Thread {
                 }
             }
         }
+        resolveMidOrder();
         rt.ts = ts;
         rt.failed = failed;
         return rt;
     }
 
+    alias processnmFunc = void delegate(vkMessage);
+
+    processnmFunc[int] midResolveOrder;
+
+    void resolveMidOrder() {
+        api.messagesGetById(midResolveOrder.keys)
+                    .each!(q => midResolveOrder[q.msg_id](q));
+        midResolveOrder.clear();
+    }
+
+    void triggerNewMessage(JSONValue ui, SysTime ct) {
+        //if(pb.dialogsData.forceUpdate) return;
+        auto u = ui.array;
+
+        auto mid = u[1].integer.to!int;
+        auto flags = u[2].integer.to!int;
+        auto peer = u[3].integer.to!int;
+        auto utime = u[4].integer.to!long;
+        auto msg = u[6].str.longpollReplaces;
+        auto att = u[7];
+        int rndid = (u.length > 8) ? u[8].integer.to!int : 0;
+
+        bool outbox = (flags & 2) == 2;
+        bool unread = (flags & 1) == 1;
+        bool hasattaches = att.object.keys.map!(a => (a == "fwd") || a.matchAll(r"attach.*")).any!"a";
+
+        auto conv = (peer > convStartId);
+        bool group = false;
+
+        if(!conv && peer > longpollGimStartId) {
+            peer = -(peer - longpollGimStartId);
+            group = true;
+        }
+
+        auto from = conv ? att["from"].str.to!int : ( outbox ? api.me.id : peer );
+        //auto first = (pb.dialogsBuffer[0].id == peer);
+
+        /*auto old = man.dialogsOverride.getOverridedUnsorted.filter!(q => q.getObject.id == peer).takeOne();
+        if(old.empty) old = man.dialogsFactory
+                                .getLoadedBlocks
+                                .map!(q => q.getBlock)
+                                .joiner
+                                .filter!(q => q.getObject.id == peer).takeOne();*/
+        auto oldfound = false; //!old.empty;
+
+        auto title = conv ? u[5].str : ( group || oldfound ? nc.getName(peer).strName : "" );
+        auto haspeer = (peer in man.chatFactory);
+
+        vkDialog nd = {
+            name: title, lastMessage: msg, lastmid: mid,
+            id: peer, online: true, isChat: conv,
+            unread: (unread && !outbox)
+        };
+
+        auto processnm = delegate (vkMessage nmsg) {
+            auto cf = man.chatFactory[peer];
+            auto realmsg = cf.getLoadedBlocks()
+                                                    .map!(q => q.getBlock)
+                                                    .joiner
+                                                    .filter!(q => !q.getObject.isZombie)
+                                                    .takeOne();
+            if(!realmsg.empty) {
+                auto lastm = realmsg.front.getObject;
+                nmsg.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
+            }
+            cf.addBack(new ClMessage(nmsg));
+        };
+
+        if(haspeer) {
+            if(!hasattaches) {
+                vkMessage lpnm = {
+                    author_id: from, peer_id: peer, msg_id: mid,
+                    outgoing: outbox, unread: unread,
+                    utime: utime, time_str: vktime(ct, utime),
+                    author_name: nc.getName(from).strName,
+                    body_lines: msg.split("\n"),
+                    fwd_depth: -1, needName: true
+                };
+                processnm(lpnm);
+            } else {
+                //auto gett = messagesGetById([mid]);
+                midResolveOrder[mid] = processnm;
+            }
+        }
+
+        if(oldfound && !conv) {
+            //nd.online = old.front.getObject.online;
+        }
+
+        if (!conv && !group) {
+            auto peerinfo = api.usersGet(peer, "online"); //todo late-resolve
+            auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
+            nc.addToCache(peerinfo.id, peername);
+            nd.name = peername.strName;
+            nd.online = peerinfo.online;
+        }
+
+        man.dialogsOverride.overrideDialog(new ClDialog(nd), ct.toUnixTime);
+
+        if(from != api.me.id) ps.lastlp = title ~ ": " ~ msg;
+        man.toggleUpdate();
+    }
 
 }
 
@@ -907,6 +1010,7 @@ class VkMan {
         AsyncMan a;
 
         BlockFactory!ClDialog dialogsFactory;
+        DialogsOverride dialogsOverride;
         BlockFactory!ClFriend friendsFactory;
         BlockFactory!ClAudio musicFactory;
         ChatBlockFactory[int] chatFactory; //by peer
@@ -936,6 +1040,7 @@ class VkMan {
         dialogsFactory = generateBF!ClDialog(ClDialog.getLoadFunc());
         friendsFactory = generateBF!ClFriend(ClFriend.getLoadFunc());
         musicFactory = generateBF!ClAudio(ClAudio.getLoadFunc());
+        dialogsOverride = new DialogsOverride();
 
         dialogsFactory.data.serverCount = api.initdata.sc_dialogs;
         friendsFactory.data.serverCount = api.initdata.sc_friends;
@@ -1034,7 +1139,21 @@ class VkMan {
     }
 
     vkDialog[] getBufferedDialogs(int count, int offset) {
-        return bufferedGet!vkDialog(dialogsFactory, count, offset);
+        //return bufferedGet!vkDialog(dialogsFactory, count, offset);
+        auto factory = dialogsFactory;
+        factory.setOffset(0);
+        if(!factory.isReady) return [];
+        auto rst = factory
+                .map!(q => q.getBlock())
+                .joiner
+                .filter!(q => !dialogsOverride.isOverrided(q.getObject.id))
+                .map!(q => q);
+        return [dialogsOverride.getOverrided, rst]
+                .joiner
+                .drop(offset)
+                .take(count)
+                .map!(q => q.getObject)
+                .array;
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
@@ -1073,7 +1192,7 @@ class VkMan {
                 .joiner
                 .drop(factory.getReloffset)
                 .take(count)
-                .map!(q => q.getObject)
+                .map!(q => *(q.getObject))
                 .array;
     }
 
@@ -1083,14 +1202,17 @@ class VkMan {
 
 abstract class ClObject(T) {
 
-    private T obj;
+    private {
+        private T obj;
+        //bool ignored = false;
+    }
 
     this(T o) {
         obj = o;
     }
 
-    T getObject() {
-        return obj;
+    T* getObject() {
+        return &obj;
     }
 
 }
@@ -1241,6 +1363,8 @@ class BlockFactory(T) {
     }
 
     private Block!T getblk(uint i) {
+        if(i == 0) return backBlock;
+        i -= 1;
         auto c = i in blockst;
         if(c) return *c;
         else {
@@ -1255,6 +1379,10 @@ class BlockFactory(T) {
 
     auto getLoadedBlocks() {
         return blockst.keys.map!(q => q in blockst).filterBidirectional!(q => q.isFilled);
+    }
+
+    auto getBackBlock() {
+        return backBlock;
     }
 
     bool isReady() {
@@ -1303,11 +1431,7 @@ class BlockFactory(T) {
     }
 
     Block!T front() {
-        auto rtblock = getblk(iter);
-        if(iter == 0) {
-            downloadBlock(1);
-        }
-        return rtblock;
+        return getblk(iter);
     }
 
     void popFront() {
@@ -1356,6 +1480,8 @@ class BlockFactory(T) {
 
     }
 
+
+
 }
 
 ldFuncResult apiCheck(VkApi api) {
@@ -1389,6 +1515,37 @@ class ClDialog : ClObject!vkDialog {
 
     this(objt obj) {
         super(obj);
+    }
+
+}
+
+class DialogsOverride {
+
+    struct DialogOverrider {
+        long utime;
+        ClDialog dialog;
+    }
+
+    private DialogOverrider[int] store; //by peer
+
+    void overrideDialog(ClDialog dlg, long ut) {
+        store[dlg.getObject.id] = DialogOverrider(ut, dlg);
+    }
+
+    bool isOverrided(int peer) {
+        auto ptr = peer in store;
+        return ptr !is null;
+    }
+
+    auto getOverrided() {
+        return store.values
+                        .sort!((a, b) => a.utime > b.utime)
+                        .map!(q => q.dialog);
+    }
+
+    auto getOverridedUnsorted() {
+        return store.values
+                        .map!(q => q.dialog);
     }
 
 }
