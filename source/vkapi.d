@@ -862,7 +862,7 @@ class Longpoll : Thread {
             foreach(u; upd) {
                 switch(u[0].integer.to!int) {
                     case 4: //new message
-                        triggerNewMessage(u, ct);
+                        //triggerNewMessage(u, ct);
                         break;
                     case 80: //counter update
                         if(return80mc) {
@@ -889,13 +889,13 @@ class Longpoll : Thread {
                 }
             }
         }
-        resolveMidOrder();
+        //resolveMidOrder();
         rt.ts = ts;
         rt.failed = failed;
         return rt;
     }
 
-    alias processnmFunc = void delegate(vkMessage);
+    /+alias processnmFunc = void delegate(vkMessage);
 
     processnmFunc[int] midResolveOrder;
 
@@ -996,7 +996,7 @@ class Longpoll : Thread {
 
         if(from != api.me.id) ps.lastlp = title ~ ": " ~ msg;
         man.toggleUpdate();
-    }
+    } +/
 
 }
 
@@ -1139,21 +1139,7 @@ class VkMan {
     }
 
     vkDialog[] getBufferedDialogs(int count, int offset) {
-        //return bufferedGet!vkDialog(dialogsFactory, count, offset);
-        auto factory = dialogsFactory;
-        factory.setOffset(0);
-        if(!factory.isReady) return [];
-        auto rst = factory
-                .map!(q => q.getBlock())
-                .joiner
-                .filter!(q => !dialogsOverride.isOverrided(q.getObject.id))
-                .map!(q => q);
-        return [dialogsOverride.getOverrided, rst]
-                .joiner
-                .drop(offset)
-                .take(count)
-                .map!(q => q.getObject)
-                .array;
+        return bufferedGet!vkDialog(dialogsFactory, count, offset);
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
@@ -1163,12 +1149,11 @@ class VkMan {
             f = peer in chatFactory;
         }
 
-        f.setOffset(0);
-        if(!f.isReady) return [];
+        if(!f.prepare) return [];
+        f.seek(0);
 
         return (*f)
-                .map!(q => q.getBlock())
-                .joinerBidirectional
+                .filterBidirectional!(q => q !is null)
                 .retro
                 .map!(q => q.getLines(wrapwidth))
                 .joinerBidirectional
@@ -1185,12 +1170,10 @@ class VkMan {
     void setTypingStatus(int peer) {}
 
     R[] bufferedGet(R, T)(T factory, int count, int offset) {
-        factory.setOffset(offset);
-        if(!factory.isReady) return [];
+        if(!factory.prepare) return [];
+        factory.seek(offset);
         return factory
-                .map!(q => q.getBlock())
-                .joiner
-                .drop(factory.getReloffset)
+                .filter!(q => q !is null)
                 .take(count)
                 .map!(q => *(q.getObject))
                 .array;
@@ -1323,19 +1306,14 @@ class BlockFactory(T) {
 
     private {
         uint
-            clastblk,
-            offset,
-            start,
-            reloffset,
             blocksz;
         int
             oid,
             iter,
-            backiter;
+            backiter = -1;
         Block!T[uint] blockst;
         Block!T backBlock;
         paramsType params;
-        bool ffront = true;
     }
 
     factoryData data;
@@ -1343,34 +1321,14 @@ class BlockFactory(T) {
     this(paramsType objectParams) {
         params = objectParams;
         blocksz = params.blockSize;
-        offset = 0;
+        iter = 0;
         data = factoryData();
         oid = genId();
-        rebuildOffsets();
         initBackBlock();
     }
 
     private void initBackBlock() {
         backBlock = new Block!T(-1, params, &data, oid, true);
-    }
-
-    private void rebuildOffsets() {
-        reloffset = offset % blocksz;
-        start = (offset-reloffset) / blocksz;
-        iter = start;
-        clastblk = getlastblk();
-        backiter = clastblk;
-    }
-
-    private Block!T getblk(uint i) {
-        if(i == 0) return backBlock;
-        i -= 1;
-        auto c = i in blockst;
-        if(c) return *c;
-        else {
-            blockst[i] = new Block!T(i, params, &data, oid);
-            return blockst[i];
-        }
     }
 
     uint objectCount() {
@@ -1381,78 +1339,74 @@ class BlockFactory(T) {
         return blockst.keys.map!(q => q in blockst).filterBidirectional!(q => q.isFilled);
     }
 
-    auto getBackBlock() {
-        return backBlock;
-    }
-
-    bool isReady() {
-        auto zeroblk = getblk(0);
-        if(!zeroblk.isFilled || data.serverCount == -1) {
-            zeroblk.downloadBlock();
-            return false;
+    private Block!T getblk(int i) {
+        auto c = i in blockst;
+        if(c) return *c;
+        else {
+            blockst[i] = new Block!T(i, params, &data, oid);
+            return blockst[i];
         }
-        if(backiter < 0) {
-            return false;
+    }
+
+    private T getBlockObject(int off) {
+        auto bk = backBlock.getBlock();
+        if(off < bk.length) return bk[off];
+        off -= bk.length;
+
+        auto rel = off % blocksz;
+        auto n = (off - rel) / blocksz;
+        auto nblk = getblk(n);
+        if(!nblk.isFilled) {
+            nblk.downloadBlock();
+            return null;
         }
-        return true;
+        if(rel >= nblk.length) return null;
+        getblk(n+1).downloadBlock(); //preload
+        return nblk.getBlock[rel];
     }
 
-    private int getlastblk() {
-        auto sc = data.serverCount;
-        if(sc == -1) return -1;
-
-        immutable auto lastsz = sc % blocksz;
-        auto lastblk = ((sc - lastsz) / blocksz) - 1;
-        if(lastsz > 0) ++lastblk;
-
-        return lastblk;
+    void seek(int off) {
+        iter = off;
+        backiter = data.serverCount;
     }
 
-    private void downloadBlock(int i) {
-        if(i <= clastblk && i >= 0) getblk(i).downloadBlock();
-    }
-
-    void addBack(T obj) {
-        backBlock.addBack(obj);
+    void addBack(T addobj) {
+        backBlock.addBack(addobj);
         data.serverCount += 1;
     }
 
+    bool prepare() {
+        if(data.serverCount != -1){
+            dbm("prepare pre backiter: " ~ backiter.to!string);
+            if(backiter == -1) backiter = data.serverCount + backBlock.length;
+            dbm("prepare after backiter: " ~ backiter.to!string);
+            return true;
+        }
+        getblk(0).downloadBlock();
+        return false;
+    }
+
     bool empty() {
-        return iter > backiter;
+        return iter >= backiter;
     }
 
-    void setOffset(uint woffset) {
-        offset = woffset;
-        rebuildOffsets();
-    }
-
-    uint getReloffset() {
-        return reloffset;
-    }
-
-    Block!T front() {
-        return getblk(iter);
+    T front() {
+        return getBlockObject(iter);
     }
 
     void popFront() {
         ++iter;
-        downloadBlock(iter + 1);
     }
 
-    Block!T back() {
-        auto rtblock = getblk(backiter);
-        if(backiter == clastblk) {
-            downloadBlock(clastblk - 1);
-        }
-        return rtblock;
+    T back() {
+        return getBlockObject(backiter);
     }
 
     void popBack() {
         --backiter;
-        downloadBlock(backiter-1);
     }
 
-    Block!T moveBack() {
+    T moveBack() {
         return back();
     }
 
