@@ -122,6 +122,10 @@ const utfranges = [
   utf(65280, 65519, 1)
   ];
 
+struct Cursor {
+  int x, y;
+}
+
 struct utf {
   ulong 
     start, end;
@@ -144,6 +148,7 @@ struct Win {
   ], 
   buffer, mbody;
   Notify notify;
+  Cursor cursor;
   int
     namecolor = Colors.white,
     textcolor = Colors.gray,
@@ -430,7 +435,7 @@ void drawBuffer() {
       break;
     }
     default: break;
-    }
+  }
 }
 
 int colorHash(string name) {
@@ -466,6 +471,8 @@ void drawChat() {
   if (win.isMessageWriting) {
     "\n: ".print;
     win.msgBuffer.print;
+    wmove(stdscr, win.buffer.length.to!int+2, win.cursor.x+2);
+    "".regular;
   }
 }
 
@@ -526,6 +533,7 @@ int _getch() {
 }
 
 void menuSelect(int position) {
+  SetStatusbar;
   win.section = Sections.left;
   win.active  = position;
   win.menu[win.active].callback(win.menu[win.active]);
@@ -545,7 +553,7 @@ void controller() {
     timeout(100);
     win.key = _getch;
     if (win.key == -1) win.selectFlag = false;
-    if (win.key == 49 || win.key == 50 || win.key == 51) { menuSelect(win.key-49); break; }
+    if (!win.isMessageWriting && (win.key == 49 || win.key == 50 || win.key == 51)) { menuSelect(win.key-49); break; }
     else if (win.key != -1) break;
     else if (api.isSomethingUpdated) break;
     else if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
@@ -564,15 +572,25 @@ void msgBufferEvents() {
   if (win.key == k_esc || win.key == k_enter) {
     if (win.key == k_enter && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
     win.msgBuffer = "";
+    win.cursor.x = win.cursor.y = 0;
     curs_set(0);
     win.isMessageWriting = false;
   }
-  else if (win.key == k_bckspc && win.msgBuffer.utfLength != 0) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
+  else if (win.key == k_bckspc && win.msgBuffer.utfLength != 0 && win.cursor.x != 0) {
+    if (win.cursor.x == win.msgBuffer.to!wstring.length) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
+    else win.msgBuffer = win.msgBuffer.to!wstring[0..win.cursor.x-1].to!string ~ win.msgBuffer.to!wstring[win.cursor.x..$].to!string;
+    win.cursor.x--;
+  }
   else if (win.key != -1 && !canFind(kg_ignore, win.key)) {
-    win.msgBuffer ~= win.key.to!char;
+    if (win.cursor.x == win.msgBuffer.to!wstring.length) win.msgBuffer ~= win.key.to!char;
+    else win.msgBuffer = win.msgBuffer.to!wstring[0..win.cursor.x].to!string ~ win.key.to!char ~ win.msgBuffer.to!wstring[win.cursor.x..$].to!string;
+    win.cursor.x++;
     if (win.showTyping) api.setTypingStatus(win.chatID);
   }
-  else if (win.key == k_left) {}
+  else if (win.key == k_home) win.cursor.x = 0;
+  else if (win.key == k_end) win.cursor.x = win.msgBuffer.to!wstring.length.to!int;
+  else if (win.key == k_left && win.cursor.x != 0) win.cursor.x--;
+  else if (win.key == k_right && win.cursor.x != win.msgBuffer.to!wstring.length) win.cursor.x++;
 }
 
 void nonChatEvents() {
@@ -853,6 +871,7 @@ ListElement[] GetMusic() {
 
 ListElement[] GetChat() {
   ListElement[] list;
+  //int verticalOffset = win.msgBuffer.utfLength.to!int/COLS-1;
   auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID, COLS-12);
   foreach(e; chat) {
     if (e.isFwd) {
