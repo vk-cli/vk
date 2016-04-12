@@ -1213,6 +1213,7 @@ class VkMan {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
+        dbm("bfcl peer: " ~ peer.to!string ~ ", off: " ~ offset.to!string ~ ", count: " ~ count.to!string);
         auto f = peer in chatFactory;
         if(!f) {
             chatFactory[peer] = generateBF!ClMessage(ClMessage.getLoadFunc(peer));
@@ -1224,8 +1225,8 @@ class VkMan {
             f.seek(0);
 
             return (*f)
-                    .filterBidirectional!(q => q !is null)
-                    .retro
+                    .filter!(q => q !is null)
+                    .inputRetro
                     .map!(q => q.getLines(wrapwidth))
                     .joinerBidirectional
                     .dropBack(offset)
@@ -1487,7 +1488,7 @@ class BlockFactory(T) {
         ++iter;
     }
 
-    T back() {
+    /+ T back() {
         return getBlockObject(backiter);
     }
 
@@ -1497,7 +1498,7 @@ class BlockFactory(T) {
 
     T moveBack() {
         return back();
-    }
+    } +/
 
     typeof(this) save() {
         return this;

@@ -187,6 +187,49 @@ auto takeBackArray(R)(R range, size_t hm) {
     return outr;
 }
 
+class InputRetroResult(R)
+if (isInputRange!R)
+{
+    private R rng;
+
+    this(R range) {
+        rng = range;
+    }
+
+    void popFront() {
+        rng.popFront();
+    }
+
+    void popBack() {
+        rng.popFront();
+    }
+
+    auto front() {
+        return rng.front;
+    }
+
+    auto back() {
+        return rng.front;
+    }
+
+    auto empty() {
+        return rng.empty;
+    }
+
+    auto moveBack() {
+        return back;
+    }
+
+    auto save() {
+        return this;
+    }
+
+}
+
+auto inputRetro(R)(R range) {
+    return new InputRetroResult!R(range);
+}
+
 auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
 alias rortp = typeof(ror);
 //pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
