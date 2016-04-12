@@ -1517,7 +1517,7 @@ class BlockFactory(T) {
                                     .map!(q => q.getBlock())
                                     .joiner
                                     .map!(q => q.getLineCount(ww))
-                                    .sum.to!int;
+                                    .sum.to!int + 1;
             }
             return serverLineCount;
         }
