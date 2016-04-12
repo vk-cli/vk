@@ -153,8 +153,7 @@ struct apiState {
     string lastlp = "";
     uint countermsg;
 
-    //sendOrderMsg[] order;
-    //sentMsg[int] sent; //by rid
+    sentMsg[int] sent; //by rid
 }
 
 struct ldFuncResult {
@@ -165,15 +164,6 @@ struct ldFuncResult {
 struct factoryData {
     int serverCount = -1;
     bool forceUpdate;
-}
-
-struct sendOrderMsg {
-    int author;
-    int peer;
-    int rid;
-    string msg;
-    int[] fwd = [];
-    string[] att = [];
 }
 
 struct sentMsg {
@@ -192,8 +182,7 @@ enum blockType {
 
 enum sendState {
     pending,
-    failed,
-    ok
+    failed
 }
 
 struct apiFwdIter {
@@ -563,6 +552,7 @@ class VkApi {
             auto hascid = ("chat_id" in m);
             int uid = m["user_id"].integer.to!int;
             int pid = (hascid) ? (m["chat_id"].integer.to!int + convStartId) : uid;
+            int rid = ("random_id" in m) ? m["random_id"].integer.to!int : 0;
             long ut = m["date"].integer.to!long;
             bool outg = (m["out"].integer.to!int == 1);
             bool rstate = (m["read_state"].integer.to!int == 1);
@@ -596,6 +586,7 @@ class VkApi {
             mo.time_str = st; mo.body_lines = mbody;
             mo.fwd_depth = fwdp; mo.fwd = fw; mo.needName = true;
             mo.msg_id = mid; mo.author_id = fid; mo.peer_id = pid;
+            mo.rndid = rid;
 
             rt ~= mo;
             ++i;
@@ -755,7 +746,8 @@ class AsyncMan {
 
     const string
         S_SELF_RESOLVE = "s_self_resolve",
-        O_LOADBLOCK = "o_loadblock";
+        O_LOADBLOCK = "o_loadblock",
+        O_SENDMSG = "o_sendm";
 
     AsyncOrder[string] orders;
     AsyncSingle[string] singles;
@@ -958,12 +950,20 @@ class Longpoll : Thread {
 
         auto processnm = delegate (vkMessage nmsg) {
             auto cf = man.chatFactory[peer];
+            auto rid = nmsg.rndid;
             auto realmsg = cf.getLoadedObjects
                                         .filter!(q => !q.getObject.isZombie)
                                         .takeOne();
             if(!realmsg.empty) {
                 auto lastm = realmsg.front.getObject;
                 nmsg.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
+            }
+
+            auto sent = rid in ps.sent;
+            if(sent) {
+                dbm("approved sent nm rid: " ~ rid.to!string);
+                cf.removeZombie(rid);
+                ps.sent.remove(rid);
             }
             cf.addBack(new ClMessage(nmsg));
         };
@@ -972,7 +972,7 @@ class Longpoll : Thread {
             if(!hasattaches) {
                 vkMessage lpnm = {
                     author_id: from, peer_id: peer, msg_id: mid,
-                    outgoing: outbox, unread: unread,
+                    outgoing: outbox, unread: unread, rndid: rndid,
                     utime: utime, time_str: vktime(ct, utime),
                     author_name: nc.getName(from).strName,
                     body_lines: msg.split("\n"),
@@ -1213,7 +1213,6 @@ class VkMan {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
-        dbm("bfcl peer: " ~ peer.to!string ~ ", off: " ~ offset.to!string ~ ", count: " ~ count.to!string);
         auto f = peer in chatFactory;
         if(!f) {
             chatFactory[peer] = generateBF!ClMessage(ClMessage.getLoadFunc(peer));
@@ -1238,7 +1237,39 @@ class VkMan {
         return ps.countermsg;
     }
 
-    void asyncSendMessage(int peer, string msg) {}
+    private void sendMessageImpl(int rid, int peer, string msg) {
+        auto sentmid = api.messagesSend(peer, msg, rid);
+        dbm("message sent mid: " ~ sentmid.to!string ~ " rid: " ~ rid.to!string);
+    }
+
+    void asyncSendMessage(int peer, string msg) {
+        auto rid = genId();
+        auto aid = me.id;
+        vkMessage zombie = {
+            author_name: me.first_name ~ " " ~ me.last_name,
+            author_id: aid, isZombie: true,
+            body_lines: msg.split("\n"),
+            time_str: getLocal("sending"),
+            rndid: rid, msg_id: -1, outgoing: true, unread: true,
+            peer_id: peer, utime: 1,
+            needName: true, nmresolved: true
+        };
+
+        synchronized(pbMutex) {
+            auto ch = peer in chatFactory;
+            if(ch) {
+                ch.addZombie(zombie);
+            }
+        }
+
+        toggleUpdate();
+
+        synchronized(sndMutex) {
+            ps.sent[rid] = sentMsg(rid, peer, aid);
+        }
+
+        a.orderedAsync(a.O_SENDMSG, rid, () => sendMessageImpl(rid, peer, msg));
+    }
 
     void setTypingStatus(int peer) {}
 
@@ -1262,8 +1293,9 @@ abstract class ClObject(T) {
 
     private {
         private T obj;
-        //bool ignored = false;
     }
+
+    bool ignored = false;
 
     this(T o) {
         obj = o;
@@ -1434,7 +1466,11 @@ class BlockFactory(T) {
 
     private T getBlockObject(int off) {
         auto bk = backBlock.getBlock();
-        if(off < bk.length) return bk[off];
+        if(off < bk.length) {
+            auto bkobj = bk[off];
+            if(bkobj.ignored) return null;
+            return bkobj;
+        }
         off -= bk.length;
 
         auto rel = off % blocksz;
@@ -1449,6 +1485,8 @@ class BlockFactory(T) {
 
         getblk(n+1).downloadBlock(); //preload
         auto relobj = nblk.getBlock[rel];
+
+        if(relobj.ignored) return null;
 
         static if(is(T == ClDialog)) {
             if(isOverrided(relobj.getObject.id)) return null;
@@ -1520,6 +1558,21 @@ class BlockFactory(T) {
                                     .sum.to!int + 1;
             }
             return serverLineCount;
+        }
+
+        void addZombie(vkMessage z) {
+            //auto rid = z.rndid;
+            auto clz = new ClMessage(z);
+            //zombies[rid] = clz;
+            addBack(clz);
+        }
+
+        void removeZombie(int rid) {
+            backBlock
+                .getBlock
+                .filter!(q => q.getObject.rndid == rid)
+                .takeOne
+                .each!(q => q.ignored = true);
         }
 
     }
