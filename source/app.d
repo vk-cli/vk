@@ -570,14 +570,14 @@ void controller() {
 
 void msgBufferEvents() {
   if (win.key == k_esc || win.key == k_enter) {
-    if (win.key == k_enter && win.msgBuffer.walkLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
+    if (win.key == k_enter && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
     win.msgBuffer = "";
     win.cursor.x = win.cursor.y = 0;
     curs_set(0);
     win.isMessageWriting = false;
   }
-  else if (win.key == k_bckspc && win.msgBuffer.walkLength != 0 && win.cursor.x != 0) {
-    if (win.cursor.x == win.msgBuffer.walkLength) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
+  else if (win.key == k_bckspc && win.msgBuffer.utfLength != 0 && win.cursor.x != 0) {
+    if (win.cursor.x == win.msgBuffer.utfLength) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
     else win.msgBuffer = win.msgBuffer.to!wstring[0..win.cursor.x-1].to!string ~ win.msgBuffer.to!wstring[win.cursor.x..$].to!string;
     win.cursor.x--;
   }
@@ -588,15 +588,15 @@ void msgBufferEvents() {
       win.msgBuffer ~= win.key.to!char;
       return;
     }
-    if (win.cursor.x == win.msgBuffer.walkLength) win.msgBuffer ~= win.key.to!char;
+    if (win.cursor.x == win.msgBuffer.utfLength) win.msgBuffer ~= win.key.to!char;
     else win.msgBuffer = win.msgBuffer.to!wstring[0..win.cursor.x].to!string ~ win.key.to!char ~ win.msgBuffer.to!wstring[win.cursor.x..$].to!string;
     win.cursor.x++;
     if (win.showTyping) api.setTypingStatus(win.chatID);
   }
   else if (win.key == k_home) win.cursor.x = 0;
-  else if (win.key == k_end) win.cursor.x = win.msgBuffer.walkLength.to!int;
+  else if (win.key == k_end) win.cursor.x = win.msgBuffer.utfLength.to!int;
   else if (win.key == k_left && win.cursor.x != 0) win.cursor.x--;
-  else if (win.key == k_right && win.cursor.x != win.msgBuffer.walkLength) win.cursor.x++;
+  else if (win.key == k_right && win.cursor.x != win.msgBuffer.utfLength) win.cursor.x++;
 }
 
 void nonChatEvents() {
