@@ -896,6 +896,7 @@ class Longpoll : Thread {
         api.messagesGetById(midResolveOrder.keys)
                     .each!(q => midResolveOrder[q.msg_id](q));
         midResolveOrder.clear();
+        man.toggleUpdate();
     }
 
     void triggerNewMessage(JSONValue ui, SysTime ct) {
@@ -949,6 +950,7 @@ class Longpoll : Thread {
         };
 
         auto processnm = delegate (vkMessage nmsg) {
+            dbm("processnm");
             auto cf = man.chatFactory[peer];
             auto rid = nmsg.rndid;
             auto realmsg = cf.getLoadedObjects
