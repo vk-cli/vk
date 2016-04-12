@@ -35,9 +35,9 @@ struct Notify {
 }
 
 ulong utfLength(string inp) {
-  dbm("utfln: " ~ inp);
+  //dbm("utfln: " ~ inp);
   auto wstrInput = inp.to!dstring;
-  dbm("utfln done");
+  //dbm("utfln done");
   ulong s = wstrInput.walkLength;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
@@ -156,13 +156,15 @@ struct Win {
     menuActive, menuOffset, key,
     scrollOffset, msgDrawSetting,
     activeBuffer, chatID, lastBuffer,
-    lastScrollOffset, lastScrollActive;
+    lastScrollOffset, lastScrollActive,
+    msgBufferSize;
   string
     statusbarText, msgBuffer;
   bool
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
-    isMessageWriting, showTyping, selectFlag;
+    isMessageWriting, showTyping, selectFlag,
+    skipMsgBufferSizeInc;
 }
 
 void relocale() {
@@ -570,25 +572,36 @@ void controller() {
 
 void msgBufferEvents() {
   if (win.key == k_esc || win.key == k_enter) {
-    if (win.key == k_enter && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
+    if (win.key == k_enter && win.msgBufferSize != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
     win.msgBuffer = "";
-    win.cursor.x = win.cursor.y = 0;
+    win.cursor.x = win.cursor.y = win.msgBufferSize = 0;
     curs_set(0);
     win.isMessageWriting = false;
   }
-  else if (win.key == k_bckspc && win.msgBuffer.utfLength != 0 && win.cursor.x != 0) {
-    if (win.cursor.x == win.msgBuffer.to!wstring.length) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
+  else if (win.key == k_bckspc && win.msgBufferSize != 0 && win.cursor.x != 0) {
+    if (win.cursor.x == win.msgBufferSize) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
     else win.msgBuffer = win.msgBuffer.to!wstring[0..win.cursor.x-1].to!string ~ win.msgBuffer.to!wstring[win.cursor.x..$].to!string;
     win.cursor.x--;
+    win.msgBufferSize--;
   }
   else if (win.key != -1 && !canFind(kg_ignore, win.key)) {
-    if (win.cursor.x == win.msgBuffer.to!wstring.length) win.msgBuffer ~= win.key.to!char;
+    if (win.cursor.x == win.msgBufferSize) win.msgBuffer ~= win.key.to!char;
     else win.msgBuffer = win.msgBuffer.to!wstring[0..win.cursor.x].to!string ~ win.key.to!char ~ win.msgBuffer.to!wstring[win.cursor.x..$].to!string;
-    win.cursor.x++;
+    if (win.key == 208 || win.key == 209) {
+      win.msgBufferSize++;
+      win.cursor.x++;
+      win.skipMsgBufferSizeInc = true;
+    } else {
+      if (win.skipMsgBufferSizeInc) win.skipMsgBufferSizeInc = false;
+      else {
+        win.msgBufferSize++;
+        win.cursor.x++;
+      }
+    }
     if (win.showTyping) api.setTypingStatus(win.chatID);
   }
   else if (win.key == k_home) win.cursor.x = 0;
-  else if (win.key == k_end) win.cursor.x = win.msgBuffer.to!wstring.length.to!int;
+  else if (win.key == k_end) win.cursor.x = win.msgBufferSize;
   else if (win.key == k_left && win.cursor.x != 0) win.cursor.x--;
   else if (win.key == k_right && win.cursor.x != win.msgBuffer.to!wstring.length) win.cursor.x++;
 }
@@ -698,7 +711,7 @@ void backEvent() {
       win.mbody = new ListElement[0];
       win.buffer = new ListElement[0];
     }
-  } // else run(["resize", "-s", "130", "30"]);
+  }
 }
 
 wstring[] run(string[] args) {
