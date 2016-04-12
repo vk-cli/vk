@@ -879,10 +879,10 @@ class Longpoll : Thread {
                         triggerRead(u);
                         break;
                     case 8: //online\offline
-                        //triggerOnline(u);
+                        triggerOnline(u);
                         break;
                     case 9: //online\offline
-                        //triggerOnline(u);
+                        triggerOnline(u);
                         break;
                     default:
                         break;
@@ -1043,6 +1043,29 @@ class Longpoll : Thread {
                 }
             }
         }
+
+        man.toggleUpdate();
+    }
+
+    void triggerOnline(JSONValue u) {
+        auto uid = u[1].integer.to!int * -1;
+        auto flags = u[2].integer.to!int;
+        auto event = u[0].integer.to!int;
+        bool exit = (event == 9);
+        if(!exit && event != 8) return;
+
+        auto friend = man.friendsFactory.getLoadedObjects
+                            .map!(q => q.getObject)
+                            .filter!(q => q.id == uid)
+                            .takeOne();
+
+        auto dialog = man.dialogsFactory.getLoadedObjects
+                            .map!(q => q.getObject)
+                            .filter!(q => q.id == uid)
+                            .takeOne();
+
+        if(!friend.empty) friend.front.online = !exit;
+        if(!dialog.empty) dialog.front.online = !exit;
 
         man.toggleUpdate();
     }
