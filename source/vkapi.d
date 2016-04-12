@@ -873,10 +873,10 @@ class Longpoll : Thread {
                         man.toggleUpdate();
                         break;
                     case 6: //inbox read
-                        //triggerRead(u);
+                        triggerRead(u);
                         break;
                     case 7: //outbox read
-                        //triggerRead(u);
+                        triggerRead(u);
                         break;
                     case 8: //online\offline
                         //triggerOnline(u);
@@ -1000,6 +1000,50 @@ class Longpoll : Thread {
         man.dialogsFactory.overrideDialog(new ClDialog(nd), ct.toUnixTime);
 
         if(from != api.me.id) ps.lastlp = title ~ ": " ~ msg;
+        man.toggleUpdate();
+    }
+
+    void triggerRead(JSONValue u) {
+        bool inboxrd = (u[0].integer == 6);
+        auto peer = u[1].integer.to!int;
+        auto mid = u[2].integer.to!int;
+
+        if(peer > longpollGimStartId && peer < convStartId) {
+            peer = -(peer-longpollGimStartId);
+        }
+
+        dbm("rd trigger peer: " ~ peer.to!string ~ ", mid: " ~ mid.to!string ~ ", inbox: " ~ inboxrd.to!string);
+
+        synchronized(pbMutex) {
+            if(inboxrd) {
+                auto dlone = man.dialogsFactory.getLoadedObjects
+                    .map!(q => q.getObject)
+                    .filter!(q => q.id == peer)
+                    .takeOne();
+                if(!dlone.empty) {
+                    dlone.front.unread = false;
+                }
+            }
+
+            auto ch = peer in man.chatFactory;
+            if(ch) {
+                auto chl = ch.getLoadedObjects;
+                chl
+                  .map!(q => q.getObject.msg_id == mid)
+                  .countUntil(true);
+
+
+                while( !chl.empty && ( (chl.front !is null && chl.front.getObject.outgoing != inboxrd) ? chl.front.getObject.unread : true) ) {
+                    auto mobj = chl.front.getObject;
+                    if(mobj.outgoing != inboxrd) {
+                        mobj.unread = false;
+                        chl.front.invalidateLineCache();
+                    }
+                    chl.popFront();
+                }
+            }
+        }
+
         man.toggleUpdate();
     }
 
@@ -1154,16 +1198,18 @@ class VkMan {
             f = peer in chatFactory;
         }
 
-        if(!f.prepare) return [];
-        f.seek(0);
+        synchronized(pbMutex) {
+            if(!f.prepare) return [];
+            f.seek(0);
 
-        return (*f)
-                .filterBidirectional!(q => q !is null)
-                .retro
-                .map!(q => q.getLines(wrapwidth))
-                .joinerBidirectional
-                .dropBack(offset)
-                .takeBackArray(count);
+            return (*f)
+                    .filterBidirectional!(q => q !is null)
+                    .retro
+                    .map!(q => q.getLines(wrapwidth))
+                    .joinerBidirectional
+                    .dropBack(offset)
+                    .takeBackArray(count);
+        }
     }
 
     int messagesCounter() {
@@ -1175,13 +1221,15 @@ class VkMan {
     void setTypingStatus(int peer) {}
 
     R[] bufferedGet(R, T)(T factory, int count, int offset) {
-        if(!factory.prepare) return [];
-        factory.seek(offset);
-        return factory
-                .filter!(q => q !is null)
-                .take(count)
-                .map!(q => *(q.getObject))
-                .array;
+        synchronized(pbMutex) {
+            if(!factory.prepare) return [];
+            factory.seek(offset);
+            return factory
+                    .filter!(q => q !is null)
+                    .take(count)
+                    .map!(q => *(q.getObject))
+                    .array;
+        }
     }
 
 }
@@ -1342,11 +1390,15 @@ class BlockFactory(T) {
     }
 
     auto getLoadedObjects() {
-        return blockst.keys
+        auto ldblocks = blockst.keys
             .map!(q => q in blockst)
             .filter!(q => q.isFilled)
             .map!(q => q.getBlock)
             .joiner;
+
+        auto ldback = backBlock.getBlock;
+
+        return chain(ldback, ldblocks);
     }
 
     private Block!T getblk(int i) {
@@ -1595,6 +1647,10 @@ class ClMessage : ClObject!vkMessage {
     vkMessageLine[] getLines(int ww) {
         fillLines(ww);
         return lines;
+    }
+
+    void invalidateLineCache() {
+        lines = [];
     }
 
     private void fillLines(int ww) {
