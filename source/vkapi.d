@@ -1082,7 +1082,6 @@ class VkMan {
         AsyncMan a;
 
         BlockFactory!ClDialog dialogsFactory;
-        //DialogsOverride dialogsOverride;
         BlockFactory!ClFriend friendsFactory;
         BlockFactory!ClAudio musicFactory;
         ChatBlockFactory[int] chatFactory; //by peer
@@ -1109,11 +1108,6 @@ class VkMan {
         api.addMeNC();
         me = &(api.me);
 
-        dialogsFactory = generateBF!ClDialog(ClDialog.getLoadFunc());
-        friendsFactory = generateBF!ClFriend(ClFriend.getLoadFunc());
-        musicFactory = generateBF!ClAudio(ClAudio.getLoadFunc());
-        //dialogsOverride = new DialogsOverride();
-
         dialogsFactory.data.serverCount = api.initdata.sc_dialogs;
         friendsFactory.data.serverCount = api.initdata.sc_friends;
         musicFactory.data.serverCount = api.initdata.sc_audio;
@@ -1133,6 +1127,10 @@ class VkMan {
         pbMutex = new Mutex();
         ps = apiState();
         longpollThread = new Longpoll(this);
+
+        dialogsFactory = generateBF!ClDialog(ClDialog.getLoadFunc());
+        friendsFactory = generateBF!ClFriend(ClFriend.getLoadFunc());
+        musicFactory = generateBF!ClAudio(ClAudio.getLoadFunc());
     }
 
     bool isSomethingUpdated() {
