@@ -14,7 +14,7 @@ enum Buffers { none, friends, dialogs, music, chat }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 Win win;
-VKapi api;
+VkMan api;
 
 public:
 
@@ -35,9 +35,9 @@ struct Notify {
 }
 
 ulong utfLength(string inp) {
-  dbm("utfln: " ~ inp);
+  //dbm("utfln: " ~ inp);
   auto wstrInput = inp.to!dstring;
-  dbm("utfln done");
+  //dbm("utfln done");
   ulong s = wstrInput.walkLength;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
@@ -212,7 +212,7 @@ void print(int i) {
   i.to!string.toStringz.addstr;
 }
 
-VKapi get_token(ref string[string] storage) {
+VkMan get_token(ref string[string] storage) {
   char token;
   "e_input_token".getLocal.print;
   spawnShell(`xdg-open "http://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
@@ -221,7 +221,7 @@ VKapi get_token(ref string[string] storage) {
   noecho;
   auto strtoken = (cast(char*)&token).to!string;
   storage["token"] = strtoken;
-  return new VKapi(strtoken);
+  return new VkMan(strtoken);
 }
 
 void color() {
@@ -481,7 +481,7 @@ int activeBufferMaxLen() {
     case Buffers.dialogs: return api.getServerCount(blockType.dialogs);
     case Buffers.friends: return api.getServerCount(blockType.friends);
     case Buffers.music: return api.getServerCount(blockType.music);
-    case Buffers.chat: return api.getChatLineCount(win.chatID);
+    case Buffers.chat: return api.getChatLineCount(win.chatID, COLS-12);
     default: return 0;
   }
 }
@@ -906,7 +906,7 @@ void test() {
         writeln("cyka");
         return;
     }
-    auto api = new VKapi(storage["token"]);
+    /*auto api = new VKapi(storage["token"]);
     if(!api.isTokenValid) {
         writeln("bad token");
         return;
@@ -922,7 +922,7 @@ void test() {
         }
         api.setTypingStatus(pr);
         ++i;
-    }
+    }*/
 }
 
 void stop() {
@@ -945,16 +945,16 @@ void main(string[] args) {
   storage.parse;
 
   try {
-    api = "token" in storage ? new VKapi(storage["token"]) : storage.get_token;
+    api = "token" in storage ? new VkMan(storage["token"]) : storage.get_token;
   } catch (BackendException e) {
     stop;
     writeln(e.msg);
     exit(0);
   }
-  while (!api.isTokenValid) {
+  /*while (!api.isTokenValid) {
     "e_wrong_token".getLocal.print;
     api = storage.get_token;
-  }
+  }*/
 
   api.asyncLongpoll;
   mplayer = new MusicPlayer;

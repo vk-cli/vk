@@ -1160,7 +1160,7 @@ class VkMan {
         longpollThread.start();
     }
 
-    void toggleForeceUpdate(blockType tp) {
+    void toggleForceUpdate(blockType tp) {
         getData(tp).forceUpdate = true;
     }
 

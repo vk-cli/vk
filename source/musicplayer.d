@@ -2,14 +2,14 @@ import std.process, std.stdio, std.string,
        std.array, std.algorithm, std.conv;
 import core.thread;
 import app, utils;
-import vkapi: VKapi;
+import vkapi: VkMan;
 
 struct Track {
   string artist, title, duration, playtime;
 }
 
 __gshared MusicPlayer mplayer;
-__gshared VKapi api;
+__gshared VkMan api;
 
 class MusicPlayer : Thread {
   File delegate() stdinPipe;
@@ -124,7 +124,7 @@ class MusicPlayer : Thread {
     }
   }
 
-  void startPlayer(VKapi vkapi) {
+  void startPlayer(VkMan vkapi) {
     api = vkapi;
     listen = new Thread(&listenStdout);
     listen.start;
