@@ -3,7 +3,7 @@ module vkapi;
 import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
 import std.exception, core.exception;
 import std.net.curl, std.uri, std.json;
-import std.algorithm, std.range;
+import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, namecache, localization;
 
@@ -13,8 +13,11 @@ import utils, namecache, localization;
 
 const int convStartId = 2000000000;
 const int mailStartId = convStartId*-1;
+const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
+
+const uint defaultBlock = 100;
 const int chatBlock = 100;
 const int chatUpd = 50;
 
@@ -111,6 +114,18 @@ struct vkAudio {
     string url;
 }
 
+struct vkAccountInit {
+    int id;
+    string
+        first_name,
+        last_name;
+    uint
+        c_messages,
+        sc_dialogs,
+        sc_friends,
+        sc_audio;
+}
+
 struct vkGroup {
     int id;
     string name;
@@ -131,29 +146,24 @@ struct vkNextLp {
 
 // === API state and meta =====
 
-struct apiTransfer {
-    string token;
-    bool tokenvalid;
-    vkUser user;
-}
-
 struct apiState {
     bool lp80got = true;
-    int latestUnreadMsg = 0;
     bool somethingUpdated = false;
     bool chatloading = false;
     string lastlp = "";
-    sendOrderMsg[] order;
+    uint countermsg;
+
     sentMsg[int] sent; //by rid
 }
 
-struct sendOrderMsg {
-    int author;
-    int peer;
-    int rid;
-    string msg;
-    int[] fwd = [];
-    string[] att = [];
+struct ldFuncResult {
+    bool success;
+    int servercount = -1;
+}
+
+struct factoryData {
+    int serverCount = -1;
+    bool forceUpdate;
 }
 
 struct sentMsg {
@@ -172,46 +182,7 @@ enum blockType {
 
 enum sendState {
     pending,
-    failed,
-    ok
-}
-
-struct apiBufferData {
-    int serverCount = -1;
-    int linesCount = -1;
-    bool forceUpdate = true;
-    bool loading = false;
-    bool updated = false;
-
-}
-
-struct apiRecentlyUpdated {
-    long updated;
-    bool checkedout;
-}
-
-struct apiLineCache {
-    vkMessageLine[] buf;
-    int wrap = -1;
-}
-
-struct apiChatBuffer {
-    vkMessage[] buffer;
-    apiBufferData data;
-    apiLineCache[int] linebuffer; // by mid
-}
-
-struct apiBuffers {
-    vkDialog[] dialogsBuffer;
-    apiBufferData dialogsData;
-
-    vkFriend[] friendsBuffer;
-    apiBufferData friendsData;
-
-    vkAudio[] audioBuffer;
-    apiBufferData audioData;
-
-    apiChatBuffer[int] chatBuffer;
+    failed
 }
 
 struct apiFwdIter {
@@ -219,127 +190,47 @@ struct apiFwdIter {
     int md;
 }
 
-__gshared nameCache nc = nameCache();
-__gshared apiState ps = apiState();
-__gshared apiBuffers pb = apiBuffers();
+__gshared {
+    nameCache nc;
+    apiState ps;
+    Mutex
+        sndMutex,
+        pbMutex;
+}
 
-__gshared Mutex sndMutex;
-__gshared Mutex pbMutex;
 
-loadBlockThread lbThread;
-longpollThread lpThread;
-sendThread sndThread;
-typingThread tpThread;
-
-class VKapi {
-
-// ===== API & networking =====
+class VkApi {
 
     private const string vkurl = "https://api.vk.com/method/";
     const string vkver = "5.50";
-    private string vktoken = "";
+    private string vktoken;
     bool isTokenValid;
+
     vkUser me;
+    vkAccountInit initdata;
 
-    this(string token){
-        tokenInit(token);
-        nc = nc.createNC(this.exportStruct());
-        addMeNC();
-    }
-
-    this(apiTransfer st) {
-        vktoken = st.token;
-        isTokenValid = st.tokenvalid;
-        me = st.user;
+    this(string token) {
+        vktoken = token;
     }
 
     void addMeNC() {
         nc.addToCache(me.id, cachedName(me.first_name, me.last_name));
     }
 
-    void tokenInit(string token) {
-        vktoken = token;
-        isTokenValid = checkToken(token);
-
-        lbThread = new loadBlockThread();
-        lpThread = new longpollThread(this);
-        sndThread = new sendThread(this);
-        tpThread = new typingThread(this);
-
-        sndMutex = new Mutex();
-        pbMutex = new Mutex();
-    }
-
-    apiTransfer exportStruct() {
-        return apiTransfer(vktoken, isTokenValid, me);
-    }
-
-    const uint maxuint = 4_294_967_295;
-    const uint maxint = 2_147_483_647;
-    const uint ridstart = 1;
-    int genId() {
-        long rnd = uniform(ridstart, maxuint);
-        if(rnd > maxint) {
-            rnd = -(rnd-maxint);
-        }
-        return rnd.to!int;
-    }
-
-    bool isSomethingUpdated() {
-        if(ps.somethingUpdated){
-            ps.somethingUpdated = false;
-            return true;
-        }
-        return false;
-    }
-
-    void toggleUpdate() {
-        ps.somethingUpdated = true;
+    void resolveMe() {
+        isTokenValid = checkToken(vktoken);
     }
 
     private bool checkToken(string token) {
         if(token.length != 85) return false;
         try{
-            me = usersGet();
+            initdata = executeAccountInit();
+            me = vkUser(initdata.first_name, initdata.last_name, initdata.id);
         } catch (ApiErrorException e) {
             dbm("ApiErrorException: " ~ e.msg);
             return false;
         }
         return true;
-    }
-
-    string httpget(string addr, Duration timeout) {
-        string content = "";
-        auto client = HTTP();
-
-        int tries = 0;
-        bool ok = false;
-
-        while(!ok){
-            try{
-                client.method = HTTP.Method.get;
-                client.url = addr;
-
-                client.dataTimeout = timeout;
-                client.operationTimeout = timeout;
-                client.connectTimeout = timeout;
-
-                client.onReceive = (ubyte[] data) {
-                    auto sz = data.length;
-                    content ~= (cast(immutable(char)*)data)[0..sz];
-                    //dbm("recv content: " ~ content);
-                    return sz;
-                };
-                client.perform();
-                ok = true;
-            } catch (CurlException e) {
-                ++tries;
-                dbm("[attempt " ~ (tries.to!string) ~ "] network error: " ~ e.msg);
-                if(tries >= connectAttmepts) throw new BackendException("not working - connection failed!   attempts: " ~ tries.to!string ~ ", last curl error: " ~ e.msg);
-                Thread.sleep( dur!"msecs"(mssleepBeforeAttempt) );
-            }
-        }
-        return content;
     }
 
     JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false) {
@@ -353,7 +244,30 @@ class VKapi {
         dbm("request: " ~ url ~ "***");
         url ~= vktoken;
         auto tm = dur!timeoutFormat(vkgetCurlTimeout);
-        JSONValue resp = httpget(url, tm).parseJSON;
+        string got;
+
+        bool htloop;
+        while(!htloop) {
+            try{
+                got = AsyncMan.httpget(url, tm);
+                htloop = true;
+            } catch(InternalException e) {
+                if(e.ecode == e.E_NETWORKFAIL) {
+                    //todo notify networkfail
+                    dbm(e.msg ~ " E_NETWORKFAIL");
+                } else throw e;
+            }
+        }
+
+
+        JSONValue resp;
+        try{
+            resp = got.parseJSON;
+            //dbm("json: " ~ resp.toPrettyString);
+        }
+        catch(JSONException e) {
+            throw new ApiErrorException(resp.toPrettyString(), 0);
+        }
 
         if(resp.type == JSON_TYPE.OBJECT) {
             if("error" in resp){
@@ -376,13 +290,27 @@ class VKapi {
 
     // ===== API method wrappers =====
 
+    vkAccountInit executeAccountInit() {
+        string[string] params;
+        auto resp = vkget("execute.accountInit", params);
+        vkAccountInit rt = {
+            id:resp["me"]["id"].integer.to!int,
+            first_name:resp["me"]["first_name"].str,
+            last_name:resp["me"]["last_name"].str,
+            c_messages:resp["counters"]["messages"].integer.to!int,
+            sc_dialogs:resp["sc"]["dialogs"].integer.to!int,
+            sc_friends:resp["sc"]["friends"].integer.to!int,
+            sc_audio:resp["sc"]["audio"].integer.to!int
+        };
+        return rt;
+    }
+
     vkUser usersGet(int userId = 0, string fields = "", string nameCase = "nom") {
         string[string] params;
         if(userId != 0) params["user_ids"] = userId.to!string;
         if(fields != "") params["fields"] = fields;
         if(nameCase != "nom") params["name_case"] = nameCase;
         auto resp = vkget("users.get", params);
-        //dbm(resp.toPrettyString());
 
         if(resp.array.length != 1) throw new BackendException("users.get (one user) fail: response array length != 1");
         resp = resp[0];
@@ -416,10 +344,6 @@ class VKapi {
             rt ~= rti;
         }
         return rt;
-    }
-
-    void setTypingStatus(int peer) {
-        tpThread.setStatus(peer);
     }
 
     void setActivityStatusImpl(int peer, string type) {
@@ -509,10 +433,10 @@ class VKapi {
     }
 
     int messagesCounter() {
-        int u = ps.latestUnreadMsg;
+        int u = ps.countermsg;
         if(ps.lp80got) {
             u = accountGetCounters("messages").messages;
-            ps.latestUnreadMsg = u;
+            ps.countermsg = u;
             ps.lp80got = false;
         }
         return u;
@@ -628,6 +552,7 @@ class VKapi {
             auto hascid = ("chat_id" in m);
             int uid = m["user_id"].integer.to!int;
             int pid = (hascid) ? (m["chat_id"].integer.to!int + convStartId) : uid;
+            int rid = ("random_id" in m) ? m["random_id"].integer.to!int : 0;
             long ut = m["date"].integer.to!long;
             bool outg = (m["out"].integer.to!int == 1);
             bool rstate = (m["read_state"].integer.to!int == 1);
@@ -655,13 +580,14 @@ class VKapi {
                 fw = r.fwd;
             }
 
-            vkMessage mo = {
-                msg_id: mid, author_id: fid, peer_id: pid,
-                outgoing: outg, unread: unr, utime: ut,
-                author_name: nc.getName(fid).strName,
-                time_str: st, body_lines: mbody,
-                fwd_depth: fwdp, fwd:fw, needName: true
-            };
+            auto mo = vkMessage();
+            mo.outgoing = outg; mo.unread = unr; mo.utime = ut;
+            mo.author_name = nc.getName(fid).strName;
+            mo.time_str = st; mo.body_lines = mbody;
+            mo.fwd_depth = fwdp; mo.fwd = fw; mo.needName = true;
+            mo.msg_id = mid; mo.author_id = fid; mo.peer_id = pid;
+            mo.rndid = rid;
+
             rt ~= mo;
             ++i;
         }
@@ -706,293 +632,1119 @@ class VKapi {
         auto resp = vkget("messages.send", params);
         return resp.integer.to!int;
     }
+}
 
-    // ===== buffers =====
+class AsyncOrder : Thread {
+    struct Task {
+        int id;
+        void delegate() dg;
+    }
 
+    private
+        Task[] order;
+        Mutex orderAccess;
 
-    private T[] getBuffered(T)(int block, int upd, int count, int offset, blockType blocktp, void delegate(int count, int offset) download, ref apiBufferData bufd, ref T[] buf, out bool retLoading) {
-        T[] rt;
-        bool spawnLoadBlock = false;
+    this() {
+        orderAccess = new Mutex();
+        super(&procOrder);
+    }
 
-        //dbm("getbuffered count: " ~ count.to!string ~ ", offset: " ~ offset.to!string ~ ", blocktp: " ~ blocktp.to!string);
+    void addToOrder(void delegate() d, int ordid) {
+        synchronized(orderAccess) {
+            immutable auto has = order.map!(q => q.id).canFind(ordid);
+            if(!has) order ~= Task(ordid, d);
+        }
+    }
 
-        synchronized(pbMutex) {
-            if(bufd.forceUpdate){
-                 buf = new T[0];
-                 bufd.forceUpdate = false;
-                 dbm(blocktp.to!string ~ " buffer empty now, fc: " ~ bufd.forceUpdate.to!string);
-            }
+    bool hasId(int ordid) {
+        return order.map!(q => q.id).canFind(ordid);
+    }
 
-            immutable int cl = buf.length.to!int;
-            int needln = count + offset;
-
-            if (bufd.serverCount == -1 || cl == 0 || (cl < bufd.serverCount && needln >= (cl-upd))) {
-                dbm("called UPD at offset " ~ offset.to!string ~ ", with current trigger " ~ (cl-upd).to!string);
-                dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
-                spawnLoadBlock = true;
-            }
-
-            if(bufd.serverCount != -1 && needln > bufd.serverCount) {
-                if(count >= cl) {
-                    count = cl;
-                    offset = 0;
-                } else {
-                    offset = cl - count;
+    private void procOrder() {
+        while(true) {
+            if(order.length != 0) {
+                for (int i; i < order.length; ++i) {
+                    try {
+                        order[i].dg();
+                    }
+                    catch (Exception e) {
+                        throw e;
+                    }
                 }
-                needln = count + offset;
-                dbm("this needln too big for me((, now offset: " ~ offset.to!string ~ ", count: " ~ count.to!string ~ ", sc: " ~ bufd.serverCount.to!string ~ ", needln: " ~ needln.to!string);
-            }
-
-            if(needln <= cl) {
-                bufd.loading = false;
-                retLoading = false;
-                rt = slice!T(buf, count, offset);
-            } else {
-                dbm("catched LOADING state at offset " ~ offset.to!string);
-                dbm("dbuf info cl: " ~ cl.to!string ~ ", needln: " ~ needln.to!string ~ ", dthread running: " ~ lbThread.isRunning.to!string ~ ", blocktp: " ~ blocktp.to!string);
-                bufd.loading = true;
-                retLoading = true;
-            }
-
-            if(spawnLoadBlock && !lbThread.isRunning) {
-                //lbThread.loadBlock(blocktp, block, cl);
-                lbThread.func(download, block, cl);
+                synchronized(orderAccess) {
+                    order = [];
+                }
             }
         }
+    }
+}
+
+class AsyncSingle : Thread {
+
+    this() {
+        super(&func);
+    }
+
+    private void delegate() dg;
+
+    void startFunc(void delegate() d) {
+        if(!this.isRunning) {
+            dg = d;
+            this.start();
+        }
+    }
+
+    private void func() {
+        try {
+            if(dg) dg();
+        }
+        catch (Exception e) {
+            throw e;
+        }
+    }
+
+}
+
+class AsyncMan {
+
+    static string httpget(string addr, Duration timeout) {
+        string content = "";
+        auto client = HTTP();
+
+        int tries = 0;
+        bool ok = false;
+
+        while(!ok){
+            try{
+                client.method = HTTP.Method.get;
+                client.url = addr;
+
+                client.dataTimeout = timeout;
+                client.operationTimeout = timeout;
+                client.connectTimeout = timeout;
+
+                client.onReceive = (ubyte[] data) {
+                    auto sz = data.length;
+                    content ~= (cast(immutable(char)*)data)[0..sz];
+                    return sz;
+                };
+                client.perform();
+                ok = true;
+                //dbm("recv content: " ~ content);
+            } catch (CurlException e) {
+                ++tries;
+                dbm("[attempt " ~ (tries.to!string) ~ "] network error: " ~ e.msg);
+                if(tries >= connectAttmepts) {
+                    throw new InternalException(4, "E_NETWORKFAIL");
+                    //notifyHttpFail();
+                }
+                Thread.sleep( dur!"msecs"(mssleepBeforeAttempt) );
+            }
+        }
+        return content;
+    }
+
+    const string
+        S_SELF_RESOLVE = "s_self_resolve",
+        O_LOADBLOCK = "o_loadblock",
+        O_SENDMSG = "o_sendm";
+
+    AsyncOrder[string] orders;
+    AsyncSingle[string] singles;
+
+    void orderedAsync(string orderkey, int ordid, void delegate() d) {
+        auto so = orderkey in orders;
+        if(!so) {
+            orders[orderkey] = new AsyncOrder();
+            so = orderkey in orders;
+        }
+
+        so.addToOrder(d, ordid);
+        if(!so.isRunning)
+            so.start();
+    }
+
+    void singleAsync(string singlekey, void delegate() d) {
+        auto ss = singlekey in singles;
+        if(!ss) {
+            singles[singlekey] = new AsyncSingle();
+            ss = singlekey in singles;
+        }
+
+        ss.startFunc(d);
+    }
+
+}
+
+
+class Longpoll : Thread {
+
+    private {
+        VkMan man;
+        VkApi api;
+    }
+
+    this(VkMan vkman) {
+        man = vkman;
+        api = man.api;
+        super(&startSync);
+    }
+
+    void startSync() {
+        if(!api.isTokenValid) {
+            dbm("longpoll is waiting for api init...");
+            while(!api.isTokenValid) {
+                Thread.sleep(dur!"msecs"(300));
+            }
+        }
+        dbm("longpoll is starting...");
+        while(true) {
+            try {
+                doLongpoll(getLongpollServer());
+            } catch (ApiErrorException e) {
+                dbm("longpoll ApiErrorException: " ~ e.msg);
+            }
+            dbm("longpoll is restarting...");
+        }
+    }
+
+
+    vkLongpoll getLongpollServer() {
+        auto resp = api.vkget("messages.getLongPollServer", [ "use_ssl": "1", "need_pts": "1" ]);
+        dbm("longpoll server: \n" ~ resp.toPrettyString() ~ "\n");
+        vkLongpoll rt = {
+            server: resp["server"].str,
+            key: resp["key"].str,
+            ts: resp["ts"].integer.to!int
+        };
         return rt;
+    }
+
+
+    void doLongpoll(vkLongpoll start) {
+        auto tm = dur!timeoutFormat(longpollCurlTimeout);
+        int cts = start.ts;
+        auto mode = (2 + 128).to!string; //attaches + random_id
+        bool ok = true;
+        dbm("longpoll works");
+        while(ok) {
+            try {
+                if(cts < 1) break;
+                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=" ~ mode;
+                auto resp = AsyncMan.httpget(url, tm);
+                immutable auto next = parseLongpoll(resp);
+                if(next.failed == 2 || next.failed == 3) ok = false; //get new server
+                cts = next.ts;
+            } catch(Exception e) {
+                dbm("longpoll exception: " ~ e.msg);
+                ok = false;
+            }
+        }
+    }
+
+    vkNextLp parseLongpoll(string resp) {
+        JSONValue j = parseJSON(resp);
+        vkNextLp rt;
+        auto ct = Clock.currTime();
+        auto failed = ("failed" in j ? j["failed"].integer.to!int : -1 );
+        auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
+        if(failed == -1) {
+            auto upd = j["updates"].array;
+            dbm("new lp: " ~ j.toPrettyString());
+            foreach(u; upd) {
+                switch(u[0].integer.to!int) {
+                    case 4: //new message
+                        triggerNewMessage(u, ct);
+                        break;
+                    case 80: //counter update
+                        if(return80mc) {
+                            ps.countermsg = u[1].integer.to!int;
+                        } else {
+                            ps.lp80got = true;
+                        }
+                        man.toggleUpdate();
+                        break;
+                    case 6: //inbox read
+                        triggerRead(u);
+                        break;
+                    case 7: //outbox read
+                        triggerRead(u);
+                        break;
+                    case 8: //online\offline
+                        triggerOnline(u);
+                        break;
+                    case 9: //online\offline
+                        triggerOnline(u);
+                        break;
+                    default:
+                        break;
+                }
+            }
+        }
+        resolveMidOrder();
+        rt.ts = ts;
+        rt.failed = failed;
+        return rt;
+    }
+
+    alias processnmFunc = void delegate(vkMessage);
+
+    processnmFunc[int] midResolveOrder;
+
+    void resolveMidOrder() {
+        if(midResolveOrder.length == 0) return;
+        api.messagesGetById(midResolveOrder.keys)
+                    .each!(q => midResolveOrder[q.msg_id](q));
+        midResolveOrder.clear();
+        man.toggleUpdate();
+    }
+
+    void triggerNewMessage(JSONValue ui, SysTime ct) {
+        //if(pb.dialogsData.forceUpdate) return;
+        auto u = ui.array;
+
+        auto mid = u[1].integer.to!int;
+        auto flags = u[2].integer.to!int;
+        auto peer = u[3].integer.to!int;
+        auto utime = u[4].integer.to!long;
+        auto msg = u[6].str.longpollReplaces;
+        auto att = u[7];
+        int rndid = (u.length > 8) ? u[8].integer.to!int : 0;
+
+        bool outbox = (flags & 2) == 2;
+        bool unread = (flags & 1) == 1;
+        bool hasattaches = att.object.keys.map!(a => (a == "fwd") || a.matchAll(r"attach.*")).any!"a";
+
+        auto conv = (peer > convStartId);
+        bool group = false;
+
+        if(!conv && peer > longpollGimStartId) {
+            peer = -(peer - longpollGimStartId);
+            group = true;
+        }
+
+        auto from = conv ? att["from"].str.to!int : ( outbox ? api.me.id : peer );
+
+        ClDialog old = null;
+
+        auto old_over = man.dialogsFactory.getOverridedByPeer(peer);
+        if(old_over is null) {
+            auto oldfb = man.dialogsFactory.getLoadedObjects
+                    .filter!(q => q.getObject.id == peer)
+                    .takeOne();
+            if(!oldfb.empty) old = oldfb.front();
+        }
+        else {
+            old = old_over.dialog;
+        }
+
+        auto oldfound = old !is null;
+
+        auto title = conv ? u[5].str : ( group || oldfound ? nc.getName(peer).strName : "" );
+        auto haspeer = (peer in man.chatFactory);
+
+        vkDialog nd = {
+            name: title, lastMessage: msg, lastmid: mid,
+            id: peer, online: true, isChat: conv,
+            unread: (unread && !outbox)
+        };
+
+        auto processnm = delegate (vkMessage nmsg) {
+            dbm("processnm");
+            auto cf = man.chatFactory[peer];
+            auto rid = nmsg.rndid;
+            auto realmsg = cf.getLoadedObjects
+                                        .filter!(q => !q.getObject.isZombie)
+                                        .takeOne();
+            if(!realmsg.empty) {
+                auto lastm = realmsg.front.getObject;
+                nmsg.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
+            }
+
+            auto sent = rid in ps.sent;
+            if(sent) {
+                dbm("approved sent nm rid: " ~ rid.to!string);
+                cf.removeZombie(rid);
+                ps.sent.remove(rid);
+            }
+            cf.addBack(new ClMessage(nmsg));
+        };
+
+        if(haspeer) {
+            if(!hasattaches) {
+                vkMessage lpnm = {
+                    author_id: from, peer_id: peer, msg_id: mid,
+                    outgoing: outbox, unread: unread, rndid: rndid,
+                    utime: utime, time_str: vktime(ct, utime),
+                    author_name: nc.getName(from).strName,
+                    body_lines: msg.split("\n"),
+                    fwd_depth: -1, needName: true
+                };
+                processnm(lpnm);
+            } else {
+                //auto gett = messagesGetById([mid]);
+                midResolveOrder[mid] = processnm;
+            }
+        }
+
+        if(oldfound && !conv) {
+            nd.online = old.getObject.online;
+        }
+
+        if (!oldfound && !conv && !group) {
+            auto peerinfo = api.usersGet(peer, "online"); //todo late-resolve
+            auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
+            nc.addToCache(peerinfo.id, peername);
+            nd.name = peername.strName;
+            nd.online = peerinfo.online;
+        }
+
+        man.dialogsFactory.overrideDialog(new ClDialog(nd), ct.toUnixTime);
+
+        if(from != api.me.id) ps.lastlp = title ~ ": " ~ msg;
+        man.toggleUpdate();
+    }
+
+    void triggerRead(JSONValue u) {
+        bool inboxrd = (u[0].integer == 6);
+        auto peer = u[1].integer.to!int;
+        auto mid = u[2].integer.to!int;
+
+        if(peer > longpollGimStartId && peer < convStartId) {
+            peer = -(peer-longpollGimStartId);
+        }
+
+        dbm("rd trigger peer: " ~ peer.to!string ~ ", mid: " ~ mid.to!string ~ ", inbox: " ~ inboxrd.to!string);
+
+        synchronized(pbMutex) {
+            if(inboxrd) {
+                auto dlone = man.dialogsFactory.getLoadedObjects
+                    .map!(q => q.getObject)
+                    .filter!(q => q.id == peer)
+                    .takeOne();
+                if(!dlone.empty) {
+                    dlone.front.unread = false;
+                }
+            }
+
+            auto ch = peer in man.chatFactory;
+            if(ch) {
+                auto chl = ch.getLoadedObjects;
+                chl
+                  .map!(q => q.getObject.msg_id == mid)
+                  .countUntil(true);
+
+
+                while( !chl.empty && ( (chl.front !is null && chl.front.getObject.outgoing != inboxrd) ? chl.front.getObject.unread : true) ) {
+                    auto mobj = chl.front.getObject;
+                    if(mobj.outgoing != inboxrd) {
+                        mobj.unread = false;
+                        chl.front.invalidateLineCache();
+                    }
+                    chl.popFront();
+                }
+            }
+        }
+
+        man.toggleUpdate();
+    }
+
+    void triggerOnline(JSONValue u) {
+        auto uid = u[1].integer.to!int * -1;
+        auto flags = u[2].integer.to!int;
+        auto event = u[0].integer.to!int;
+        bool exit = (event == 9);
+        if(!exit && event != 8) return;
+
+        auto friend = man.friendsFactory.getLoadedObjects
+                            .map!(q => q.getObject)
+                            .filter!(q => q.id == uid)
+                            .takeOne();
+
+        auto dialog = man.dialogsFactory.getLoadedObjects
+                            .map!(q => q.getObject)
+                            .filter!(q => q.id == uid)
+                            .takeOne();
+
+        if(!friend.empty) friend.front.online = !exit;
+        if(!dialog.empty) dialog.front.online = !exit;
+
+        man.toggleUpdate();
+    }
+
+}
+
+class VkMan {
+
+    alias ChatBlockFactory = BlockFactory!ClMessage;
+
+    __gshared {
+        VkApi api;
+        vkUser* me;
+        AsyncMan a;
+
+        BlockFactory!ClDialog dialogsFactory;
+        BlockFactory!ClFriend friendsFactory;
+        BlockFactory!ClAudio musicFactory;
+        ChatBlockFactory[int] chatFactory; //by peer
+
+        Longpoll longpollThread;
+    }
+
+    this(string token) {
+        a = new AsyncMan();
+        api = new VkApi(token);
+        baseInit();
+        a.singleAsync(a.S_SELF_RESOLVE, () => accountInit());
+        //accountInit();
+    }
+
+    private void accountInit() {
+        nc = new nameCache(api);
+        api.resolveMe();
+        if(!api.isTokenValid) {
+            //todo warn about token
+            return;
+        }
+
+        api.addMeNC();
+        me = &(api.me);
+
+        dialogsFactory.data.serverCount = api.initdata.sc_dialogs;
+        friendsFactory.data.serverCount = api.initdata.sc_friends;
+        musicFactory.data.serverCount = api.initdata.sc_audio;
+
+        ps.countermsg = api.initdata.c_messages;
+
+        toggleUpdate();
+    }
+
+    private BlockFactory!T generateBF(T)(T[] delegate(VkApi, uint, uint, out int) ld, uint dwblock = defaultBlock) {
+        return new BlockFactory!T(
+            new BlockObjectParameters!T(api, dwblock, a, ld, &notifyBlockDownloadDone));
+    }
+
+    private void baseInit() {
+        sndMutex = new Mutex();
+        pbMutex = new Mutex();
+        ps = apiState();
+        longpollThread = new Longpoll(this);
+
+        dialogsFactory = generateBF!ClDialog(ClDialog.getLoadFunc());
+        friendsFactory = generateBF!ClFriend(ClFriend.getLoadFunc());
+        musicFactory = generateBF!ClAudio(ClAudio.getLoadFunc());
+    }
+
+    bool isSomethingUpdated() {
+        if(ps.somethingUpdated){
+            ps.somethingUpdated = false;
+            return true;
+        }
+        return false;
+    }
+
+    void toggleUpdate() {
+        ps.somethingUpdated = true;
+    }
+
+    private auto getData(blockType tp) {
+        switch(tp){
+            case blockType.dialogs: return &(dialogsFactory.data);
+            case blockType.friends: return &(friendsFactory.data);
+            case blockType.music: return &(musicFactory.data);
+            default: assert(0);
+        }
+    }
+
+    void asyncLongpoll() {
+        longpollThread.start();
+    }
+
+    void toggleForeceUpdate(blockType tp) {
+        getData(tp).forceUpdate = true;
+    }
+
+    void toggleChatForceUpdate(int peer) {
+        //pb.chatBuffer[peer].data.forceUpdate = true;
+    }
+
+    int getServerCount(blockType tp) {
+        return getData(tp).serverCount;
+    }
+
+    bool isScrollAllowed(blockType tp) {
+        return true;
+    }
+
+    bool isChatScrollAllowed(int peer) {
+        return true;
+    }
+
+    int getChatServerCount(int peer) {
+        auto c = peer in chatFactory;
+        if(c) return c.data.serverCount;
+        else return -1;
+    }
+
+    int getChatLineCount(int peer, int ww) {
+        auto c = peer in chatFactory;
+        if(c) return (*c).getServerLineCount(ww);
+        else return -1;
+    }
+
+    string getLastLongpollMessage() {
+        auto last = ps.lastlp;
+        ps.lastlp = "";
+        return last;
+    }
+
+    void notifyBlockDownloadDone() {
+        toggleUpdate();
     }
 
     vkFriend[] getBufferedFriends(int count, int offset) {
-        const int block = 100;
-        const int upd = 50;
-        if(offset < 0) offset = 0;
-
-        immutable vkFriend ld = {
-            first_name: getLocal("loading"),
-            last_name: ""
-        };
-
-        void dw(int c, int off) {
-            int sc;
-            pb.friendsBuffer ~= friendsGet(c, off, sc);
-            pb.friendsData.serverCount = sc;
-            pb.friendsData.updated = true;
-            toggleUpdate();
-        }
-
-        bool outload;
-        auto rt = getBuffered!vkFriend(block, upd, count, offset, blockType.friends, &dw, pb.friendsData, pb.friendsBuffer, outload);
-
-        if(outload) rt = [ ld ];
-        return rt;
+        return bufferedGet!vkFriend(friendsFactory, count, offset);
     }
 
     vkAudio[] getBufferedMusic(int count, int offset) {
-        const int block = 100;
-        const int upd = 50;
-        if(offset < 0) offset = 0;
-
-        immutable vkAudio ld = {
-            artist: getLocal("loading"),
-            title: ""
-        };
-
-        void dw(int c, int off) {
-            int sc;
-            pb.audioBuffer ~= audioGet(c, off, sc);
-            pb.audioData.serverCount = sc;
-            pb.audioData.updated = true;
-            toggleUpdate();
-        }
-
-        bool outload;
-        auto rt = getBuffered!vkAudio(block, upd, count, offset, blockType.music, &dw, pb.audioData, pb.audioBuffer, outload);
-
-        if(outload) rt = [ ld ];
-        return rt;
+        return bufferedGet!vkAudio(musicFactory, count, offset);
     }
 
     vkDialog[] getBufferedDialogs(int count, int offset) {
-        const int block = 100;
-        const int upd = 50;
-        if(offset < 0) offset = 0;
-
-        immutable vkDialog ld = {
-            name: getLocal("loading")
-        };
-
-        void dw(int c, int off) {
-            int sc;
-            pb.dialogsBuffer ~= messagesGetDialogs(c, off, sc);
-            pb.dialogsData.serverCount = sc;
-            pb.dialogsData.updated = true;
-            toggleUpdate();
-        }
-
-        bool outload;
-        auto rt = getBuffered!vkDialog(block, upd, count, offset, blockType.dialogs, &dw, pb.dialogsData, pb.dialogsBuffer, outload);
-
-        if(outload) rt = [ ld ];
-        return rt;
+        return bufferedGet!vkDialog(dialogsFactory, count, offset);
     }
 
-    vkMessage[] getBufferedChat(int count, int offset, int peer) {
-        const int block = chatBlock;
-        const int upd = chatUpd;
-        if(offset < 0) offset = 0;
-
-        vkMessage ld = {
-            author_name: getLocal("loading"),
-            needName: true, isLoading: true
-        };
-
-        vkMessage[] defaultrt = [ ld ];
-
-        void dw(int c, int off) {
-            int sc;
-            pb.chatBuffer[peer].buffer ~= messagesGetHistory(peer, c, off, sc);
-            pb.chatBuffer[peer].data.serverCount = sc;
-            pb.chatBuffer[peer].data.updated = true;
-            resolveNeedName(peer);
-            pb.chatBuffer[peer].data.loading = false;
-            toggleUpdate();
+    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
+        auto f = peer in chatFactory;
+        if(!f) {
+            chatFactory[peer] = generateBF!ClMessage(ClMessage.getLoadFunc(peer));
+            f = peer in chatFactory;
         }
 
-        if(peer !in pb.chatBuffer) pb.chatBuffer[peer] = apiChatBuffer();
+        synchronized(pbMutex) {
+            if(!f.prepare) return [];
+            f.seek(0);
 
-        bool outload;
-        auto rt = getBuffered!vkMessage(block, upd, count, offset, blockType.chat, &dw, pb.chatBuffer[peer].data, pb.chatBuffer[peer].buffer, outload);
-
-        if(outload) return defaultrt;
-
-        return rt;
+            return (*f)
+                    .filter!(q => q !is null)
+                    .inputRetro
+                    .map!(q => q.getLines(wrapwidth))
+                    .joinerBidirectional
+                    .dropBack(offset)
+                    .takeBackArray(count);
+        }
     }
 
-    private void resolveNeedName(int peer) {
+    int messagesCounter() {
+        return ps.countermsg;
+    }
+
+    private void sendMessageImpl(int rid, int peer, string msg) {
+        auto sentmid = api.messagesSend(peer, msg, rid);
+        dbm("message sent mid: " ~ sentmid.to!string ~ " rid: " ~ rid.to!string);
+    }
+
+    void asyncSendMessage(int peer, string msg) {
+        auto rid = genId();
+        auto aid = me.id;
+        vkMessage zombie = {
+            author_name: me.first_name ~ " " ~ me.last_name,
+            author_id: aid, isZombie: true,
+            body_lines: msg.split("\n"),
+            time_str: getLocal("sending"),
+            rndid: rid, msg_id: -1, outgoing: true, unread: true,
+            peer_id: peer, utime: 1,
+            needName: true, nmresolved: true
+        };
+
+        synchronized(pbMutex) {
+            auto ch = peer in chatFactory;
+            if(ch) {
+                ch.addZombie(zombie);
+            }
+        }
+
+        toggleUpdate();
+
+        synchronized(sndMutex) {
+            ps.sent[rid] = sentMsg(rid, peer, aid);
+        }
+
+        a.orderedAsync(a.O_SENDMSG, rid, () => sendMessageImpl(rid, peer, msg));
+    }
+
+    void setTypingStatus(int peer) {}
+
+    R[] bufferedGet(R, T)(T factory, int count, int offset) {
+        synchronized(pbMutex) {
+            if(!factory.prepare) return [];
+            factory.seek(offset);
+            return factory
+                    .filter!(q => q !is null)
+                    .take(count)
+                    .map!(q => *(q.getObject))
+                    .array;
+        }
+    }
+
+}
+
+// ===== Model =====
+
+abstract class ClObject(T) {
+
+    private {
+        private T obj;
+    }
+
+    bool ignored = false;
+
+    this(T o) {
+        obj = o;
+    }
+
+    T* getObject() {
+        return &obj;
+    }
+
+}
+
+class Block(T) {
+
+    alias objectType = T;
+    alias paramsType = BlockObjectParameters!T;
+
+    private {
+        uint
+            ordernum,
+            blocksz;
+        int oid;
+        bool filled;
+        factoryData* fdata;
+        paramsType params;
+        AsyncMan a;
+    }
+
+    T[] block;
+
+    this(uint ord, paramsType objparams, factoryData* fdt, int woid, bool filledblk = false) {
+        params = objparams;
+        a = params.asyncMan;
+        blocksz = params.blockSize;
+        ordernum = ord;
+        fdata = fdt;
+        filled = filledblk;
+        oid = woid;
+    }
+
+    T[] getBlock() {
+        downloadBlock();
+        return block;
+    }
+
+    void downloadBlock(bool force = false) {
+        if(!filled || force) a.orderedAsync(a.O_LOADBLOCK, oid, () {
+            ldFuncResult res;
+            block = params.downloadBlock(blocksz, blocksz*ordernum, res);
+            if(res.success) {
+                filled = true;
+                fdata.serverCount = res.servercount;
+                params.downloadNotify();
+            }
+        });
+    }
+
+    bool isFilled() {
+        return filled;
+    }
+
+    uint getBlocksize() {
+        return blocksz;
+    }
+
+    uint length() {
+        return block.length.to!uint;
+    }
+
+    void addBack(T obj) {
+        block = obj ~ block;
+    }
+
+    void addFront(T obj) {
+        block ~= obj;
+    }
+}
+
+class BlockObjectParameters(O) {
+
+    alias downloader = O[] delegate(VkApi, uint, uint, out int);
+    alias loadnotify = void delegate();
+
+    downloader loadFunc;
+    loadnotify loadNotifyFunc;
+    AsyncMan asyncMan;
+    uint blockSize;
+
+    private {
+        VkApi api;
+    }
+
+    this(VkApi vkapi, uint blocksize, AsyncMan asyncm, downloader ld, loadnotify ldn) {
+        assert(blocksize != 0);
+        loadFunc = ld;
+        loadNotifyFunc = ldn;
+        asyncMan = asyncm;
+        blockSize = blocksize;
+        api = vkapi;
+    }
+
+    O[] downloadBlock(uint c, uint o, out ldFuncResult r) {
+        r = apiCheck(api);
+        if(!r.success) return new O[0];
+        return loadFunc(api, c, o, r.servercount);
+    }
+
+    void downloadNotify() {
+        loadNotifyFunc();
+    }
+
+}
+
+class BlockFactory(T) {
+
+    alias paramsType = BlockObjectParameters!T;
+
+    private {
+        uint
+            blocksz;
+        int
+            oid,
+            iter,
+            backiter = -1;
+        Block!T[uint] blockst;
+        Block!T backBlock;
+        paramsType params;
+    }
+
+    factoryData data;
+
+    this(paramsType objectParams) {
+        params = objectParams;
+        blocksz = params.blockSize;
+        iter = 0;
+        data = factoryData();
+        oid = genId();
+        initBackBlock();
+    }
+
+    private void initBackBlock() {
+        backBlock = new Block!T(-1, params, &data, oid, true);
+    }
+
+    uint objectCount() {
+        return blockst.values.map!(q => q.length).sum();
+    }
+
+    auto getLoadedObjects() {
+        auto ldblocks = blockst.keys
+            .map!(q => q in blockst)
+            .filter!(q => q.isFilled)
+            .map!(q => q.getBlock)
+            .joiner;
+
+        auto ldback = backBlock.getBlock;
+
+        return chain(ldback, ldblocks);
+    }
+
+    private Block!T getblk(int i) {
+        auto c = i in blockst;
+        if(c) return *c;
+        else {
+            blockst[i] = new Block!T(i, params, &data, oid);
+            return blockst[i];
+        }
+    }
+
+    private T getBlockObject(int off) {
+        auto bk = backBlock.getBlock();
+        if(off < bk.length) {
+            auto bkobj = bk[off];
+            if(bkobj.ignored) return null;
+            return bkobj;
+        }
+        off -= bk.length;
+
+        auto rel = off % blocksz;
+        auto n = (off - rel) / blocksz;
+        auto nblk = getblk(n);
+
+        if(!nblk.isFilled) {
+            nblk.downloadBlock();
+            return null;
+        }
+        if(rel >= nblk.length) return null;
+
+        getblk(n+1).downloadBlock(); //preload
+        auto relobj = nblk.getBlock[rel];
+
+        if(relobj.ignored) return null;
+
+        static if(is(T == ClDialog)) {
+            if(isOverrided(relobj.getObject.id)) return null;
+        }
+
+        return relobj;
+    }
+
+    void seek(int off) {
+        iter = off;
+        backiter = data.serverCount;
+    }
+
+    void addBack(T addobj) {
+        backBlock.addBack(addobj);
+        data.serverCount += 1;
+    }
+
+    bool prepare() {
+        if(data.serverCount != -1){
+            if(backiter == -1) backiter = data.serverCount + backBlock.length;
+            return true;
+        }
+        getblk(0).downloadBlock();
+        return false;
+    }
+
+    bool empty() {
+        return iter >= backiter;
+    }
+
+    T front() {
+        return getBlockObject(iter);
+    }
+
+    void popFront() {
+        ++iter;
+    }
+
+    /+ T back() {
+        return getBlockObject(backiter);
+    }
+
+    void popBack() {
+        --backiter;
+    }
+
+    T moveBack() {
+        return back();
+    } +/
+
+    typeof(this) save() {
+        return this;
+    }
+
+    // ===== special magic =====
+
+    //pragma(msg, "T: " ~ T.stringof ~ ", equals ClMessage: " ~ is(T == ClMessage).stringof);
+
+    static if (is(T == ClMessage)) {
+        private int serverLineCount = -1;
+
+        int getServerLineCount(int ww) {
+            if(serverLineCount == -1 && objectCount == data.serverCount) {
+                serverLineCount = blockst.values
+                                    .map!(q => q.getBlock())
+                                    .joiner
+                                    .map!(q => q.getLineCount(ww))
+                                    .sum.to!int + 1;
+            }
+            return serverLineCount;
+        }
+
+        void addZombie(vkMessage z) {
+            //auto rid = z.rndid;
+            auto clz = new ClMessage(z);
+            //zombies[rid] = clz;
+            addBack(clz);
+        }
+
+        void removeZombie(int rid) {
+            backBlock
+                .getBlock
+                .filter!(q => q.getObject.rndid == rid)
+                .takeOne
+                .each!(q => q.ignored = true);
+        }
+
+    }
+
+
+    static if(is(T == ClDialog)) {
+        struct DialogOverrider {
+            long utime;
+            ClDialog dialog;
+        }
+
+        private DialogOverrider[int] store; //by peer
+
+        void overrideDialog(ClDialog dlg, long ut) {
+            store[dlg.getObject.id] = DialogOverrider(ut, dlg);
+            backBlock.block = getOverrided().array;
+        }
+
+        bool isOverrided(int peer) {
+            auto ptr = peer in store;
+            return ptr !is null;
+        }
+
+        auto getOverridedByPeer(int peer) {
+            return peer in store;
+        }
+
+        auto getOverrided() {
+            return store.values
+                            .sort!((a, b) => a.utime > b.utime)
+                            .map!(q => q.dialog);
+        }
+
+        auto getOverridedUnsorted() {
+            return store.values
+                            .map!(q => q.dialog);
+        }
+    }
+
+}
+
+ldFuncResult apiCheck(VkApi api) {
+    return ldFuncResult(api.isTokenValid);
+}
+
+const uint maxuint = 4_294_967_295;
+const uint maxint = 2_147_483_647;
+const uint ridstart = 1;
+
+int genId() {
+    long rnd = uniform(ridstart, maxuint);
+    if(rnd > maxint) {
+        rnd = -(rnd-maxint);
+    }
+    dbm("rid: " ~ rnd.to!string);
+    return rnd.to!int;
+}
+
+// ===== Implement objects =====
+
+class ClDialog : ClObject!vkDialog {
+
+    alias objt = vkDialog;
+    alias clt = typeof(this);
+
+    static auto getLoadFunc() {
+        return delegate (VkApi api, uint c, uint o, out int sc)
+                        =>  api.messagesGetDialogs(c, o, sc).map!(q => new clt(q)).array;
+    }
+
+    this(objt obj) {
+        super(obj);
+    }
+
+}
+
+class ClFriend : ClObject!vkFriend {
+
+    alias objt = vkFriend;
+    alias clt = typeof(this);
+
+    static auto getLoadFunc() {
+        return delegate (VkApi api, uint c, uint o, out int sc)
+                        =>  api.friendsGet(c, o, sc).map!(q => new clt(q)).array;
+    }
+
+    this(objt obj) {
+        super(obj);
+    }
+}
+
+class ClAudio : ClObject!vkAudio {
+
+    alias objt = vkAudio;
+    alias clt = typeof(this);
+
+    static auto getLoadFunc() {
+        return delegate (VkApi api, uint c, uint o, out int sc)
+                        =>  api.audioGet(c, o, sc).map!(q => new clt(q)).array;
+    }
+
+    this(objt obj) {
+        super(obj);
+    }
+
+}
+
+class ClMessage : ClObject!vkMessage {
+
+    alias objt = vkMessage;
+    alias clt = typeof(this);
+
+    static private void resolveNeedNameLocal(ref vkMessage[] mw) {
         int lastfid;
         long lastut;
-        foreach(ref m; pb.chatBuffer[peer].buffer.retro) {
-            bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
+        foreach(ref m; mw.retro) {
+            immutable bool nm = !(m.author_id == lastfid && (m.utime-lastut) <= needNameMaxDelta);
             m.needName = nm;
             lastfid = m.author_id;
             lastut = m.utime;
         }
     }
 
-    ref vkMessage lastMessage(ref vkMessage[] buf) {
-        auto bufl = buf.length;
-        if(bufl == 0) return emptyVkMessage;
-        return buf[bufl-1];
+    static auto getLoadFunc(int peer) {
+        return (VkApi api, uint c, uint o, out int sc) {
+            auto h = api.messagesGetHistory(peer, c, o, sc);
+            resolveNeedNameLocal(h);
+            return h.map!(q => new clt(q)).array;
+        };
     }
 
-    vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
-        dbm("bfcl called, count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
-        if(offset < 0) offset = 0;
-        vkMessageLine ld = {
-            text: getLocal("loading")
-        };
 
-        int needln = count + offset;
-        int lnsum;
-        int start;
-        int stoff;
-        int end;
+    this(objt obj) {
+        super(obj);
+    }
 
-        auto haspeer = peer in pb.chatBuffer;
-        bool doneload;
-        int loadoffset = 0;
-        bool offsetcatched = false;
+    private {
+        vkMessageLine[] lines;
+        int lastww;
+    }
 
-        if(haspeer) {
-            auto cb = &(pb.chatBuffer[peer]);
+    ulong getLineCount(int ww) {
+        fillLines(ww);
+        return lines.length;
+    }
 
-            if(cb.data.linesCount != -1 && needln > cb.data.linesCount && count < cb.data.linesCount) {
-                dbm("bfcl got needln more than linescount, coffset: " ~ offset.to!string ~ ", count: " ~ count.to!string);
-                offset = cb.data.linesCount - count;
-                needln = offset+count;
-            }
+    vkMessageLine[] getLines(int ww) {
+        fillLines(ww);
+        return lines;
+    }
 
-            loadoffset = cb.buffer.length.to!int;
-            doneload = loadoffset >= cb.data.serverCount;
+    void invalidateLineCache() {
+        lines = [];
+    }
 
-            int i;
-            foreach(m; cb.buffer) {
-                immutable auto lc = getMessageLinecount(m, wrapwidth);
-                lnsum += lc;
-                if(!offsetcatched && lnsum >= offset) {
-                    start = i;
-                    stoff = lc - (lnsum - offset);
-                    offsetcatched = true;
-                }
-                if(lnsum >= needln) {
-                    end = i;
-                    break;
-                }
-                ++i;
-            }
+    private void fillLines(int ww) {
+        if(lines.length == 0 || lastww != ww) {
+            lastww = ww;
+            lines = convertMessage(obj, ww);
         }
-
-        auto updtr = loadoffset - chatUpd;
-        if(end > updtr && end < loadoffset) {
-            if( (updtr+1) < chatUpd ) updtr = 1;
-            getBufferedChat(1, updtr+1, peer); //preload
-        }
-
-        if(lnsum < needln) {
-            dbm("bfcl not enough lnsum: " ~ lnsum.to!string ~ ", needln: " ~ needln.to!string);
-            if(!doneload) {
-                getBufferedChat(chatBlock, loadoffset, peer);
-                return [ ld ];
-            } else {
-                if(loadoffset == 0) return [];
-                end = loadoffset-1;
-            }
-        }
-
-        if(doneload) {
-            auto dt = &(pb.chatBuffer[peer]);
-            if(dt.data.linesCount == -1) {
-                dt.data.linesCount = dt.buffer.map!(q => getMessageLinecount(q, wrapwidth)).sum;
-            }
-        }
-
-        vkMessageLine[] lnbf;
-        pb.chatBuffer[peer]
-                            .buffer[start..end+1]
-                            .retro
-                            .map!(q => convertMessage(q, wrapwidth))
-                            .each!(q => lnbf ~= q);
-
-        auto lcount = count+stoff;
-        bool shortchat = doneload && (lnbf.length <= count);
-        return (shortchat) ? lnbf : lnbf[$-lcount..$-stoff];
     }
 
     vkMessageLine lspacing = {
         text: "", isSpacing: true
     };
 
-    int getMessageLinecount(ref vkMessage inp, int ww) {
-        if(inp.lineCount == -1 || inp.wrap == -1 || inp.wrap != ww) return convertMessage(inp, ww).length.to!int;
-        else return inp.lineCount;
-    }
+    const int wwmultiplier = 3;
 
-    void defeatMessageCache(int mid, int peer) {
-        pb.chatBuffer[peer].linebuffer.remove(mid);
-    }
-
-    vkMessageLine[] convertMessage(ref vkMessage inp, int ww) {
+    private vkMessageLine[] convertMessage(ref vkMessage inp, int ww) {
         immutable bool zombie = inp.isZombie || inp.msg_id < 1;
-        apiChatBuffer* cb;
-        synchronized(pbMutex) {
-            cb = &(pb.chatBuffer[inp.peer_id]);
-            if(!zombie) {
-                auto cached = inp.msg_id in cb.linebuffer;
-                if(cached && cached.wrap == ww) {
-                    return (*cached).buf;
-                }
-            }
-        }
 
         vkMessageLine[] rt;
         rt ~= lspacing;
@@ -1026,15 +1778,8 @@ class VKapi {
             rt ~= lspacing ~ renderFwd(inp.fwd, 0, ww);
         }
 
-        synchronized(pbMutex) {
-            if(!zombie) cb.linebuffer[inp.msg_id] = apiLineCache(rt, ww);
-            inp.lineCount = rt.length.to!int;
-            inp.wrap = ww;
-        }
         return rt;
     }
-
-    const int wwmultiplier = 3;
 
     private vkMessageLine[] renderFwd(vkFwdMessage[] inp, int depth, int ww) {
         ++depth;
@@ -1058,10 +1803,10 @@ class VKapi {
                 };
                 rt ~= msg;
             }
-            vkMessageLine fwdspc = {
-                isFwd: true, isSpacing: true,
-                fwdDepth: depth
-            };
+
+            vkMessageLine fwdspc;
+            fwdspc.isFwd = true; fwdspc.isSpacing = true;
+            fwdspc.fwdDepth = depth;
             rt ~= fwdspc;
 
             if(fm.fwd.length != 0) {
@@ -1071,521 +1816,6 @@ class VKapi {
 
         }
         return rt;
-    }
-
-    private apiBufferData* getData(blockType tp) {
-        switch(tp){
-            case blockType.dialogs: return &pb.dialogsData;
-            case blockType.friends: return &pb.friendsData;
-            case blockType.music: return &pb.audioData;
-            default: assert(0);
-        }
-    }
-
-    void toggleForceUpdate(blockType tp) {
-        getData(tp).forceUpdate = true;
-    }
-
-    void toggleChatForceUpdate(int peer) {
-        pb.chatBuffer[peer].data.forceUpdate = true;
-    }
-
-    int getServerCount(blockType tp) {
-        return getData(tp).serverCount;
-    }
-
-    bool isScrollAllowed(blockType tp) {
-        return !getData(tp).loading;
-    }
-
-    bool isChatScrollAllowed(int peer) {
-        return !pb.chatBuffer[peer].data.loading;
-    }
-
-    int getChatServerCount(int peer) {
-        return pb.chatBuffer[peer].data.serverCount;
-    }
-
-    int getChatLineCount(int peer) {
-        return pb.chatBuffer[peer].data.linesCount;
-    }
-
-    string getLastLongpollMessage() {
-        auto last = ps.lastlp;
-        ps.lastlp = "";
-        return last;
-    }
-
-    bool isUpdated(blockType tp) {
-        auto data = getData(tp);
-        if(data.updated) {
-            data.updated = false;
-            return true;
-        }
-        return false;
-    }
-
-    // ===== send =====
-
-    const int zombiermtake = 30;
-
-    int findzombie(sentMsg snt) {
-        return pb.chatBuffer[snt.peer].buffer.take(zombiermtake)
-            .map!(q => q.rndid == snt.rid).countUntil(true).to!int;
-    }
-
-    void notifySendState(sentMsg m) {
-        switch(m.state) {
-            case sendState.failed:
-                auto fnd = findzombie(m);
-                auto cb = &(pb.chatBuffer[m.peer]);
-                if(fnd != -1) cb.buffer[fnd].time_str = getLocal("sendfailed");
-                toggleUpdate();
-                break;
-            default: break;
-        }
-    }
-
-    void asyncSendMessage(int peer, string msg) {
-        dbm("called asyncsendmsg, peer: " ~ peer.to!string ~ ", msg: " ~ msg);
-
-        auto rid = genId();
-        auto aid = me.id;
-        auto cb = &(pb.chatBuffer[peer]);
-
-        vkMessage zombie = {
-            author_name: me.first_name ~ " " ~ me.last_name,
-            author_id: aid, isZombie: true,
-            body_lines: msg.split("\n"),
-            time_str: getLocal("sending"),
-            rndid: rid, msg_id: -1, outgoing: true, unread: true,
-            peer_id: peer, utime: 1,
-            needName: true, nmresolved: true
-        };
-
-        cb.buffer = zombie ~ cb.buffer;
-        toggleUpdate();
-
-        dbm("sendmsg: zombie created");
-
-        sendOrderMsg ord = {
-            author: aid,
-            peer: peer, rid: rid, msg: msg
-        };
-        sentMsg snt = {
-            rid: rid, author: aid, peer: peer
-        };
-
-        synchronized(sndMutex) {
-            ps.sent[rid] = snt;
-            ps.order ~= ord;
-        }
-
-        dbm("sendmsg: message in order");
-
-        if(!sndThread.isRunning) {
-            dbm("sendmsg: start sndthread");
-            sndThread.start();
-        }
-    }
-
-    // ===== longpoll =====
-
-    vkLongpoll getLongpollServer() {
-        auto resp = vkget("messages.getLongPollServer", [ "use_ssl": "1", "need_pts": "0" ]);
-        vkLongpoll rt = {
-            server: resp["server"].str,
-            key: resp["key"].str,
-            ts: resp["ts"].integer.to!int
-        };
-        return rt;
-    }
-
-    const longpollGimStartId = 1000000000;
-
-    void triggerNewMessage(JSONValue ui, SysTime ct) {
-        if(pb.dialogsData.forceUpdate) return;
-        auto u = ui.array;
-
-        auto mid = u[1].integer.to!int;
-        auto flags = u[2].integer.to!int;
-        auto peer = u[3].integer.to!int;
-        auto utime = u[4].integer.to!long;
-        auto msg = u[6].str.longpollReplaces;
-        auto att = u[7];
-        int rndid = (u.length > 8) ? u[8].integer.to!int : 0;
-
-        bool outbox = (flags & 2) == 2;
-        bool unread = (flags & 1) == 1;
-        bool hasattaches = att.object.keys.map!(a => (a == "fwd") || a.matchAll(r"attach.*")).any!"a";
-
-        auto conv = (peer > convStartId);
-        bool group = false;
-
-        if(!conv && peer > longpollGimStartId) {
-            peer = -(peer - longpollGimStartId);
-            group = true;
-        }
-
-        auto from = conv ? att["from"].str.to!int : ( outbox ? me.id : peer );
-        auto first = (pb.dialogsBuffer[0].id == peer);
-        auto old = first ? 0 : pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true);
-        auto oldfound = (old != -1);
-        auto title = conv ? u[5].str : ( group || oldfound ? nc.getName(peer).strName : "" );
-        auto haspeer = (peer in pb.chatBuffer);
-
-        vkDialog nd = {
-            name: title, lastMessage: msg, lastmid: mid,
-            id: peer, online: true, isChat: conv,
-            unread: (unread && !outbox)
-        };
-
-        vkMessage nm;
-
-        synchronized(pbMutex) {
-            if(!hasattaches) {
-                vkMessage lpnm = {
-                    author_id: from, peer_id: peer, msg_id: mid,
-                    outgoing: outbox, unread: unread,
-                    utime: utime, time_str: vktime(ct, utime),
-                    author_name: nc.getName(from).strName,
-                    body_lines: msg.split("\n"),
-                    fwd_depth: -1, needName: true
-                };
-                nm = lpnm;
-            } else {
-                auto gett = messagesGetById([mid]);
-                if(gett.length == 1) nm = gett[0];
-            }
-
-            if(first) {
-                pb.dialogsBuffer[0] = nd;
-            } else {
-
-                if(oldfound) {
-                    if(!conv) nd.online = pb.dialogsBuffer[old].online;
-                    pb.dialogsBuffer = nd ~ pb.dialogsBuffer[0..old] ~ pb.dialogsBuffer[(old+1)..pb.dialogsBuffer.length];
-                } else {
-                    if (!conv && !group) {
-                        auto peerinfo = usersGet(peer, "online");
-                        auto peername = cachedName(peerinfo.first_name, peerinfo.last_name);
-                        nc.addToCache(peerinfo.id, peername);
-                        nd.name = peername.strName;
-                        nd.online = peerinfo.online;
-                    }
-                    pb.dialogsBuffer = nd ~ pb.dialogsBuffer;
-                }
-
-            }
-
-            int sentfnd = -1;
-
-            if(rndid != 0) synchronized(sndMutex) {
-                auto snt = rndid in ps.sent;
-                if(snt && snt.author == me.id) {
-                    dbm("lp nm: approved sent");
-                    sentfnd = findzombie(*snt);
-                    ps.sent.remove(rndid);
-                }
-            }
-
-            if(haspeer) {
-                auto cb = &(pb.chatBuffer[peer]);
-                cb.data.serverCount += 1;
-                auto realmsg = cb.buffer.filter!(q => !q.isZombie);
-                if(!realmsg.empty) {
-                    auto lastm = realmsg.front;
-                    nm.needName = !(lastm.author_id == from && (utime-lastm.utime) <= needNameMaxDelta);
-                }
-                if(sentfnd == -1) cb.buffer = nm ~ cb.buffer;
-                else cb.buffer[sentfnd] = nm; //todo delete and add instead of replace
-            }
-
-        }
-
-        if(from != me.id) ps.lastlp = title ~ ": " ~ msg;
-
-        toggleUpdate();
-        dbm("nm trigger, outbox: " ~ outbox.to!string ~ ", unread: " ~ unread.to!string ~ ", hasattaches: " ~ hasattaches.to!string ~ ", conv: " ~ conv.to!string ~ ", from: " ~ from.to!string ~ ". title: " ~ title.to!string ~ ", peer: " ~ peer.to!string);
-        dbm("db peers: " ~ pb.dialogsBuffer[0..7].map!(q => q.id.to!string).join(", ") );
-
-    }
-
-    void triggerRead(JSONValue u) {
-        bool inboxrd = (u[0].integer == 6);
-        auto peer = u[1].integer.to!int;
-        auto mid = u[2].integer.to!int;
-
-        if(peer > longpollGimStartId && peer < convStartId) {
-            peer = -(peer-longpollGimStartId);
-        }
-
-        auto haspeer = (peer in pb.chatBuffer);
-        long mc = -1;
-        bool upd = false;
-
-        synchronized(pbMutex) {
-            auto dc = (inboxrd) ? pb.dialogsBuffer.map!(q => q.id == peer).countUntil(true) : -1;
-
-            if(haspeer) {
-                mc = pb.chatBuffer[peer].buffer.map!(q => q.msg_id == mid).countUntil(true);
-            }
-
-            if(dc != -1 && pb.dialogsBuffer[dc].lastmid == mid) {
-                pb.dialogsBuffer[dc].unread = false;
-                upd = true;
-            }
-
-
-            if(mc != -1) {
-                auto cb = &(pb.chatBuffer[peer]);
-                foreach(ref m; cb.buffer[mc..$]) {
-                    if(m.outgoing != inboxrd) {
-                        if(m.unread) {
-                            m.unread = false;
-                            defeatMessageCache(m.msg_id, peer);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                upd = true;
-            }
-
-        }
-
-        if(upd) toggleUpdate();
-
-    }
-
-    void triggerOnline(JSONValue u) {
-        auto uid = u[1].integer.to!int * -1;
-        auto flags = u[2].integer.to!int;
-        auto event = u[0].integer.to!int;
-        bool exit = (event == 9);
-        if(!exit && event != 8) return;
-        dbm("trigger online event: " ~ event.to!string ~ ", uid: " ~ uid.to!string);
-
-        bool upd = false;
-
-        synchronized(pbMutex) {
-            auto dc = (pb.dialogsData.forceUpdate) ? -1 : pb.dialogsBuffer.map!(q => q.id == uid).countUntil(true);
-            auto fc = (pb.friendsData.forceUpdate) ? -1 : pb.friendsBuffer.map!(q => q.id == uid).countUntil(true);
-
-            if(dc != -1) {
-                pb.dialogsBuffer[dc].online = !exit;
-                dbm("trigger online dc");
-                upd = true;
-            }
-
-            if(fc != -1) {
-                pb.friendsBuffer[fc].online = !exit;
-                dbm("trigger online fc");
-                upd = true;
-            }
-        }
-
-        if(upd) toggleUpdate();
-
-    }
-
-    vkNextLp parseLongpoll(string resp) {
-        JSONValue j = parseJSON(resp);
-        vkNextLp rt;
-        auto ct = Clock.currTime();
-        auto failed = ("failed" in j ? j["failed"].integer.to!int : -1 );
-        auto ts = ("ts" in j ? j["ts"].integer.to!int : -1 );
-        if(failed == -1) {
-            auto upd = j["updates"].array;
-            dbm("new lp: " ~ j.toPrettyString());
-            foreach(u; upd) {
-                switch(u[0].integer.to!int) {
-                    case 4: //new message
-                        triggerNewMessage(u, ct);
-                        break;
-                    case 80: //counter update
-                        if(return80mc) {
-                            ps.latestUnreadMsg = u[1].integer.to!int;
-                        } else {
-                            ps.lp80got = true;
-                        }
-                        toggleUpdate();
-                        break;
-                    case 6: //inbox read
-                        triggerRead(u);
-                        break;
-                    case 7: //outbox read
-                        triggerRead(u);
-                        break;
-                    case 8: //online\offline
-                        triggerOnline(u);
-                        break;
-                    case 9: //online\offline
-                        triggerOnline(u);
-                        break;
-                    default:
-                        break;
-                }
-            }
-        }
-        rt.ts = ts;
-        rt.failed = failed;
-        return rt;
-    }
-
-    void doLongpoll(vkLongpoll start) {
-        auto tm = dur!timeoutFormat(longpollCurlTimeout);
-        int cts = start.ts;
-        auto mode = (2 + 128).to!string; //attaches + random_id
-        bool ok = true;
-        dbm("longpoll works");
-        while(ok) {
-            try {
-                if(cts < 1) break;
-                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=" ~ mode;
-                auto resp = httpget(url, tm);
-                immutable auto next = parseLongpoll(resp);
-                if(next.failed == 2 || next.failed == 3) ok = false; //get new server
-                cts = next.ts;
-            } catch(Exception e) {
-                dbm("longpoll exception: " ~ e.msg);
-                ok = false;
-            }
-        }
-    }
-
-    void startLongpoll() {
-        dbm("longpoll is starting...");
-        while(true) {
-            try {
-                doLongpoll(getLongpollServer());
-            } catch (ApiErrorException e) {
-                dbm("longpoll ApiErrorException: " ~ e.msg);
-            }
-            dbm("longpoll is restarting...");
-        }
-    }
-
-    void asyncLongpoll() {
-        lpThread.start();
-    }
-
-}
-
-// ===== async =====
-
-class longpollThread : Thread {
-
-    VKapi api;
-
-    this(VKapi api) {
-        this.api = api;
-        super(&longpoll);
-    }
-
-    private void longpoll() {
-        api.startLongpoll();
-    }
-
-}
-
-class loadBlockThread : Thread {
-    int count;
-    int offset;
-
-    void delegate(int count, int offset) dg;
-
-    this() {
-        super(&run);
-    }
-
-    void func(void delegate(int count, int offset) r, int count, int offset) {
-        this.count = count;
-        this.offset = offset;
-        dg = r;
-        this.start();
-    }
-
-    private void run() {
-        try {
-            dg(count, offset);
-        } catch (Exception e) {
-            dbm("Catched at asyncLoadBlock thread: " ~ e.msg);
-        }
-    }
-
-}
-
-class sendThread : Thread {
-
-    VKapi api;
-
-    this(VKapi api) {
-        this.api = api;
-        super(&sendproc);
-    }
-
-    private void sendproc() {
-        for(int i; i < ps.order.length; ++i) {
-            auto msg = ps.order[i];
-            try {
-                api.messagesSend(msg.peer, msg.msg, msg.rid, msg.fwd, msg.att);
-            } catch (Exception e) {
-                dbm("catched at sendThread: " ~ e.msg);
-                synchronized(sndMutex) {
-                    auto snt = msg.rid in ps.sent;
-                    if(snt) {
-                        dbm("sndThread: new failed state");
-                        snt.state = sendState.failed;
-                        api.notifySendState(*snt);
-                    }
-                }
-            }
-        }
-        synchronized(sndMutex) {
-            ps.order = [];
-            dbm("sndThread: order clear");
-        }
-    }
-}
-
-class typingThread : Thread {
-    VKapi api;
-
-    const type = "typing";
-    const wait = dur!"msecs"(100);
-    const waitmultiplier = 5*10;
-
-    int lastpeer;
-    bool updpeer;
-
-    this(VKapi api) {
-        this.api = api;
-        super(&asyncset);
-    }
-
-    void setStatus(int peer) {
-        if(lastpeer != peer) {
-            updpeer = true;
-            lastpeer = peer;
-        }
-        if(!this.isRunning) this.start();
-    }
-
-    private void asyncset() {
-        bool loop = true;
-        while(loop) {
-            api.setActivityStatusImpl(lastpeer, type);
-            loop = false;
-            updpeer = false;
-            for(int i; i < waitmultiplier; ++i) {
-                Thread.sleep(wait);
-                if(updpeer) {
-                    loop = true;
-                    break;
-                }
-            }
-        }
     }
 
 }
@@ -1615,4 +1845,27 @@ class ApiErrorException : Exception {
             super(message, file, line, next);
         }
     }
+}
+
+class InternalException : Exception {
+    public {
+
+        const int E_NETWORKFAIL = 4;
+
+        string msg;
+        int ecode;
+        @safe pure nothrow this(int error,
+                                string appmsg = "",
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null) {
+            msg = "client failed - unresolved internal exception: err" ~ error.to!string ~ " " ~ appmsg;
+            ecode = error;
+            super(msg, file, line, next);
+        }
+    }
+}
+
+void debugThrow() {
+    throw new InternalException(228, "DEBUGPOINT");
 }

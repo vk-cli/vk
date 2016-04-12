@@ -1,6 +1,8 @@
 module utils;
 
-import std.stdio, std.array, std.string, std.file, core.thread, core.sync.mutex, core.exception, std.datetime, std.conv;
+import std.stdio, std.array, std.range, std.string, std.file;
+import core.thread, core.sync.mutex, core.exception;
+import std.datetime, std.conv, std.algorithm;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -82,3 +84,156 @@ private S[] cropstr(S)(S s, size_t mln) {
     if(s.length > mln) return [ s[0..mln], s[mln..$] ];
     else return [s];
 }
+
+class JoinerBidirectionalResult(RoR)
+if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
+{
+
+    alias rortype = ElementType!RoR;
+
+    private {
+        RoR range;
+        rortype
+            rfront = null,
+            rback = null;
+}
+
+    this(RoR r) {
+        range = r;
+    }
+
+    private void prepareFront() {
+        if(range.empty) return;
+        while(range.front.empty) {
+            range.popFront();
+            if(range.empty) return;
+        }
+        rfront = range.front;
+    }
+
+    private void prepareBack() {
+        if(range.empty) return;
+        while(range.back.empty) {
+            range.popBack();
+            if(range.empty) return;
+        }
+        rback = range.back;
+    }
+
+    @property bool empty() {
+        return range.empty;
+    }
+
+    @property auto front() {
+        if(rfront is null) prepareFront();
+        assert(!empty);
+        assert(!rfront.empty);
+        return rfront.front;
+    }
+
+    @property auto back() {
+        if(rback is null) prepareBack();
+        assert(!empty);
+        assert(!rback.empty);
+        return rback.back;
+    }
+
+    void popFront() {
+        if(rfront is null) prepareFront();
+        else {
+            rfront.popFront();
+
+            if(rfront.empty) {
+                range.popFront();
+                prepareFront();
+            }
+        }
+    }
+
+    void popBack() {
+        if(rback is null) prepareBack();
+        else {
+            rback.popBack();
+            if(rback.empty) {
+                range.popBack();
+                prepareBack();
+            }
+        }
+    }
+
+    auto moveBack() {
+        return back;
+    }
+
+    auto save() {
+        return this;
+    }
+
+}
+
+auto joinerBidirectional(RoR)(RoR range) {
+    return new JoinerBidirectionalResult!RoR(range);
+}
+
+auto takeBackArray(R)(R range, size_t hm) {
+    ElementType!R[] outr;
+    size_t iter;
+    while(iter < hm && !range.empty) {
+        outr ~= range.back();
+        range.popBack();
+        ++iter;
+    }
+    reverse(outr);
+    return outr;
+}
+
+class InputRetroResult(R)
+if (isInputRange!R)
+{
+    private R rng;
+
+    this(R range) {
+        rng = range;
+    }
+
+    void popFront() {
+        rng.popFront();
+    }
+
+    void popBack() {
+        rng.popFront();
+    }
+
+    auto front() {
+        return rng.front;
+    }
+
+    auto back() {
+        return rng.front;
+    }
+
+    auto empty() {
+        return rng.empty;
+    }
+
+    auto moveBack() {
+        return back;
+    }
+
+    auto save() {
+        return this;
+    }
+
+}
+
+auto inputRetro(R)(R range) {
+    return new InputRetroResult!R(range);
+}
+
+auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
+alias rortp = typeof(ror);
+//pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
+pragma(msg, "isBidirectional joinerBidirectional "
+                    ~ isBidirectionalRange!(JoinerBidirectionalResult!rortp).stringof);
+
+
