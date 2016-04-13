@@ -30,7 +30,6 @@ where `ver` - is the name of the branch that you want to build
 Optional:
 
 + mplayer: for music playback
-+ xclip: paste from X clipboard in chats (currently not implemented)
 
 # How to use
 
