@@ -304,9 +304,10 @@ void notifyManager() {
 
 void statusbar() {
   string counter = " " ~ win.counter.to!string ~ " ✉ ";
+  if (api.isLoading) counter ~= "⟲";
   counter.selected;
-  if (win.notify.text != "") center(win.notify.text, COLS+2-counter.length, ' ').selected;
-  else center(win.statusbarText, COLS+2-counter.length, ' ').selected;
+  if (win.notify.text != "") center(win.notify.text, COLS-counter.utfLength, ' ').selected;
+  else center(win.statusbarText, COLS-counter.utfLength, ' ').selected;
   "\n".print;
 }
 
