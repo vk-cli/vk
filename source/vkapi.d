@@ -148,11 +148,11 @@ struct vkNextLp {
 
 struct apiState {
     bool lp80got = true;
-    bool somethingUpdated = false;
-    bool chatloading = false;
+    bool somethingUpdated;
+    bool chatloading;
+    int loadingiter = 0;
     string lastlp = "";
     uint countermsg;
-
     sentMsg[int] sent; //by rid
 }
 
@@ -233,7 +233,11 @@ class VkApi {
         return true;
     }
 
-    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false) {
+    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false, bool setloading = true) {
+        if(setloading) {
+            enterLoading();
+            gltoggleUpdate();
+        }
         bool rmresp = !dontRemoveResponse;
         auto url = vkurl ~ meth ~ "?"; //so blue
         foreach(key; params.keys) {
@@ -284,6 +288,7 @@ class VkApi {
             }
         } else rmresp = false;
 
+        if(setloading) leaveLoading();
         return rmresp ? resp["response"] : resp;
     }
 
@@ -1180,7 +1185,7 @@ class VkMan {
     }
 
     bool isLoading() {
-        return true;
+        return ps.loadingiter != 0;
     }
 
     int getChatServerCount(int peer) {
@@ -1639,6 +1644,19 @@ int genId() {
     }
     dbm("rid: " ~ rnd.to!string);
     return rnd.to!int;
+}
+
+void enterLoading() {
+    ++ps.loadingiter;
+}
+
+void leaveLoading() {
+    --ps.loadingiter;
+    if(ps.loadingiter < 0) ps.loadingiter = 0;
+}
+
+void gltoggleUpdate() {
+    ps.somethingUpdated = true;
 }
 
 // ===== Implement objects =====
