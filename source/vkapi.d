@@ -16,6 +16,7 @@ const int mailStartId = convStartId*-1;
 const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
+const int typingTimeout = 4;
 
 const uint defaultBlock = 100;
 const int chatBlock = 100;
@@ -749,6 +750,7 @@ class AsyncMan {
 
     const string
         S_SELF_RESOLVE = "s_self_resolve",
+        S_TYPING = "s_typing_",
         O_LOADBLOCK = "o_loadblock",
         O_SENDMSG = "o_sendm";
 
@@ -1229,9 +1231,9 @@ class VkMan {
             f = peer in chatFactory;
         }
 
-        dbm("bfcl p: " ~ peer.to!string ~ ", o: " ~ offset.to!string ~ ", c: " ~ count.to!string
+        /*dbm("bfcl p: " ~ peer.to!string ~ ", o: " ~ offset.to!string ~ ", c: " ~ count.to!string
                                 ~ ", sc: " ~ f.getServerLineCount(wrapwidth).to!string ~ " sco: "
-                                ~ f.data.serverCount.to!string);
+                                ~ f.data.serverCount.to!string);*/
 
         synchronized(pbMutex) {
             if(!f.prepare) return [];
@@ -1285,7 +1287,13 @@ class VkMan {
         a.orderedAsync(a.O_SENDMSG, rid, () => sendMessageImpl(rid, peer, msg));
     }
 
-    void setTypingStatus(int peer) {}
+    void setTypingStatus(int peer) {
+        auto thrid = a.S_TYPING ~ peer.to!string;
+        a.singleAsync(thrid, () {
+            api.setActivityStatusImpl(peer, "typing");
+            Thread.sleep(dur!"seconds"(typingTimeout));
+        });
+    }
 
     R[] bufferedGet(R, T)(T factory, int count, int offset) {
         synchronized(pbMutex) {
