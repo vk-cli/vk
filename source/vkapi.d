@@ -64,7 +64,7 @@ struct vkMessage {
     vkFwdMessage[] fwd; // forwarded messages
     bool isLoading;
     bool isZombie;
-    int rndid;
+    long rndid;
     int lineCount = -1;
     int wrap = -1;
 }
@@ -153,7 +153,7 @@ struct apiState {
     int loadingiter = 0;
     string lastlp = "";
     uint countermsg;
-    sentMsg[int] sent; //by rid
+    sentMsg[long] sent; //by rid
 }
 
 struct ldFuncResult {
@@ -555,7 +555,7 @@ class VkApi {
             auto hascid = ("chat_id" in m);
             int uid = m["user_id"].integer.to!int;
             int pid = (hascid) ? (m["chat_id"].integer.to!int + convStartId) : uid;
-            int rid = ("random_id" in m) ? m["random_id"].integer.to!int : 0;
+            long rid = ("random_id" in m) ? m["random_id"].integer.to!long : 0;
             long ut = m["date"].integer.to!long;
             bool outg = (m["out"].integer.to!int == 1);
             bool rstate = (m["read_state"].integer.to!int == 1);
@@ -912,7 +912,7 @@ class Longpoll : Thread {
         auto utime = u[4].integer.to!long;
         auto msg = u[6].str.longpollReplaces;
         auto att = u[7];
-        int rndid = (u.length > 8) ? u[8].integer.to!int : 0;
+        long rndid = (u.length > 8) ? u[8].integer.to!long : 0;
 
         bool outbox = (flags & 2) == 2;
         bool unread = (flags & 1) == 1;
@@ -1581,7 +1581,7 @@ class BlockFactory(T) {
             addBack(clz);
         }
 
-        void removeZombie(int rid) {
+        void removeZombie(long rid) {
             backBlock
                 .getBlock
                 .filter!(q => q.getObject.rndid == rid)
