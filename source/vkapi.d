@@ -1179,6 +1179,10 @@ class VkMan {
         return true;
     }
 
+    bool isLoading() {
+        return true;
+    }
+
     int getChatServerCount(int peer) {
         auto c = peer in chatFactory;
         if(c) return c.data.serverCount;
