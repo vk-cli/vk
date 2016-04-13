@@ -156,7 +156,8 @@ struct Win {
     menuActive, menuOffset, key,
     scrollOffset, msgDrawSetting,
     activeBuffer, chatID, lastBuffer,
-    lastScrollOffset, lastScrollActive;
+    lastScrollOffset, lastScrollActive,
+    msgBufferSize;
   string
     statusbarText, msgBuffer;
   bool
@@ -305,7 +306,7 @@ void notifyManager() {
 
 void statusbar() {
   string counter = " " ~ win.counter.to!string ~ " ✉ ";
-  if (api.isLoading) counter ~= "⟲";
+  if (api.isLoading) counter ~= " ⟲";
   counter.selected;
   if (win.notify.text != "") center(win.notify.text, COLS-counter.utfLength, ' ').selected;
   else center(win.statusbarText, COLS-counter.utfLength, ' ').selected;
@@ -582,12 +583,27 @@ void msgBufferEvents() {
     if (win.cursor.x == win.msgBuffer.utfLength) win.msgBuffer = win.msgBuffer.to!wstring[0..$-1].to!string;
     else win.msgBuffer = win.msgBuffer.to!wstring[0..win.cursor.x-1].to!string ~ win.msgBuffer.to!wstring[win.cursor.x..$].to!string;
     win.cursor.x--;
+    win.msgBufferSize = win.msgBuffer.utfLength.to!int;
   }
   else if (win.key != -1 && !canFind(kg_ignore, win.key)) {
     try {
       validate(win.msgBuffer);
+      win.msgBufferSize = win.msgBuffer.utfLength.to!int;
     } catch (UTFException e) {
-      win.msgBuffer ~= win.key.to!char;
+      if (win.cursor.x-1 != win.msgBufferSize) {
+        int i, count, offset;
+        char chr;
+        while (count != win.cursor.x) {
+          chr = win.msgBuffer[i];
+          if (chr != 208 && chr != 209) ++count;
+          else ++offset;
+          ++i;
+        }
+        chr = win.msgBuffer[count+offset];
+        if (chr == 208 || chr == 209) --offset;
+        win.msgBuffer = win.msgBuffer[0..count+offset-1] ~ win.key.to!char ~ win.msgBuffer[count+offset-1..$];
+      }
+      else win.msgBuffer ~= win.key.to!char;
       return;
     }
     if (win.cursor.x == win.msgBuffer.utfLength) win.msgBuffer ~= win.key.to!char;
