@@ -236,7 +236,6 @@ class VkApi {
     JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false, bool setloading = true) {
         if(setloading) {
             enterLoading();
-            gltoggleUpdate();
         }
         bool rmresp = !dontRemoveResponse;
         auto url = vkurl ~ meth ~ "?"; //so blue
@@ -1648,11 +1647,13 @@ int genId() {
 
 void enterLoading() {
     ++ps.loadingiter;
+    gltoggleUpdate();
 }
 
 void leaveLoading() {
     --ps.loadingiter;
     if(ps.loadingiter < 0) ps.loadingiter = 0;
+    gltoggleUpdate();
 }
 
 void gltoggleUpdate() {
