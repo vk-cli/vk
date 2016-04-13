@@ -293,7 +293,8 @@ void notifyManager() {
   string notifyMsg = api.getLastLongpollMessage;
   win.notify.currentTime = cast(TimeOfDay)Clock.currTime;
   if (notifyMsg != "") {
-    win.notify.text = notifyMsg;
+    if (notifyMsg.utfLength > COLS - 10) win.notify.text = notifyMsg.to!wstring[0..COLS-10].to!string;
+    else win.notify.text = notifyMsg;
     win.notify.clearTime = win.notify.currentTime + seconds(3);
   }
   if (win.notify.currentTime > win.notify.clearTime) {
