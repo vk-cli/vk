@@ -42,3 +42,4 @@ Optional:
 + Home - first entry 
 + End - last entry
 + Q - to exit
++ R - force refresh current window
