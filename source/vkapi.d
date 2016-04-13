@@ -259,7 +259,6 @@ class VkApi {
             }
         }
 
-
         JSONValue resp;
         try{
             resp = got.parseJSON;
@@ -1215,11 +1214,16 @@ class VkMan {
     }
 
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
+        if(offset < 0) offset = 0;
         auto f = peer in chatFactory;
         if(!f) {
             chatFactory[peer] = generateBF!ClMessage(ClMessage.getLoadFunc(peer));
             f = peer in chatFactory;
         }
+
+        dbm("bfcl p: " ~ peer.to!string ~ ", o: " ~ offset.to!string ~ ", c: " ~ count.to!string
+                                ~ ", sc: " ~ f.getServerLineCount(wrapwidth).to!string ~ " sco: "
+                                ~ f.data.serverCount.to!string);
 
         synchronized(pbMutex) {
             if(!f.prepare) return [];
