@@ -895,8 +895,13 @@ ListElement[] GetMusic() {
 
 ListElement[] GetChat() {
   ListElement[] list;
-  //int verticalOffset = win.msgBuffer.utfLength.to!int/COLS-1;
-  auto chat = api.getBufferedChatLines(LINES-4, win.scrollOffset, win.chatID, COLS-12);
+  int verticalOffset;
+  try {
+    validate(win.msgBuffer);
+    verticalOffset = win.msgBuffer.utfLength.to!int/COLS-1;
+  } catch (UTFException e) { verticalOffset = win.msgBufferSize/COLS-1; }
+  verticalOffset.to!string.SetStatusbar;
+  auto chat = api.getBufferedChatLines(LINES-4-verticalOffset, win.scrollOffset, win.chatID, COLS-12);
   foreach(e; chat) {
     if (e.isFwd) {
       ListElement line = {"    " ~ "| ".replicate(e.fwdDepth)};
