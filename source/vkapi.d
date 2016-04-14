@@ -153,7 +153,7 @@ struct apiState {
     bool chatloading;
     int loadingiter = 0;
     string lastlp = "";
-    uint countermsg;
+    uint countermsg = -1;
     sentMsg[long] sent; //by rid
 }
 
