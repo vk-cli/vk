@@ -307,8 +307,10 @@ void notifyManager() {
 void statusbar() {
   string counter;
   if (win.counter == -1) counter = " ✖ ";
-  else counter = " " ~ win.counter.to!string ~ " ✉ ";
-  if (api.isLoading) counter ~= " ⟲";
+  else {
+    counter = " " ~ win.counter.to!string ~ " ✉ ";
+    if (api.isLoading) counter ~= " ⟲";
+  }
   counter.selected;
   if (win.notify.text != "") center(win.notify.text, COLS-counter.utfLength, ' ').selected;
   else center(win.statusbarText, COLS-counter.utfLength, ' ').selected;
