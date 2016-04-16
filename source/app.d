@@ -106,8 +106,8 @@ const string
   fwd    = "➥ ",
   play   = " ▶  ",
   pause  = " ▮▮ ",
-  outbox = "⇡",
-  inbox  = "⇣";
+  outbox = " ⇡ ",
+  inbox  = " ⇣ ";
 
 const utfranges = [
   utf(19968, 40959, 1),
@@ -834,10 +834,20 @@ ListElement[] GetDialogs() {
   string newMsg;
   foreach(e; dialogs) {
     newMsg = e.unread ? unread : "  ";
-    string unreadText;
-    if (e.unread) unreadCounter ~= e.unreadCount ~ inbox;
-    else unreadCounter ~= e.unreadCount ~ outbox;
-    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " ") ~ unreadText, &chat, &GetChat, e.online, e.id, e.isChat);
+    string
+      unreadText,
+      lastMsg = e.lastMessage.replace("\n", " ");
+    if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length) {
+      lastMsg = lastMsg.to!wstring[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].to!string;
+    }
+    if (e.unreadCount != 0) {
+      if (e.unread) unreadText ~= e.unreadCount.to!string ~ inbox;
+      else unreadText ~= e.unreadCount.to!string ~ outbox;
+      ulong space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
+      if (space < COLS) unreadText = " ".replicate(space) ~ unreadText;
+      else unreadText = "   " ~ unreadText;
+    }
+    list ~= ListElement(newMsg ~ e.name, ": " ~ lastMsg ~ unreadText, &chat, &GetChat, e.online, e.id, e.isChat);
   }
   win.activeBuffer = Buffers.dialogs;
   return list;
@@ -909,7 +919,6 @@ ListElement[] GetChat() {
     validate(win.msgBuffer);
     verticalOffset = win.msgBuffer.utfLength.to!int/COLS-1;
   } catch (UTFException e) { verticalOffset = win.msgBufferSize/COLS-1; }
-  verticalOffset.to!string.SetStatusbar;
   auto chat = api.getBufferedChatLines(LINES-4-verticalOffset, win.scrollOffset, win.chatID, COLS-12);
   foreach(e; chat) {
     if (e.isFwd) {
