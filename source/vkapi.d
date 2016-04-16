@@ -1064,16 +1064,15 @@ class Longpoll : Thread {
         dbm("rd trigger peer: " ~ peer.to!string ~ ", mid: " ~ mid.to!string ~ ", inbox: " ~ inboxrd.to!string);
 
         synchronized(pbMutex) {
-            if(inboxrd) {
-                auto dlone = man.dialogsFactory.getLoadedObjects
-                    .map!(q => q.getObject)
-                    .filter!(q => q.id == peer)
-                    .takeOne();
+            auto dlone = man.dialogsFactory.getLoadedObjects
+                .map!(q => q.getObject)
+                .filter!(q => q.id == peer)
+                .takeOne();
+            auto hasdlone = !dlone.empty;
 
-                if(!dlone.empty) {
-                    dlone.front.unreadCount = 0;
-                    dlone.front.unread = false;
-                }
+            int unreadc;
+            if(hasdlone) {
+                unreadc = dlone.front.unreadCount;
             }
 
             auto ch = peer in man.chatFactory;
@@ -1088,10 +1087,17 @@ class Longpoll : Thread {
                     auto mobj = chl.front.getObject;
                     if(mobj.outgoing != inboxrd) {
                         mobj.unread = false;
+                        --unreadc;
                         chl.front.invalidateLineCache();
                     }
                     chl.popFront();
                 }
+            }
+
+            if(hasdlone) {
+                if(unreadc < 0) unreadc = 0;
+                dlone.front.unreadCount = unreadc;
+                if(unreadc == 0) dlone.front.unread = false;
             }
 
         }
