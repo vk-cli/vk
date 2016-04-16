@@ -1,6 +1,8 @@
 {
 	"fileVersion": 1,
 	"versions": {
-		"ncurses": "~master"
+		"ncurses": "~master",
+		"dcrypto": "1.2.2",
+		"openssl": "1.1.4+1.0.1g"
 	}
 }
