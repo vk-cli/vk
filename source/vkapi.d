@@ -24,7 +24,7 @@ const int chatUpd = 50;
 
 // ===== networking const =====
 
-const int connectAttmepts = 3;
+const int connectionAttempts = 10;
 const int mssleepBeforeAttempt = 600;
 const int vkgetCurlTimeout = 3;
 const int longpollCurlTimeout = 27;
@@ -200,6 +200,13 @@ __gshared {
 }
 
 
+struct vkgetparams {
+    bool setloading = true;
+    int attempts = connectionAttempts;
+    bool thrownf = false;
+    bool notifynf = true;
+}
+
 class VkApi {
 
     private const string vkurl = "https://api.vk.com/method/";
@@ -210,8 +217,12 @@ class VkApi {
     vkUser me;
     vkAccountInit initdata;
 
-    this(string token) {
+    alias nfnotifyfn = void delegate();
+    nfnotifyfn connectionProblems;
+
+    this(string token, nfnotifyfn nfnotify) {
         vktoken = token;
+        connectionProblems = nfnotify;
     }
 
     void addMeNC() {
@@ -234,8 +245,8 @@ class VkApi {
         return true;
     }
 
-    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false, bool setloading = true) {
-        if(setloading) {
+    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false, vkgetparams gp = vkgetparams()) {
+        if(gp.setloading) {
             enterLoading();
         }
         bool rmresp = !dontRemoveResponse;
@@ -253,13 +264,20 @@ class VkApi {
         bool htloop;
         while(!htloop) {
             try{
-                got = AsyncMan.httpget(url, tm);
+                got = AsyncMan.httpget(url, tm, gp.attempts);
                 htloop = true;
-            } catch(InternalException e) {
-                if(e.ecode == e.E_NETWORKFAIL) {
-                    //todo notify networkfail
-                    dbm(e.msg ~ " E_NETWORKFAIL");
-                } else throw e;
+            } catch(NetworkException e) {
+                dbm(e.msg);
+                if(gp.notifynf) connectionProblems();
+                if(gp.thrownf) throw e;
+
+                if(gp.notifynf) {
+                    //dbm("vkget waits for api init..");
+                    do {
+                        Thread.sleep(dur!"msecs"(300));
+                    } while(!isTokenValid);
+                    //dbm("resume vkget");
+                }
             }
         }
 
@@ -288,7 +306,7 @@ class VkApi {
             }
         } else rmresp = false;
 
-        if(setloading) leaveLoading();
+        if(gp.setloading) leaveLoading();
         return rmresp ? resp["response"] : resp;
     }
 
@@ -296,7 +314,8 @@ class VkApi {
 
     vkAccountInit executeAccountInit() {
         string[string] params;
-        auto resp = vkget("execute.accountInit", params);
+        vkgetparams gp = {notifynf: false};
+        auto resp = vkget("execute.accountInit", params, false, gp);
         vkAccountInit rt = {
             id:resp["me"]["id"].integer.to!int,
             first_name:resp["me"]["first_name"].str,
@@ -711,7 +730,7 @@ class AsyncSingle : Thread {
 
 class AsyncMan {
 
-    static string httpget(string addr, Duration timeout) {
+    static string httpget(string addr, Duration timeout, uint attempts) {
         string content = "";
         auto client = HTTP();
 
@@ -738,9 +757,8 @@ class AsyncMan {
             } catch (CurlException e) {
                 ++tries;
                 dbm("[attempt " ~ (tries.to!string) ~ "] network error: " ~ e.msg);
-                if(tries >= connectAttmepts) {
-                    throw new InternalException(4, "E_NETWORKFAIL");
-                    //notifyHttpFail();
+                if(tries >= attempts) {
+                    throw new NetworkException("httpget");
                 }
                 Thread.sleep( dur!"msecs"(mssleepBeforeAttempt) );
             }
@@ -806,8 +824,19 @@ class Longpoll : Thread {
         while(true) {
             try {
                 doLongpoll(getLongpollServer());
-            } catch (ApiErrorException e) {
-                dbm("longpoll ApiErrorException: " ~ e.msg);
+            }
+            catch (InternalException e) {
+                if(e.ecode == e.E_LPRESTART) {
+                    dbm("Network error in longpoll, lp shutdown");
+                    man.asyncAccountInit();
+                    return;
+                }
+                else {
+                    dbm("longpoll InternalException: " ~ e.msg);
+                }
+            }
+            catch(Exception e) {
+                dbm("longpoll exception: " ~ e.msg);
             }
             dbm("longpoll is restarting...");
         }
@@ -826,6 +855,8 @@ class Longpoll : Thread {
     }
 
 
+    const bool longpollRethrow = true;
+
     void doLongpoll(vkLongpoll start) {
         auto tm = dur!timeoutFormat(longpollCurlTimeout);
         int cts = start.ts;
@@ -835,14 +866,16 @@ class Longpoll : Thread {
         while(ok) {
             try {
                 if(cts < 1) break;
-                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string ~ "&wait=25&mode=" ~ mode;
-                auto resp = AsyncMan.httpget(url, tm);
+                string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string
+                                                                                            ~ "&wait=25&mode=" ~ mode;
+                auto resp = AsyncMan.httpget(url, tm, 0);
                 immutable auto next = parseLongpoll(resp);
                 if(next.failed == 2 || next.failed == 3) ok = false; //get new server
                 cts = next.ts;
-            } catch(Exception e) {
-                dbm("longpoll exception: " ~ e.msg);
-                ok = false;
+
+            }
+            catch(NetworkException e) {
+                throw new InternalException(InternalException.E_LPRESTART);
             }
         }
     }
@@ -1098,13 +1131,16 @@ class VkMan {
 
     this(string token) {
         a = new AsyncMan();
-        api = new VkApi(token);
+        api = new VkApi(token, &connectionProblems);
         baseInit();
-        a.singleAsync(a.S_SELF_RESOLVE, () => accountInit());
-        //accountInit();
+        asyncAccountInit();
     }
 
     private void accountInit() {
+        api.isTokenValid = false;
+        ps.countermsg = -1;
+        asyncLongpoll();
+
         nc = new nameCache(api);
         api.resolveMe();
         if(!api.isTokenValid) {
@@ -1122,6 +1158,14 @@ class VkMan {
         ps.countermsg = api.initdata.c_messages;
 
         toggleUpdate();
+    }
+
+    private void connectionProblems() {
+        //asyncAccountInit();
+    }
+
+    void asyncAccountInit() {
+        a.singleAsync(a.S_SELF_RESOLVE, () => accountInit());
     }
 
     private BlockFactory!T generateBF(T)(T[] delegate(VkApi, uint, uint, out int) ld, uint dwblock = defaultBlock) {
@@ -1868,6 +1912,20 @@ class BackendException : Exception {
     }
 }
 
+class NetworkException : Exception {
+    public {
+        @safe pure nothrow this(string loc,
+                                string message = "Connection lost",
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null) {
+            message = message ~ ": " ~ loc;
+            super(message, file, line, next);
+        }
+    }
+}
+
+
 class ApiErrorException : Exception {
     public {
         int errorCode;
@@ -1885,7 +1943,8 @@ class ApiErrorException : Exception {
 class InternalException : Exception {
     public {
 
-        const int E_NETWORKFAIL = 4;
+        static const int E_NETWORKFAIL = 4;
+        static const int E_LPRESTART = 5;
 
         string msg;
         int ecode;
