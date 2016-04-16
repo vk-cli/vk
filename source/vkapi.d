@@ -385,7 +385,8 @@ class VkApi {
         auto resp = exresp["conv"];
         auto dcount = resp["count"].integer.to!int;
         dbm("dialogs count now: " ~ dcount.to!string);
-        auto respt = resp["items"].array;
+        auto respt_items = resp["items"].array;
+        auto respt = respt_items.map!(q => q["message"]);
 
         //name resolving
         int[] rootIds = respt
@@ -410,7 +411,7 @@ class VkApi {
         foreach(n; 0..(ou.length)) online[ou[n].integer.to!int] = (os[n].integer == 1);
 
         vkDialog[] dialogs;
-        foreach(ditem; respt){
+        foreach(ditem; respt_items){
             auto msg = ditem["message"];
             auto ds = vkDialog();
             if("chat_id" in msg){
