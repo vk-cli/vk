@@ -158,6 +158,7 @@ struct apiState {
     string lastlp = "";
     uint countermsg = -1;
     sentMsg[long] sent; //by rid
+    bool[int] unreadCountReview; //by peer
 }
 
 struct ldFuncResult {
@@ -1095,9 +1096,20 @@ class Longpoll : Thread {
             }
 
             if(hasdlone) {
-                if(unreadc < 0) unreadc = 0;
-                dlone.front.unreadCount = unreadc;
-                if(unreadc == 0) dlone.front.unread = false;
+                if(mid == dlone.front.lastmid) {
+                    dlone.front.unreadCount = 0;
+                    dlone.front.unread = false;
+                    if(peer in ps.unreadCountReview) ps.unreadCountReview.remove(peer);
+                } else {
+                    if(ch) {
+                        if(unreadc < 0) unreadc = 0;
+                        dlone.front.unreadCount = unreadc;
+                        if(unreadc == 0) dlone.front.unread = false;
+                    }
+                    else {
+                        ps.unreadCountReview[peer] = true;
+                    }
+                }
             }
 
         }
@@ -1296,9 +1308,11 @@ class VkMan {
     vkMessageLine[] getBufferedChatLines(int count, int offset, int peer, int wrapwidth) {
         if(offset < 0) offset = 0;
         auto f = peer in chatFactory;
+        bool checkurw;
         if(!f) {
             chatFactory[peer] = generateBF!ClMessage(ClMessage.getLoadFunc(peer));
             f = peer in chatFactory;
+            checkurw = true;
         }
 
         /*dbm("bfcl p: " ~ peer.to!string ~ ", o: " ~ offset.to!string ~ ", c: " ~ count.to!string
@@ -1309,13 +1323,36 @@ class VkMan {
             if(!f.prepare) return [];
             f.seek(0);
 
-            return (*f)
+            auto rt = (*f)
                     .filter!(q => q !is null)
                     .inputRetro
                     .map!(q => q.getLines(wrapwidth))
                     .joinerBidirectional
                     .dropBack(offset)
                     .takeBackArray(count);
+
+            /*if(checkurw) {
+                auto urw = peer in ps.unreadCountReview;
+                if(urw && *urw == true) {
+                    dbm("checkurw");
+                    ps.unreadCountReview.remove(peer);
+                    auto urc = f.getLoadedObjects
+                        .map!(q => q.getObject)
+                        .filter!(q => !q.outgoing)
+                        .map!(q => q.unread)
+                        .countUntil(false);
+                    auto d = dialogsFactory.getLoadedObjects
+                                .map!(q => q.getObject)
+                                .filter!(q => q.id == peer)
+                                .takeOne;
+                    if(!d.empty && urc != -1) {
+                        d.front.unreadCount = urc.to!int;
+                        if(urc == 0) d.front.unread = false;
+                    }
+                }
+            }*/
+
+            return rt;
         }
     }
 
