@@ -44,6 +44,7 @@ struct vkDialog {
     string lastMessage = "";
     int lastmid;
     int id = -1;
+    int unreadCount;
     bool unread = false;
     bool online;
     bool isChat;
@@ -384,8 +385,7 @@ class VkApi {
         auto resp = exresp["conv"];
         auto dcount = resp["count"].integer.to!int;
         dbm("dialogs count now: " ~ dcount.to!string);
-        auto respt = resp["items"].array
-                                    .map!(q => q["message"]);
+        auto respt = resp["items"].array;
 
         //name resolving
         int[] rootIds = respt
@@ -410,7 +410,8 @@ class VkApi {
         foreach(n; 0..(ou.length)) online[ou[n].integer.to!int] = (os[n].integer == 1);
 
         vkDialog[] dialogs;
-        foreach(msg; respt){
+        foreach(ditem; respt){
+            auto msg = ditem["message"];
             auto ds = vkDialog();
             if("chat_id" in msg){
                 auto ctitle = msg["title"].str;
@@ -431,6 +432,7 @@ class VkApi {
             ds.lastMessage = msg["body"].str;
             ds.lastmid = msg["id"].integer.to!int;
             if(msg["out"].integer == 0 && msg["read_state"].integer == 0) ds.unread = true;
+            if("unread" in ditem) ds.unreadCount = ditem["unread"].integer.to!int;
             dialogs ~= ds;
             //dbm(ds.id.to!string ~ " " ~ ds.unread.to!string ~ "   " ~ ds.name ~ " " ~ ds.lastMessage);
             //dbm(ds.formatted);
@@ -1039,6 +1041,10 @@ class Longpoll : Thread {
             nd.online = peerinfo.online;
         }
 
+        int unreadc;
+        if(oldfound) unreadc = old.getObject.unreadCount;
+        nd.unreadCount = unreadc + 1;
+
         man.dialogsFactory.overrideDialog(new ClDialog(nd), ct.toUnixTime);
 
         if(from != api.me.id && ( ps.showConvNotifies ? true : !conv )) ps.lastlp = title ~ ": " ~ msg;
@@ -1057,14 +1063,15 @@ class Longpoll : Thread {
         dbm("rd trigger peer: " ~ peer.to!string ~ ", mid: " ~ mid.to!string ~ ", inbox: " ~ inboxrd.to!string);
 
         synchronized(pbMutex) {
-            if(inboxrd) {
-                auto dlone = man.dialogsFactory.getLoadedObjects
-                    .map!(q => q.getObject)
-                    .filter!(q => q.id == peer)
-                    .takeOne();
-                if(!dlone.empty) {
-                    dlone.front.unread = false;
-                }
+            auto dlone = man.dialogsFactory.getLoadedObjects
+                .map!(q => q.getObject)
+                .filter!(q => q.id == peer)
+                .takeOne();
+            auto hasdlone = !dlone.empty;
+
+            int unreadc;
+            if(hasdlone) {
+                unreadc = dlone.front.unreadCount;
             }
 
             auto ch = peer in man.chatFactory;
@@ -1079,11 +1086,19 @@ class Longpoll : Thread {
                     auto mobj = chl.front.getObject;
                     if(mobj.outgoing != inboxrd) {
                         mobj.unread = false;
+                        --unreadc;
                         chl.front.invalidateLineCache();
                     }
                     chl.popFront();
                 }
             }
+
+            if(hasdlone) {
+                if(unreadc < 0) unreadc = 0;
+                dlone.front.unreadCount = unreadc;
+                if(unreadc == 0) dlone.front.unread = false;
+            }
+
         }
 
         man.toggleUpdate();
