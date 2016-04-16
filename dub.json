@@ -4,7 +4,8 @@
   "authors": ["HaCk3D", "substanceof"],
   "homepage": "https://github.com/HaCk3Dq/vk",
   "dependencies": {
-    "ncurses": "~master"
+    "ncurses": "~master",
+    "dcrypto": "~>1.2.2"
   },
   "buildRequirements": ["allowWarnings"]
 }

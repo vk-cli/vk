@@ -24,6 +24,8 @@ where `ver` - is the name of the branch that you want to build
 ## Dependencies
 
 + ncurses >= 5.7
++ curl
++ openssl
 + dub
 + dmd
 
