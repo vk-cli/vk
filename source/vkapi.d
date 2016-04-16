@@ -151,6 +151,8 @@ struct apiState {
     bool lp80got = true;
     bool somethingUpdated;
     bool chatloading;
+    bool showConvNotifies;
+    bool sendOnlineState;
     int loadingiter = 0;
     string lastlp = "";
     uint countermsg = -1;
@@ -1039,7 +1041,7 @@ class Longpoll : Thread {
 
         man.dialogsFactory.overrideDialog(new ClDialog(nd), ct.toUnixTime);
 
-        if(from != api.me.id) ps.lastlp = title ~ ": " ~ msg;
+        if(from != api.me.id && ( ps.showConvNotifies ? true : !conv )) ps.lastlp = title ~ ": " ~ msg;
         man.toggleUpdate();
     }
 
@@ -1253,6 +1255,14 @@ class VkMan {
 
     void notifyBlockDownloadDone() {
         toggleUpdate();
+    }
+
+    void sendOnline(bool state) {
+        ps.sendOnlineState = state;
+    }
+
+    void showConvNotifications(bool state) {
+        ps.showConvNotifies = state;
     }
 
     vkFriend[] getBufferedFriends(int count, int offset) {
