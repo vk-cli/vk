@@ -105,7 +105,9 @@ const string
   unread = "⚫ ",
   fwd    = "➥ ",
   play   = " ▶  ",
-  pause  = " ▮▮ ";
+  pause  = " ▮▮ ",
+  outbox = "⇡",
+  inbox  = "⇣";
 
 const utfranges = [
   utf(19968, 40959, 1),
@@ -832,7 +834,10 @@ ListElement[] GetDialogs() {
   string newMsg;
   foreach(e; dialogs) {
     newMsg = e.unread ? unread : "  ";
-    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " "), &chat, &GetChat, e.online, e.id, e.isChat);
+    string unreadText;
+    if (e.unread) unreadCounter ~= e.unreadCount ~ inbox;
+    else unreadCounter ~= e.unreadCount ~ outbox;
+    list ~= ListElement(newMsg ~ e.name, ": " ~ e.lastMessage.replace("\n", " ") ~ unreadText, &chat, &GetChat, e.online, e.id, e.isChat);
   }
   win.activeBuffer = Buffers.dialogs;
   return list;
