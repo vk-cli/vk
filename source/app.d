@@ -55,18 +55,20 @@ private:
 
 const int 
   // func keys
-  k_up       = -2,
-  k_down     = -3,
-  k_right    = -4,
-  k_left     = -5,
-  k_home     = -6,
-  k_ins      = -7,
-  k_del      = -8,
-  k_end      = -9,
-  k_pageup   = -10,
-  k_pagedown = -11,
-  k_enter    =  10,
-  k_esc      =  27,
+  k_up          = -2,
+  k_down        = -3,
+  k_right       = -4,
+  k_left        = -5,
+  k_home        = -6,
+  k_ins         = -7,
+  k_del         = -8,
+  k_end         = -9,
+  k_pageup      = -10,
+  k_pagedown    = -11,
+  k_enter       = 10,
+  k_esc         = 27,
+  k_tab         = 8,
+  k_ctrl_bckspc = 9,
   // keys
   k_q        = 113,
   k_rus_q    = 185,
@@ -99,7 +101,8 @@ const int[]
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter],
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
-                k_pageup, k_pagedown, k_end, k_ins, k_del, k_home];
+                k_pageup, k_pagedown, k_end, k_ins, k_del,
+                k_home, k_tab, k_ctrl_bckspc];
 
 const string 
   unread = "⚫ ",
