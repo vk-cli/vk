@@ -508,11 +508,12 @@ bool activeBufferEventsAllowed() {
   }
 }
 
-blockType forceRefresh() {
-  final switch (win.activeBuffer) {
-    case Buffers.dialogs: return blockType.dialogs;
-    case Buffers.friends: return blockType.friends;
-    case Buffers.music: return blockType.music;
+void forceRefresh() {
+  switch (win.activeBuffer) {
+    case Buffers.dialogs: api.toggleForceUpdate(blockType.dialogs); break;
+    case Buffers.friends: api.toggleForceUpdate(blockType.friends); break;
+    case Buffers.music: api.toggleForceUpdate(blockType.music); break;
+    default: return;
   }
 }
 
@@ -634,7 +635,7 @@ void nonChatEvents() {
     selectEvent;
   }
   else if (win.section == Sections.right) {
-    if (canFind(kg_refresh, win.key)) api.toggleForceUpdate(forceRefresh);
+    if (canFind(kg_refresh, win.key)) forceRefresh;
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
     else if (win.key == k_end) jumpToEnd;
     else if (win.key == k_pagedown) {
