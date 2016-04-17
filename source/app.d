@@ -74,18 +74,20 @@ private:
 
 const int 
   // func keys
-  k_up       = -2,
-  k_down     = -3,
-  k_right    = -4,
-  k_left     = -5,
-  k_home     = -6,
-  k_ins      = -7,
-  k_del      = -8,
-  k_end      = -9,
-  k_pageup   = -10,
-  k_pagedown = -11,
-  k_enter    =  10,
-  k_esc      =  27,
+  k_up          = -2,
+  k_down        = -3,
+  k_right       = -4,
+  k_left        = -5,
+  k_home        = -6,
+  k_ins         = -7,
+  k_del         = -8,
+  k_end         = -9,
+  k_pageup      = -10,
+  k_pagedown    = -11,
+  k_enter       = 10,
+  k_esc         = 27,
+  k_tab         = 8,
+  k_ctrl_bckspc = 9,
   // keys
   k_q        = 113,
   k_rus_q    = 185,
@@ -118,7 +120,8 @@ const int[]
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter],
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
-                k_pageup, k_pagedown, k_end, k_ins, k_del, k_home];
+                k_pageup, k_pagedown, k_end, k_ins, k_del,
+                k_home, k_tab, k_ctrl_bckspc];
 
 const string 
   unread = "⚫ ",
@@ -184,7 +187,8 @@ struct Win {
   bool
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
-    isMessageWriting, showTyping, selectFlag;
+    isMessageWriting, showTyping, selectFlag,
+    showConvNotifications;
 }
 
 void relocale() {
@@ -204,6 +208,7 @@ void parse(ref string[string] storage) {
   if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
   if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
   if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
+  if ("show_conv_notif" in storage) win.showConvNotifications = storage["show_conv_notif"].to!bool;
   relocale;
 }
 
@@ -215,6 +220,7 @@ void update(ref string[string] storage) {
   storage["rainbow"] = win.isRainbowChat.to!string;
   storage["rainbow_in_chat"] = win.isRainbowOnlyInGroupChats.to!string;
   storage["show_typing"] = win.showTyping.to!string;
+  storage["show_conv_notif"] = win.showConvNotifications.to!string;
 }
 
 void init() {
@@ -314,7 +320,7 @@ void white(string text) {
 void notifyManager() {
   string notifyMsg = api.getLastLongpollMessage;
   win.notify.currentTime = cast(TimeOfDay)Clock.currTime;
-  if (notifyMsg != "") {
+  if (notifyMsg != "" && notifyMsg != "-1") {
     if (notifyMsg.utfLength > COLS - 10) win.notify.text = notifyMsg.to!wstring[0..COLS-10].to!string;
     else win.notify.text = notifyMsg;
     win.notify.clearTime = win.notify.currentTime + seconds(3);
@@ -524,11 +530,12 @@ bool activeBufferEventsAllowed() {
   }
 }
 
-blockType forceRefresh() {
-  final switch (win.activeBuffer) {
-    case Buffers.dialogs: return blockType.dialogs;
-    case Buffers.friends: return blockType.friends;
-    case Buffers.music: return blockType.music;
+void forceRefresh() {
+  switch (win.activeBuffer) {
+    case Buffers.dialogs: api.toggleForceUpdate(blockType.dialogs); break;
+    case Buffers.friends: api.toggleForceUpdate(blockType.friends); break;
+    case Buffers.music: api.toggleForceUpdate(blockType.music); break;
+    default: return;
   }
 }
 
@@ -650,7 +657,7 @@ void nonChatEvents() {
     selectEvent;
   }
   else if (win.section == Sections.right) {
-    if (canFind(kg_refresh, win.key)) api.toggleForceUpdate(forceRefresh);
+    if (canFind(kg_refresh, win.key)) forceRefresh;
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
     else if (win.key == k_end) jumpToEnd;
     else if (win.key == k_pagedown) {
@@ -803,19 +810,25 @@ void changeMsgSetting(ref ListElement le) {
   le.name = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
 }
 
-void changeChatRender(ref ListElement le) {
+void toggleChatRender(ref ListElement le) {
   win.isRainbowChat = !win.isRainbowChat;
   win.mbody = GenerateSettings;
 }
 
-void changeShowTyping(ref ListElement le) {
+void toggleShowTyping(ref ListElement le) {
   win.showTyping = !win.showTyping;
   win.mbody = GenerateSettings;
 }
 
-void changeChatRenderOnlyGroup(ref ListElement le) {
+void toggleChatRenderOnlyGroup(ref ListElement le) {
   win.isRainbowOnlyInGroupChats = !win.isRainbowOnlyInGroupChats;
   le.name = "rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal;
+}
+
+void toggleShowConvNotifications(ref ListElement le) {
+  win.showConvNotifications = !win.showConvNotifications;
+  api.showConvNotifications(win.showConvNotifications);
+  le.name = "show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal;
 }
 
 ListElement[] GenerateHelp() {
@@ -840,10 +853,11 @@ ListElement[] GenerateSettings() {
     ListElement("lang".getLocal, "", &changeLang, null),
     ListElement(center("convers_settings".getLocal, COLS-16, ' ')),
     ListElement("msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal, "", &changeMsgSetting),
-    ListElement("rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal, "", &changeChatRender),
+    ListElement("rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal, "", &toggleChatRender),
   ];
-  if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &changeChatRenderOnlyGroup);
-  list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &changeShowTyping);
+  if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &toggleChatRenderOnlyGroup);
+  list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &toggleShowTyping);
+  list ~= ListElement("show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal, "", &toggleShowConvNotifications);
   return list;
 }
 
@@ -1015,7 +1029,7 @@ void main(string[] args) {
     "e_wrong_token".getLocal.print;
     api = storage.get_token;
   }*/
-
+  api.showConvNotifications(win.showConvNotifications);
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
 
