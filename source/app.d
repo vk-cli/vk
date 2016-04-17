@@ -165,7 +165,8 @@ struct Win {
   bool
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
-    isMessageWriting, showTyping, selectFlag;
+    isMessageWriting, showTyping, selectFlag,
+    showConvNotifications;
 }
 
 void relocale() {
@@ -185,6 +186,7 @@ void parse(ref string[string] storage) {
   if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
   if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
   if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
+  if ("show_conv_notif" in storage) win.showConvNotifications = storage["show_conv_notif"].to!bool;
   relocale;
 }
 
@@ -196,6 +198,7 @@ void update(ref string[string] storage) {
   storage["rainbow"] = win.isRainbowChat.to!string;
   storage["rainbow_in_chat"] = win.isRainbowOnlyInGroupChats.to!string;
   storage["show_typing"] = win.showTyping.to!string;
+  storage["show_conv_notif"] = win.showConvNotifications.to!string;
 }
 
 void init() {
@@ -784,19 +787,25 @@ void changeMsgSetting(ref ListElement le) {
   le.name = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
 }
 
-void changeChatRender(ref ListElement le) {
+void toggleChatRender(ref ListElement le) {
   win.isRainbowChat = !win.isRainbowChat;
   win.mbody = GenerateSettings;
 }
 
-void changeShowTyping(ref ListElement le) {
+void toggleShowTyping(ref ListElement le) {
   win.showTyping = !win.showTyping;
   win.mbody = GenerateSettings;
 }
 
-void changeChatRenderOnlyGroup(ref ListElement le) {
+void toggleChatRenderOnlyGroup(ref ListElement le) {
   win.isRainbowOnlyInGroupChats = !win.isRainbowOnlyInGroupChats;
   le.name = "rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal;
+}
+
+void toggleShowConvNotifications(ref ListElement le) {
+  win.showConvNotifications = !win.showConvNotifications;
+  api.showConvNotifications(win.showConvNotifications);
+  le.name = "show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal;
 }
 
 ListElement[] GenerateHelp() {
@@ -821,10 +830,11 @@ ListElement[] GenerateSettings() {
     ListElement("lang".getLocal, "", &changeLang, null),
     ListElement(center("convers_settings".getLocal, COLS-16, ' ')),
     ListElement("msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal, "", &changeMsgSetting),
-    ListElement("rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal, "", &changeChatRender),
+    ListElement("rainbow".getLocal ~ (win.isRainbowChat.to!string).getLocal, "", &toggleChatRender),
   ];
-  if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &changeChatRenderOnlyGroup);
-  list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &changeShowTyping);
+  if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &toggleChatRenderOnlyGroup);
+  list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &toggleShowTyping);
+  list ~= ListElement("show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal, "", &toggleShowConvNotifications);
   return list;
 }
 
@@ -996,7 +1006,7 @@ void main(string[] args) {
     "e_wrong_token".getLocal.print;
     api = storage.get_token;
   }*/
-
+  api.showConvNotifications(win.showConvNotifications);
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
 

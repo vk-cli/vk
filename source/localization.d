@@ -56,6 +56,7 @@ void localize() {
   local["sending"] = lang("Sending", "Отправка");
   local["sendfailed"] = lang("Failed", "Ошибка");
   local["show_typing"] = lang("Show typing status in chat: ", "Показывать, что вы набираете сообщение: ");
+  local["show_conv_notif"] = lang("Show notifications from conferences: ", "Показывать уведомления из конференций: ");
 }
 
 void swapLang() {
