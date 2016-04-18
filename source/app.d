@@ -54,13 +54,12 @@ struct Notify {
 }
 
 ulong utfLength(string inp) {
-  auto wstrInput = toUTF16(inp);
-  ulong s = inp.walkLength;
-  //dbm("utfln input: " ~ inp ~ ", walk: " ~ s.to!string);
-  //for(size_t i; i < s; ++i) {
+  //dbm("utfln: " ~ inp);
+  auto wstrInput = inp.to!dstring;
+  //dbm("utfln done");
+  ulong s = wstrInput.walkLength;
   foreach(w; wstrInput) {
-    //immutable w = inp.decode(i);
-    auto c = (cast(uint)w);
+    auto c = (cast(ulong)w);
     foreach(r; utfranges) {
       if(c >= r.start && c <= r.end) {
         s += r.spaces;
@@ -152,7 +151,7 @@ struct Cursor {
 }
 
 struct utf {
-  uint
+  ulong 
     start, end;
   int spaces;
 }
