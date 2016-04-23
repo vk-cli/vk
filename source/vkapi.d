@@ -172,7 +172,6 @@ struct apiState {
     bool somethingUpdated;
     bool chatloading;
     bool showConvNotifies;
-    bool sendOnlineState;
     int loadingiter = 0;
     string lastlp = "";
     uint countermsg = -1;
@@ -393,10 +392,45 @@ class VkApi {
     }
 
     void setActivityStatusImpl(int peer, string type) {
+        vkgetparams gp = {
+            setloading: false,
+            attempts: 1,
+            thrownf: true,
+            notifynf: false
+        };
         try{
-            vkget("messages.setActivity", [ "peer_id": peer.to!string, "type": type ]);
+            vkget("messages.setActivity", [ "peer_id": peer.to!string, "type": type ], false, gp);
         } catch (Exception e) {
             dbm("catched at setTypingStatus: " ~ e.msg);
+        }
+    }
+
+    void accountSetOnline() {
+        vkgetparams gp = {
+            setloading: false,
+            attempts: 10,
+            thrownf: true,
+            notifynf: false
+        };
+        string[string] emptyparam;
+        try{
+            vkget("account.setOnline ", emptyparam, false, gp);
+        } catch (Exception e) {
+            dbm("catched at accountSetOnline: " ~ e.msg);
+        }
+    }
+
+    void accountSetOffline() {
+        vkgetparams gp = {
+            setloading: false,
+            attempts: 10,
+            thrownf: false,
+            notifynf: false
+        };
+        try{
+            vkget("account.setOffline ", [ "voip": "0" ], false, gp);
+        } catch (Exception e) {
+            dbm("catched at accountSetOnline: " ~ e.msg);
         }
     }
 
@@ -793,6 +827,7 @@ class AsyncMan {
 
     const string
         S_SELF_RESOLVE = "s_self_resolve",
+        S_ONLINE_STATUS = "s_online_status",
         S_TYPING = "s_typing_",
         O_LOADBLOCK = "o_loadblock",
         O_SENDMSG = "o_sendm";
@@ -1161,6 +1196,54 @@ class Longpoll : Thread {
 
 }
 
+class OnlineNotifier : Thread {
+
+    private {
+        bool enabled = false;
+        VkApi api;
+        AsyncMan a;
+        const int retryMin = 14;
+    }
+
+    this(VkApi wapi, AsyncMan wa) {
+        api = wapi;
+        a = wa;
+        super(&onlineRoutine);
+    }
+
+    void tryStart() {
+        if(!this.isRunning) this.start();
+        else dbm("onlineNotifier running already");
+    }
+
+    void setOnlineSw(bool sw) {
+        enabled = sw;
+        if(sw) {
+            dbm("starting onlineNotifier...");
+            tryStart();
+        }
+        else {
+            a.singleAsync(a.S_ONLINE_STATUS, () => api.accountSetOffline());
+            dbm("offline status sent (shed)");
+            dbm("sheduled onlineNotifier shutdown");
+        }
+    }
+
+    private void onlineRoutine() {
+        while(true) {
+            if(enabled) {
+                api.accountSetOnline();
+                dbm("online status sent");
+                Thread.sleep( dur!"minutes"(retryMin) );
+            }
+            else {
+                dbm("onlineNotifier shutdown");
+            }
+        }
+    }
+
+}
+
 class VkMan {
 
     alias ChatBlockFactory = BlockFactory!ClMessage;
@@ -1176,6 +1259,7 @@ class VkMan {
         ChatBlockFactory[int] chatFactory; //by peer
 
         Longpoll longpollThread;
+        OnlineNotifier onlineThread;
     }
 
     this(string token) {
@@ -1226,7 +1310,9 @@ class VkMan {
         sndMutex = new Mutex();
         pbMutex = new Mutex();
         ps = apiState();
+
         longpollThread = new Longpoll(this);
+        onlineThread = new OnlineNotifier(api, a);
 
         dialogsFactory = generateBF!ClDialog(ClDialog.getLoadFunc());
         friendsFactory = generateBF!ClFriend(ClFriend.getLoadFunc());
@@ -1305,7 +1391,7 @@ class VkMan {
     }
 
     void sendOnline(bool state) {
-        ps.sendOnlineState = state;
+        onlineThread.setOnlineSw(state);
     }
 
     void showConvNotifications(bool state) {
