@@ -74,7 +74,7 @@ void localize() {
   local["rainbow_in_chat"] = lang("Color only in group chats: ", "Выделять цветом только конференции: ");
   local["sending"] = lang("Sending", "Отправка");
   local["sendfailed"] = lang("Failed", "Ошибка");
-  local["show_typing"] = lang("Show typing status in chat: ", "Показывать, что вы набираете сообщение: ");
+  local["show_typing"] = lang("Show that you are typing a message: ", "Показывать, что вы набираете сообщение: ");
   local["show_conv_notif"] = lang("Show notifications from conferences: ", "Показывать уведомления из конференций: ");
 }
 
