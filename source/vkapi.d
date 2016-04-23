@@ -1346,10 +1346,12 @@ class VkMan {
 
     void toggleForceUpdate(blockType tp) {
         getData(tp).forceUpdate = true;
+        toggleUpdate();
     }
 
     void toggleChatForceUpdate(int peer) {
-        //pb.chatBuffer[peer].data.forceUpdate = true;
+        chatFactory[peer].data.forceUpdate = true;
+        toggleUpdate();
     }
 
     int getServerCount(blockType tp) {
@@ -1753,24 +1755,20 @@ class BlockFactory(T) {
     }
 
     T front() {
+        if(data.forceUpdate) {
+            data.forceUpdate = false;
+            data.serverCount = -1;
+            initBackBlock();
+            blockst.clear();
+            prepare();
+            return null;
+        }
         return getBlockObject(iter);
     }
 
     void popFront() {
         ++iter;
     }
-
-    /+ T back() {
-        return getBlockObject(backiter);
-    }
-
-    void popBack() {
-        --backiter;
-    }
-
-    T moveBack() {
-        return back();
-    } +/
 
     typeof(this) save() {
         return this;
