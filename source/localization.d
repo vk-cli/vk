@@ -76,6 +76,13 @@ void localize() {
   local["sendfailed"] = lang("Failed", "Ошибка");
   local["show_typing"] = lang("Show that you are typing a message: ", "Показывать, что вы набираете сообщение: ");
   local["show_conv_notif"] = lang("Show notifications from conferences: ", "Показывать уведомления из конференций: ");
+  local["time_minutes"] = lang(" minutes ago", " минут назад");
+  local["time_minutes_l5"] = lang(" minutes ago", " минуты назад");
+  local["time_minute"] = lang(" minute", " минуту");
+  local["time_hours"] = lang(" hours", " часов");
+  local["time_hours_l5"] = lang(" hours", " часа");
+  local["time_hour"] = lang(" hour", " час");
+  local["time_ago"] = lang(" ago" , " назад");
 }
 
 void swapLang() {

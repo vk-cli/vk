@@ -540,7 +540,7 @@ class VkApi {
 
         foreach(f; resp["items"].array) {
             auto last = f["last_seen"]["time"].integer.to!long;
-            auto laststr = vktime(ct, last);
+            auto laststr = agotime(ct, last);
 
             vkFriend friend = {
               first_name: f["first_name"].str,

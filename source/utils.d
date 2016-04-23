@@ -22,6 +22,7 @@ module utils;
 import std.stdio, std.array, std.range, std.string, std.file;
 import core.thread, core.sync.mutex, core.exception;
 import std.datetime, std.conv, std.algorithm;
+import localization;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -65,6 +66,34 @@ string vktime(SysTime ct, long ut) {
     return (t.dayOfGregorianCal == ct.dayOfGregorianCal) ?
             (tzr(t.hour) ~ ":" ~ tzr(t.minute)) :
                 (tzr(t.day) ~ "." ~ tzr(t.month) ~ ( t.year != ct.year ? "." ~ t.year.to!string[$-2..$] : "" ) );
+}
+
+string agotime (SysTime ct, long ut) {
+    auto pt = SysTime(ut.unixTimeToStdTime);
+    auto ctm = ct.hour*60 + ct.minute;
+    auto ptm = pt.hour*60 + pt.minute;
+    auto tmdelta = ctm - ptm;
+    const threshld = 240;
+
+    if(
+        pt.dayOfGregorianCal == ct.dayOfGregorianCal &&
+        tmdelta < threshld
+    ) {
+        string rt;
+        if(tmdelta > 60) {
+            auto m = tmdelta % 60;
+            auto h = (tmdelta-m) / 60;
+            rt ~= h.to!string ~
+             ( h == 1 ? getLocal("time_hour") : ( h > 0 && h < 5 ? getLocal("time_hours_l5") : getLocal("time_hours") ) );
+            if(m != 0) rt ~= " " ~ m.to!string ~
+             ( m == 1 ? getLocal("time_minute") : ( m > 0 && m < 5 ? getLocal("time_minutes_l5") : getLocal("time_minutes") ) );
+        }
+        else if(tmdelta == 1) rt = tmdelta.to!string ~ getLocal("time_minute");
+        else rt = tmdelta.to!string ~ getLocal("time_minutes");
+
+        return rt ~ getLocal("time_ago");
+    }
+    else return vktime(ct, ut);
 }
 
 string longpollReplaces(string inp) {
