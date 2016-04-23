@@ -17,29 +17,31 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-# This file contains source code of stored execute.* vk.com functions
+//This file contains source code of stored execute.* vk.com functions
 
 
-# ---- execute.vkGetDialogs ----
-# ---- returns dialogs with online fields ----
-var m = API.messages.getDialogs({"count": Args.count, "offset": Args.offset});
-var uids = m.items@.message@.user_id;
-var onl = API.users.get({"user_ids": uids, "fields": "online"});
-return {"conv": m, "ou": onl@.id, "os": onl@.online};
+execute.vkGetDialogs {
+    //returns dialogs with online fields
 
-
-# ---- execute.accountInit ----
-var me = API.users.get();
-var c = API.account.getCounters("messages");
-if(c.messages == null) {
-    c.messages = 0;
+    var m = API.messages.getDialogs({"count": Args.count, "offset": Args.offset});
+    var uids = m.items@.message@.user_id;
+    var onl = API.users.get({"user_ids": uids, "fields": "online"});
+    return {"conv": m, "ou": onl@.id, "os": onl@.online};
 }
 
-var sc = [];
-sc.dialogs = API.messages.getDialogs().count;
-sc.friends = API.friends.get().count;
-sc.audio = API.audio.get().count;
 
-return {"me": me[0], "counters": c, "sc": sc};
+execute.accountInit {
+    var me = API.users.get();
+    var c = API.account.getCounters("messages");
+    if(c.messages == null) {
+        c.messages = 0;
+    }
 
+    var sc = [];
+    sc.dialogs = API.messages.getDialogs().count;
+    sc.friends = API.friends.get().count;
+    sc.audio = API.audio.get().count;
+
+    return {"me": me[0], "counters": c, "sc": sc};
+}
 
