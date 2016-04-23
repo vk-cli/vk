@@ -122,6 +122,8 @@ struct vkFriend {
     string first_name;
     string last_name;
     int id;
+    long last_seen_utime;
+    string last_seen_str;
     bool online;
 }
 
@@ -525,7 +527,7 @@ class VkApi {
     }
 
     vkFriend[] friendsGet(int count, int offset, out int serverCount, int user_id = 0) {
-        auto params = [ "fields": "online", "order": "hints"];
+        auto params = [ "fields": "online,last_seen", "order": "hints"];
         if(user_id != 0) params["user_id"] = user_id.to!string;
         if(count != 0) params["count"] = count.to!string;
         if(offset != 0) params["offset"] = offset.to!string;
@@ -533,12 +535,22 @@ class VkApi {
         auto resp = vkget("friends.get", params);
         serverCount = resp["count"].integer.to!int;
 
+        auto ct = Clock.currTime();
         vkFriend[] rt;
+
         foreach(f; resp["items"].array) {
-            rt ~= vkFriend(
-                f["first_name"].str, f["last_name"].str,
-                f["id"].integer.to!int, (f["online"].integer.to!int == 1) ? true : false
-            );
+            auto last = f["last_seen"]["time"].integer.to!long;
+            auto laststr = vktime(ct, last);
+
+            vkFriend friend = {
+              first_name: f["first_name"].str,
+              last_name: f["last_name"].str,
+              id: f["id"].integer.to!int,
+              online: ( f["online"].integer.to!int == 1 ? true : false ),
+              last_seen_utime: last,  last_seen_str: laststr
+            };
+
+            rt ~= friend;
         }
         return rt;
     }
