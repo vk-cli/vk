@@ -891,7 +891,7 @@ ListElement[] GetDialogs() {
       unreadText,
       lastMsg = e.lastMessage.replace("\n", " ");
     if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length) {
-      lastMsg = lastMsg.to!wstring[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].to!string;
+      lastMsg = lastMsg.toUTF16wrepl[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].toUTF8wrepl;
     }
     if (e.unreadCount != 0) {
       if (e.unread) unreadText ~= e.unreadCount.to!string ~ inbox;
