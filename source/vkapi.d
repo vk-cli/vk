@@ -1210,6 +1210,7 @@ class OnlineNotifier : Thread {
             a.singleAsync(a.S_ONLINE_STATUS, () => api.accountSetOffline());
             dbm("offline status sent (shed)");
             dbm("sheduled onlineNotifier shutdown");
+            pragma(msg, "u become 313373 now");
         }
     }
 

@@ -68,7 +68,7 @@ string vktime(SysTime ct, long ut) {
                 (tzr(t.day) ~ "." ~ tzr(t.month) ~ ( t.year != ct.year ? "." ~ t.year.to!string[$-2..$] : "" ) );
 }
 
-string agotime (SysTime ct, long ut) {
+string agotime (SysTime ct, long ut) { //not used
     auto pt = SysTime(ut.unixTimeToStdTime);
     auto ctm = ct.hour*60 + ct.minute;
     auto ptm = pt.hour*60 + pt.minute;
@@ -96,6 +96,17 @@ string agotime (SysTime ct, long ut) {
     else return vktime(ct, ut);
 }
 
+/*
+ local["time_minutes"] = lang(" minutes ago", " минут назад");
+  local["time_minutes_l5"] = lang(" minutes ago", " минуты назад");
+  local["time_minute"] = lang(" minute", " минуту");
+  local["time_hours"] = lang(" hours", " часов");
+  local["time_hours_l5"] = lang(" hours", " часа");
+  local["time_hour"] = lang(" hour", " час");
+  local["time_ago"] = lang(" ago" , " назад");
+  local["lastseen"] = lang("last seen at ", "был в сети в ");
+  */
+
 string longpollReplaces(string inp) {
     return inp
         .replace("<br>", "\n")
@@ -110,7 +121,6 @@ T[] slice(T)(ref T[] src, int count, int offset) {
         return src[offset..(offset+count)]; //.map!(d => &d).array;
     } catch (RangeError e) {
         dbm("utils slice count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
-        pragma(msg, "u become 313373 now");
         dbm("catched slice ex: " ~ e.msg);
         return [];
     }
