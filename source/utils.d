@@ -68,7 +68,7 @@ string vktime(SysTime ct, long ut) {
                 (tzr(t.day) ~ "." ~ tzr(t.month) ~ ( t.year != ct.year ? "." ~ t.year.to!string[$-2..$] : "" ) );
 }
 
-string agotime (SysTime ct, long ut) {
+string agotime (SysTime ct, long ut) { //not used
     auto pt = SysTime(ut.unixTimeToStdTime);
     auto ctm = ct.hour*60 + ct.minute;
     auto ptm = pt.hour*60 + pt.minute;
@@ -95,6 +95,17 @@ string agotime (SysTime ct, long ut) {
     }
     else return vktime(ct, ut);
 }
+
+/*
+ local["time_minutes"] = lang(" minutes ago", " минут назад");
+  local["time_minutes_l5"] = lang(" minutes ago", " минуты назад");
+  local["time_minute"] = lang(" minute", " минуту");
+  local["time_hours"] = lang(" hours", " часов");
+  local["time_hours_l5"] = lang(" hours", " часа");
+  local["time_hour"] = lang(" hour", " час");
+  local["time_ago"] = lang(" ago" , " назад");
+  local["lastseen"] = lang("last seen at ", "был в сети в ");
+  */
 
 string longpollReplaces(string inp) {
     return inp
@@ -278,12 +289,33 @@ auto inputRetro(R)(R range) {
     return new InputRetroResult!R(range);
 }
 
-//alias UseReplacementDchar = std.typecons.Flag!"useReplacementDchar".Flag;
+alias Repldchar = std.typecons.Flag!"useReplacementDchar";
 
-auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
-alias rortp = typeof(ror);
-//pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
-pragma(msg, "isBidirectional joinerBidirectional "
-                    ~ isBidirectionalRange!(JoinerBidirectionalResult!rortp).stringof);
+wstring toUTF16wrepl(in char[] s) @safe {
+    const Repldchar repl = Repldchar.yes;
+
+    wchar[] r;
+    size_t slen = s.length;
+
+    r.length = slen;
+    r.length = 0;
+    for (size_t i = 0; i < slen; )
+    {
+        dchar c = s[i];
+        if (c <= 0x7F)
+        {
+            i++;
+            r ~= cast(wchar)c;
+        }
+        else
+        {
+            c = decode!repl(s, i);
+            encode(r, c);
+        }
+    }
+
+    return r.toUTF16;
+}
+
 
 
