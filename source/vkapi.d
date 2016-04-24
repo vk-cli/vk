@@ -20,7 +20,7 @@ limitations under the License.
 module vkapi;
 
 import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
-import std.exception, core.exception;
+import std.exception, core.exception, std.process;
 import std.net.curl, std.uri, std.json;
 import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
@@ -537,23 +537,25 @@ class VkApi {
         auto resp = vkget("friends.get", params);
         serverCount = resp["count"].integer.to!int;
 
+
         auto ct = Clock.currTime();
         vkFriend[] rt;
 
         foreach(f; resp["items"].array) {
-            auto last = f["last_seen"]["time"].integer.to!long;
+            auto last = "last_seen" in f ? f["last_seen"]["time"].integer.to!long : 0;
             auto laststr = agotime(ct, last);
 
             vkFriend friend = {
               first_name: f["first_name"].str,
               last_name: f["last_name"].str,
               id: f["id"].integer.to!int,
-              online: ( f["online"].integer.to!int == 1 ? true : false ),
+              online: ( f["online"].integer.to!int == 1 ),
               last_seen_utime: last,  last_seen_str: laststr
             };
 
             rt ~= friend;
         }
+
         return rt;
     }
 

@@ -19,7 +19,7 @@ limitations under the License.
 
 module localization;
 
-import std.stdio, std.conv;
+import std.stdio, std.conv, utils;
 
 struct lang {
   string en;
@@ -30,8 +30,10 @@ const int
   En = 0,
   Ru = 1;
 
-private lang[string] local;
-private int currentLang = 0;
+__gshared {
+  private lang[string] local;
+  private int currentLang = 0;
+}
 
 void localize() {
   local["e_input_token"] = lang("Insert your access token here: ", "Вставьте свой access token сюда: ");
