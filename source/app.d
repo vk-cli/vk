@@ -838,17 +838,16 @@ void toggleChatRenderOnlyGroup(ref ListElement le) {
 }
 
 void toggleShowConvNotifications(ref ListElement le) {
-  api.showConvNotifications(win.showConvNotifications);
   win.showConvNotifications = !win.showConvNotifications;
+  api.showConvNotifications(win.showConvNotifications);
   le.name = "show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal;
 }
 
 void toggleSendOnline(ref ListElement le) {
-  api.sendOnline(win.sendOnline);
   win.sendOnline = !win.sendOnline;
+  api.sendOnline(win.sendOnline);
   le.name = "send_online".getLocal ~ (win.sendOnline.to!string).getLocal;
 }
-
 
 ListElement[] GenerateHelp() {
   return [
