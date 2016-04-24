@@ -418,7 +418,7 @@ class VkApi {
         };
         string[string] emptyparam;
         try{
-            vkget("account.setOnline ", emptyparam, false, gp);
+            vkget("account.setOnline", emptyparam, false, gp);
         } catch (Exception e) {
             dbm("catched at accountSetOnline: " ~ e.msg);
         }
@@ -432,7 +432,7 @@ class VkApi {
             notifynf: false
         };
         try{
-            vkget("account.setOffline ", [ "voip": "0" ], false, gp);
+            vkget("account.setOffline", [ "voip": "0" ], false, gp);
         } catch (Exception e) {
             dbm("catched at accountSetOnline: " ~ e.msg);
         }
