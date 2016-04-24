@@ -110,6 +110,7 @@ T[] slice(T)(ref T[] src, int count, int offset) {
         return src[offset..(offset+count)]; //.map!(d => &d).array;
     } catch (RangeError e) {
         dbm("utils slice count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
+        pragma(msg, "u become 313373 now");
         dbm("catched slice ex: " ~ e.msg);
         return [];
     }
@@ -306,11 +307,5 @@ wstring toUTF16wrepl(in char[] s) @safe {
     return r.toUTF16;
 }
 
-
-auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
-alias rortp = typeof(ror);
-//pragma(msg, "isBidirectional TakeBackResult " ~ isBidirectionalRange!(TakeBackResult!string).stringof);
-pragma(msg, "isBidirectional joinerBidirectional "
-                    ~ isBidirectionalRange!(JoinerBidirectionalResult!rortp).stringof);
 
 
