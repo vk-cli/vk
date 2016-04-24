@@ -725,13 +725,20 @@ class VkApi {
     int messagesSend(int pid, string msg, int rndid = 0, int[] fwd = [], string[] attaches = []) {
         if(msg.length == 0 && fwd.length == 0 && attaches.length == 0) return -1;
 
+        vkgetparams gp = {
+            setloading: true,
+            attempts: 4,
+            thrownf: true,
+            notifynf: false
+        };
+
         auto params = ["peer_id": pid.to!string ];
         if(rndid != 0) params["random_id"] = rndid.to!string;
         if(msg != "") params["message"] = msg;
         if(fwd.length != 0) params["forward_messages"] = fwd.map!(q => q.to!string).join(",");
         if(attaches.length != 0) params["attachment"] = attaches.join(",");
 
-        auto resp = vkget("messages.send", params);
+        auto resp = vkget("messages.send", params, false, gp);
         return resp.integer.to!int;
     }
 }
@@ -1430,8 +1437,27 @@ class VkMan {
     }
 
     private void sendMessageImpl(int rid, int peer, string msg) {
-        auto sentmid = api.messagesSend(peer, msg, rid);
-        dbm("message sent mid: " ~ sentmid.to!string ~ " rid: " ~ rid.to!string);
+        try {
+            auto sentmid = api.messagesSend(peer, msg, rid);
+            dbm("message sent mid: " ~ sentmid.to!string ~ " rid: " ~ rid.to!string);
+        }
+        catch(Exception e) {
+            dbm("catched at sendMessageImpl: " ~ e.msg);
+            dbm("failed state will be set, rid: " ~ rid.to!string);
+            setFailedState(rid, peer);
+        }
+    }
+
+    void setFailedState(long rid, int peer) {
+        auto cf = peer in chatFactory;
+        if(cf) {
+            auto z = cf.getZombie(rid, true);
+            if(z !is null) {
+                z.time_str = getLocal("sendfailed");
+                toggleUpdate();
+                dbm("failed state set for " ~ rid.to!string);
+            }
+        }
     }
 
     void asyncSendMessage(int peer, string msg) {
@@ -1768,6 +1794,20 @@ class BlockFactory(T) {
                 .filter!(q => q.getObject.rndid == rid)
                 .takeOne
                 .each!(q => q.ignored = true);
+        }
+
+        vkMessage* getZombie(long rid, bool defeatCache) {
+            auto one = backBlock
+                .getBlock
+                .filter!(q => q.getObject.rndid == rid)
+                .takeOne;
+            if(!one.empty) {
+                if(defeatCache) {
+                    one.front.invalidateLineCache();
+                }
+                return one.front.getObject;
+            }
+            else return null;
         }
 
     }
