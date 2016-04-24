@@ -543,8 +543,10 @@ class VkApi {
 
         foreach(f; resp["items"].array) {
             auto last = "last_seen" in f ? f["last_seen"]["time"].integer.to!long : 0;
+
             //auto laststr = agotime(ct, last);
-            auto laststr = getLocal("lastseen") ~ vktime(ct, last);
+            //auto laststr = getLocal("lastseen") ~ vktime(ct, last);
+            auto laststr = last > 0 ? vktime(ct, last) : getLocal("banned");
 
             vkFriend friend = {
               first_name: f["first_name"].str,

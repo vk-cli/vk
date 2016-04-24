@@ -86,6 +86,7 @@ void localize() {
   local["time_hour"] = lang(" hour", " час");
   local["time_ago"] = lang(" ago" , " назад");
   local["lastseen"] = lang("last seen at ", "был в сети в ");
+  local["banned"] = lang("banned", "заблокирован");
 }
 
 void swapLang() {
