@@ -18,7 +18,8 @@ limitations under the License.
 */
 
 import std.process, std.stdio, std.string,
-       std.array, std.algorithm, std.conv;
+       std.array, std.algorithm, std.conv,
+       std.math;
 import core.thread;
 import app, utils;
 import vkapi: VkMan;
@@ -36,6 +37,7 @@ class MusicPlayer : Thread {
   bool
     musicState,
     playtimeUpdated,
+    trackOverStateCatched,
     mplayerExit,
     isInit;
   Track[] playlist;
@@ -66,10 +68,10 @@ class MusicPlayer : Thread {
   }
 
   string durToStr(string duration) {
-    int intDuration = duration.to!int;
-    int min = intDuration / 60;
-    int sec = intDuration - (60*min);
-    return min.to!string ~ ":" ~ sec.tzr;
+    auto intDuration = lround(duration.to!real);
+    auto min = intDuration / 60;
+    auto sec = intDuration - (60*min);
+    return min.to!string ~ ":" ~ sec.to!int.tzr;
   }
 
   int strToDur(string duration) {
@@ -77,28 +79,65 @@ class MusicPlayer : Thread {
     return temp[0].to!int*60 + temp[1].to!int;
   }
 
-  void setPlaytime() {
-    send("get_time_pos");
-    string answer = output[$-1];
-    if (answer != "" && answer.canFind("ANS")) {
-      currentTrack.playtime = durToStr(answer[18..$-2]);
-      int
-        sec = answer[18..$-2].to!int,
-        step = strToDur(currentTrack.duration) / 50,
-        newPos = sec / step;
-      if (position != newPos) {
-        position = newPos;
-        auto newProgress = stockProgress.dup; 
-        newProgress[newPos] = '|';
-        realProgress = newProgress.to!string;
+  void setPlaytime(string answer) {
+    const string start = "ANS_TIME_POSITION=";
+    if (answer != "") {
+      if(answer.startsWith(start)) {
+        auto strtime = answer[start.length..$];
+        currentTrack.playtime = durToStr(strtime);
+        real
+          sec = strtime.to!real,
+          trackd = strToDur(currentTrack.duration).to!real,
+          step =  trackd / 50;
+        int newPos = floor(sec / step).to!int;
+        dbm("sec: " ~ sec.to!string ~ ", step: " ~ step.to!string ~ ", newPos: " ~ newPos.to!string ~
+                        ", mdur: " ~ trackd.to!string);
+        if (position != newPos) {
+          position = newPos;
+
+          if(newPos >= 50) newPos = 49;
+          else if (newpos < 0) newPos = 0;
+
+          auto newProgress = stockProgress.dup;
+          newProgress[newPos] = '|';
+          realProgress = newProgress.to!string;
+        }
+        playtimeUpdated = true;
+        trackOverStateCatched = false;
       }
     }
-    playtimeUpdated = true;
+    else {
+      if(!trackOverStateCatched) trackOver();
+    }
   }
 
-  void isTrackOver() {
-    send("get_percent_pos");
-    if (musicState && output[$-1] == "") {
+  void listenStdout() {
+    while (!mplayerExit) {
+      dbm("output try");
+      if (output.length != lastOutputLn) {
+        string answer = output[$-1];
+        lastOutputLn = output.length;
+        dbm("last mp: " ~ answer);
+
+        if (musicState) {
+          try {
+            setPlaytime(answer);
+          }
+          catch(Error e) {
+            dbm("e " ~ e.msg);
+          }
+          send("get_time_pos");
+        }
+      }
+      Thread.sleep(listenWait);
+    }
+  }
+
+
+  void trackOver() {
+    if (musicState) {
+      dbm("catched trackOver");
+      trackOverStateCatched = true;
       auto track = api.getBufferedMusic(1, ++trackNum)[0];
       currentTrack.artist = track.artist;
       send("loadfile " ~ track.url);
@@ -125,20 +164,8 @@ class MusicPlayer : Thread {
     isInit = true;
     currentTrack.playtime = "0:00";
     foreach (line; pipe.stdout.byLine) output ~= line.idup;
+    dbm("MPLAYER EXIT");
     mplayerExit = true;
-  }
-
-  void listenStdout() {
-    while (!mplayerExit) {
-      if (output.length != lastOutputLn) {
-        lastOutputLn = output.length;
-        if (musicState) {
-          //setPlaytime;
-          isTrackOver;
-        }
-      }
-      Thread.sleep(listenWait);
-    }
   }
 
   void startPlayer(VkMan vkapi) {
