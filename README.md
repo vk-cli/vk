@@ -1,7 +1,7 @@
 # vk
 A console (ncurses) client for vk.com written in D
 
-# Our GPG keys
+### Our GPG keys
 
 ```
 C990 689C 7692 B5E0 2057  6092 67DB 7D5C 3457 ECED 
