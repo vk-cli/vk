@@ -78,7 +78,7 @@ void localize() {
   local["sendfailed"] = lang("Failed", "Ошибка");
   local["show_typing"] = lang("Show that you are typing a message: ", "Показывать, что вы набираете сообщение: ");
   local["show_conv_notif"] = lang("Show notifications from conferences: ", "Показывать уведомления из конференций: ");
-  local["send_online"] = lang("Send that ypu are online: ", "Показывать, что вы онлайн: ");
+  local["send_online"] = lang("Send that you are online: ", "Показывать, что вы онлайн: ");
   local["banned"] = lang("banned", "заблокирован");
   local["general_settings"] = lang("[ General Settings ]", "[ Общие настройки ]");
 }
