@@ -1,6 +1,23 @@
 # vk
 A console (ncurses) client for vk.com written in D
 
+# Our GPG keys
+
+```
+C990 689C 7692 B5E0 2057  6092 67DB 7D5C 3457 ECED 
+vk-cli developers team <vk-cli.dev@ya.ru>
+https://pgp.mit.edu/
+```
+
+To verify signed files, first you need to import keys: 
+` $ gpg  --keyserver pgp.mit.edu --recv-keys 0x3457ECED `
+
+Now you can verify files and install signed packages.
+` $ gpg --verify signed-file.sig signed-file `
+
+`gpg: Good signature from "vk-cli developers team <vk-cli.dev@ya.ru>"`
+This output indicates that file properly signed and isn't damaged
+
 ### Branches
 + **master** - current upstream (may be unstable) 
 
