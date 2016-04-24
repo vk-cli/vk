@@ -1,6 +1,8 @@
 # vk
 A console (ncurses) client for vk.com written in D
 
+
+
 ### Our GPG keys
 
 ```
@@ -24,6 +26,9 @@ This output indicates that file is properly signed and isn't damaged
 ### Branches
 + **master** - current upstream (may be unstable) 
 
+### Tags
++ **0.7a1** - first alpha release (https://vk.com/wall-69278962_1081)
+
 # Install
 
 ## Build
@@ -46,6 +51,9 @@ where `ver` - is the name of the branch that you want to build
 + ncurses >= 5.7
 + curl
 + openssl
+
+Make dependencies
+
 + dub
 + dmd
 
