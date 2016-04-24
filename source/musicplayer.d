@@ -39,6 +39,7 @@ class MusicPlayer : Thread {
     playtimeUpdated,
     trackOverStateCatched,
     mplayerExit,
+    userSelectTrack,
     isInit;
   Track[] playlist;
   ulong lastOutputLn;
@@ -128,12 +129,13 @@ class MusicPlayer : Thread {
     }
   }
 
-
   void trackOver() {
     if (musicState) {
       dbm("catched trackOver");
       trackOverStateCatched = true;
-      auto track = api.getBufferedMusic(1, ++trackNum)[0];
+      if (!userSelectTrack) trackNum++;
+      else userSelectTrack = false;
+      auto track = api.getBufferedMusic(1, trackNum)[0];
       currentTrack.artist = track.artist;
       send("loadfile " ~ track.url);
       currentTrack = Track(track.artist, track.title, track.duration_str);
