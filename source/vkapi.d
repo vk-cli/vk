@@ -356,7 +356,7 @@ class VkApi {
     vkUser usersGet(int userId = 0, string fields = "", string nameCase = "nom") {
         string[string] params;
         if(userId != 0) params["user_ids"] = userId.to!string;
-        if(fields != "") params["fields"] = fields;
+        params["fields"] = fields != "" ? fields : "online";
         if(nameCase != "nom") params["name_case"] = nameCase;
         auto resp = vkget("users.get", params);
 
@@ -378,7 +378,7 @@ class VkApi {
         if(userIds.length == 0) return [];
         string[string] params;
         params["user_ids"] = userIds.map!(i => i.to!string).join(",");
-        if(fields != "") params["fields"] = fields;
+        params["fields"] = fields != "" ? fields : "online";
         if(nameCase != "nom") params["name_case"] = nameCase;
         auto resp = vkget("users.get", params).array;
 
@@ -389,6 +389,7 @@ class VkApi {
                 first_name:t["first_name"].str,
                 last_name:t["last_name"].str
             };
+            if("online" in t) rti.online = t["online"].integer == 1;
             rt ~= rti;
         }
         return rt;
@@ -1157,18 +1158,8 @@ class Longpoll : Thread {
         bool exit = (event == 9);
         if(!exit && event != 8) return;
 
-        auto friend = man.friendsFactory.getLoadedObjects
-                            .map!(q => q.getObject)
-                            .filter!(q => q.id == uid)
-                            .takeOne();
-
-        auto dialog = man.dialogsFactory.getLoadedObjects
-                            .map!(q => q.getObject)
-                            .filter!(q => q.id == uid)
-                            .takeOne();
-
-        if(!friend.empty) friend.front.online = !exit;
-        if(!dialog.empty) dialog.front.online = !exit;
+        if(exit) nc.setOnline(uid, false);
+        else nc.setOnline(uid, true);
 
         man.toggleUpdate();
     }
@@ -1896,19 +1887,27 @@ class ClDialog : ClObject!vkDialog {
     override vkDialog* getObject() {
         if(lp) {
             vkDialog rt = obj;
-            auto lastm = cf.getLoadedObjects
+            auto lastone = cf.getLoadedObjects
                             .filter!(q => q !is null)
-                            .front
-                            .getObject;
+                            .takeOne;
+
+            if(lastone.empty) return &obj;
+            auto lastm = lastone.front.getObject;
+
             rt.lastMessage = lastm.body_lines.empty ? "" : lastm.body_lines[0];
             rt.outbox = lastm.outgoing;
             rt.unreadCount = cf.unreadCount;
             rt.unread = rt.outbox ? (lastm.unread) : (cf.unreadCount > 0);
             rt.lastmid = lastm.msg_id;
+            rt.online = rt.id >= longpollGimStartId ? true : nc.getOnline(rt.id);
+            rt.isChat = rt.id >= convStartId;
             uobj = rt;
             return &uobj;
         }
-        else return &obj;
+        else {
+            obj.online = nc.getOnline(obj.id);
+            return &obj;
+        }
     }
 
 }
@@ -1926,6 +1925,12 @@ class ClFriend : ClObject!vkFriend {
     this(objt obj) {
         super(obj);
     }
+
+    override vkFriend* getObject() {
+        obj.online = nc.getOnline(obj.id);
+        return &obj;
+    }
+
 }
 
 class ClAudio : ClObject!vkAudio {
