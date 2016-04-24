@@ -21,7 +21,7 @@ module utils;
 
 import std.stdio, std.array, std.range, std.string, std.file;
 import core.thread, core.sync.mutex, core.exception;
-import std.datetime, std.conv, std.algorithm;
+import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
 import localization;
 
 const bool debugMessagesEnabled = false;
@@ -277,6 +277,8 @@ if (isInputRange!R)
 auto inputRetro(R)(R range) {
     return new InputRetroResult!R(range);
 }
+
+//alias UseReplacementDchar = std.typecons.Flag!"useReplacementDchar".Flag;
 
 auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
 alias rortp = typeof(ror);

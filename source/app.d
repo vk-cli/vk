@@ -54,10 +54,11 @@ struct Notify {
 }
 
 ulong utfLength(string inp) {
-  //dbm("utfln: " ~ inp);
-  auto wstrInput = inp.to!dstring;
-  //dbm("utfln done");
-  ulong s = wstrInput.walkLength;
+  dbm("utfln: " ~ inp);
+  //auto wstrInput = inp.to!dstring;
+  auto wstrInput = inp.toUTF16();
+  //ulong s = wstrInput.walkLength;
+  ulong s = wstrInput.length;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
     foreach(r; utfranges) {
