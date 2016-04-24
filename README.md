@@ -9,14 +9,17 @@ vk-cli developers team <vk-cli.dev@ya.ru>
 https://pgp.mit.edu/
 ```
 
-To verify signed files, first you need to import keys: 
+To verify signed files, first you need to import keys:
+
 ` $ gpg  --keyserver pgp.mit.edu --recv-keys 0x3457ECED `
 
-Now you can verify files and install signed packages.
+Now you can verify files and install signed packages:
+
 ` $ gpg --verify signed-file.sig signed-file `
 
 `gpg: Good signature from "vk-cli developers team <vk-cli.dev@ya.ru>"`
-This output indicates that file properly signed and isn't damaged
+
+This output indicates that file is properly signed and isn't damaged
 
 ### Branches
 + **master** - current upstream (may be unstable) 
