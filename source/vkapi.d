@@ -553,6 +553,8 @@ class VkApi {
               last_seen_utime: last,  last_seen_str: laststr
             };
 
+            nc.addToCache(friend.id, cachedName(friend.first_name, friend.last_name, friend.online));
+
             rt ~= friend;
         }
 
