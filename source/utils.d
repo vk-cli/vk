@@ -290,10 +290,9 @@ auto inputRetro(R)(R range) {
 }
 
 alias Repldchar = std.typecons.Flag!"useReplacementDchar";
+const Repldchar repl = Repldchar.yes;
 
-wstring toUTF16wrepl(in char[] s) @safe {
-    const Repldchar repl = Repldchar.yes;
-
+wstring toUTF16wrepl(in char[] s) {
     wchar[] r;
     size_t slen = s.length;
 
@@ -314,7 +313,31 @@ wstring toUTF16wrepl(in char[] s) @safe {
         }
     }
 
-    return r.toUTF16;
+    return cast(wstring)r;
+}
+
+string toUTF8wrepl(in wchar[] s) {
+    char[] r;
+    size_t i;
+    size_t slen = s.length;
+
+    r.length = slen;
+    for (i = 0; i < slen; i++)
+    {
+        wchar c = s[i];
+
+        if (c <= 0x7F)
+            r[i] = cast(char)c;     // fast path for ascii
+        else
+        {
+            r.length = i;
+            while (i < slen)
+                encode(r, decode!repl(s, i));
+            break;
+        }
+    }
+
+    return cast(string)r;
 }
 
 
