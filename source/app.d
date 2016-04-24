@@ -437,7 +437,17 @@ void onlySelectedMessageAndUnread(ListElement e, ulong i) {
 void drawFriendsList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.menuOffset+1);
-    i.to!int == win.active-win.scrollOffset ? e.name.selected : e.flag ? e.name.regular : e.name.secondColor;
+    if (i.to!int == win.active-win.scrollOffset) {
+      if (!e.flag) {
+        e.name[0..$-e.text.utfLength].selected;
+        e.text.selected;
+      } else e.name.selected;
+    } else if (e.flag) {
+      e.name.regular;
+    } else {
+      e.name[0..$-e.text.utfLength].secondColor;
+      e.text.secondColor;
+    }
   }
 }
 
@@ -890,10 +900,10 @@ ListElement[] GetFriends() {
   ListElement[] list;
   auto friends = api.getBufferedFriends(LINES-2, win.scrollOffset);
   foreach(e; friends) {
-    list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.id.to!string, &chat, &GetChat, e.online, e.id);
+    list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.last_seen_str, &chat, &GetChat, e.online, e.id);
   }
   win.activeBuffer = Buffers.friends;
-  return list;
+    return list;
 }
 
 ListElement[] setCurrentTrack() {
