@@ -1905,7 +1905,7 @@ class ClDialog : ClObject!vkDialog {
             return &uobj;
         }
         else {
-            obj.online = nc.getOnline(obj.id);
+            obj.online = obj.id >= longpollGimStartId ? true : nc.getOnline(obj.id);
             return &obj;
         }
     }
