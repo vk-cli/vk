@@ -189,7 +189,7 @@ struct Win {
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag,
-    showConvNotifications;
+    showConvNotifications, sendOnline;
 }
 
 void relocale() {
@@ -210,6 +210,7 @@ void parse(ref string[string] storage) {
   if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
   if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
   if ("show_conv_notif" in storage) win.showConvNotifications = storage["show_conv_notif"].to!bool;
+  if ("send_online" in storage) win.sendOnline = storage["send_online"].to!bool;
   relocale;
 }
 
@@ -222,6 +223,7 @@ void update(ref string[string] storage) {
   storage["rainbow_in_chat"] = win.isRainbowOnlyInGroupChats.to!string;
   storage["show_typing"] = win.showTyping.to!string;
   storage["show_conv_notif"] = win.showConvNotifications.to!string;
+  storage["send_online"] = win.sendOnline.to!string;
 }
 
 void init() {
@@ -670,12 +672,12 @@ void nonChatEvents() {
   else if (win.section == Sections.right) {
     if (canFind(kg_refresh, win.key)) forceRefresh;
     if (win.key == k_home) { win.active = 0; win.scrollOffset = 0; }
-    else if (win.key == k_end) jumpToEnd;
-    else if (win.key == k_pagedown) {
+    else if (win.key == k_end && win.activeBuffer != Buffers.none) jumpToEnd;
+    else if (win.key == k_pagedown && win.activeBuffer != Buffers.none) {
       win.scrollOffset += LINES/2;
       win.active += LINES/2;
     }
-    else if (win.key == k_pageup) {
+    else if (win.key == k_pageup && win.activeBuffer != Buffers.none) {
       win.scrollOffset -= LINES/2;
       win.active -= LINES/2;
       if (win.active < 0) win.active = win.scrollOffset = 0;
@@ -837,10 +839,17 @@ void toggleChatRenderOnlyGroup(ref ListElement le) {
 }
 
 void toggleShowConvNotifications(ref ListElement le) {
-  win.showConvNotifications = !win.showConvNotifications;
   api.showConvNotifications(win.showConvNotifications);
+  win.showConvNotifications = !win.showConvNotifications;
   le.name = "show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal;
 }
+
+void toggleSendOnline(ref ListElement le) {
+  api.sendOnline(win.sendOnline);
+  win.sendOnline = !win.sendOnline;
+  le.name = "send_online".getLocal ~ (win.sendOnline.to!string).getLocal;
+}
+
 
 ListElement[] GenerateHelp() {
   return [
@@ -869,6 +878,8 @@ ListElement[] GenerateSettings() {
   if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &toggleChatRenderOnlyGroup);
   list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &toggleShowTyping);
   list ~= ListElement("show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal, "", &toggleShowConvNotifications);
+  list ~= ListElement(center("general_settings".getLocal, COLS-16, ' '));
+  list ~= ListElement("send_online".getLocal ~ (win.sendOnline.to!string).getLocal, "", &toggleSendOnline);
   return list;
 }
 
