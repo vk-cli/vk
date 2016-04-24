@@ -278,7 +278,34 @@ auto inputRetro(R)(R range) {
     return new InputRetroResult!R(range);
 }
 
-//alias UseReplacementDchar = std.typecons.Flag!"useReplacementDchar".Flag;
+alias Repldchar = std.typecons.Flag!"useReplacementDchar";
+
+wstring toUTF16wrepl(in char[] s) @safe {
+    const Repldchar repl = Repldchar.yes;
+
+    wchar[] r;
+    size_t slen = s.length;
+
+    r.length = slen;
+    r.length = 0;
+    for (size_t i = 0; i < slen; )
+    {
+        dchar c = s[i];
+        if (c <= 0x7F)
+        {
+            i++;
+            r ~= cast(wchar)c;
+        }
+        else
+        {
+            c = decode!repl(s, i);
+            encode(r, c);
+        }
+    }
+
+    return r.toUTF16;
+}
+
 
 auto ror = ["ClCl", "u cant touch my pragmas", "substanceof eboshil zdes'"];
 alias rortp = typeof(ror);
