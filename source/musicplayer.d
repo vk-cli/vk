@@ -99,9 +99,7 @@ class MusicPlayer : Thread {
   void isTrackOver() {
     send("get_percent_pos");
     if (musicState && output[$-1] == "") {
-      currentTrack.artist = "load";
       auto track = api.getBufferedMusic(1, ++trackNum)[0];
-      currentTrack.artist = "done";
       currentTrack.artist = track.artist;
       send("loadfile " ~ track.url);
       currentTrack = Track(track.artist, track.title, track.duration_str);
