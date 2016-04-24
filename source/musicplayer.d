@@ -103,8 +103,8 @@ class MusicPlayer : Thread {
       auto track = api.getBufferedMusic(1, ++trackNum)[0];
       currentTrack.artist = "done";
       currentTrack.artist = track.artist;
-      //send("loadfile " ~ track.url);
-      //currentTrack = Track(track.artist, track.title, track.duration_str);
+      send("loadfile " ~ track.url);
+      currentTrack = Track(track.artist, track.title, track.duration_str);
     }
     playtimeUpdated = true;
   }
@@ -135,8 +135,8 @@ class MusicPlayer : Thread {
       if (output.length != lastOutputLn) {
         lastOutputLn = output.length;
         if (musicState) {
-          setPlaytime;
-          //isTrackOver;
+          //setPlaytime;
+          isTrackOver;
         }
       }
       Thread.sleep(listenWait);
