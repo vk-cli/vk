@@ -28,7 +28,7 @@ const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
 
 __gshared string dbmlog = "";
-__gshared dbgfname = "dbg";
+__gshared dbgfname = "/tmp/vkdbg";
 File dbgff;
 __gshared Mutex dbgmutex;
 
