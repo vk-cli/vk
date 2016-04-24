@@ -90,13 +90,13 @@ class MusicPlayer : Thread {
           trackd = strToDur(currentTrack.duration).to!real,
           step =  trackd / 50;
         int newPos = floor(sec / step).to!int;
-        dbm("sec: " ~ sec.to!string ~ ", step: " ~ step.to!string ~ ", newPos: " ~ newPos.to!string ~
-                        ", mdur: " ~ trackd.to!string);
+        //dbm("sec: " ~ sec.to!string ~ ", step: " ~ step.to!string ~ ", newPos: " ~ newPos.to!string ~
+        //                ", mdur: " ~ trackd.to!string);
         if (position != newPos) {
           position = newPos;
 
           if(newPos >= 50) newPos = 49;
-          else if (newpos < 0) newPos = 0;
+          else if (newPos < 0) newPos = 0;
 
           auto newProgress = stockProgress.dup;
           newProgress[newPos] = '|';
@@ -113,19 +113,14 @@ class MusicPlayer : Thread {
 
   void listenStdout() {
     while (!mplayerExit) {
-      dbm("output try");
+      //dbm("output try");
       if (output.length != lastOutputLn) {
         string answer = output[$-1];
         lastOutputLn = output.length;
-        dbm("last mp: " ~ answer);
+        //dbm("last mp: " ~ answer);
 
         if (musicState) {
-          try {
-            setPlaytime(answer);
-          }
-          catch(Error e) {
-            dbm("e " ~ e.msg);
-          }
+          setPlaytime(answer);
           send("get_time_pos");
         }
       }
