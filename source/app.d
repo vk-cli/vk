@@ -1053,6 +1053,7 @@ void main(string[] args) {
   api.showConvNotifications(win.showConvNotifications);
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
+  api.sendOnline(win.sendOnline);
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
     clear;
