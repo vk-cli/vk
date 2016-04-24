@@ -928,10 +928,8 @@ ListElement[] setCurrentTrack() {
     win.active += 5;
     win.isMusicPlaying = true;
   } else {
-    int real_active = win.active-5;
-    if (mplayer.sameTrack(real_active)) mplayer.pause;
-    else mplayer.play(real_active);
-    mplayer.trackNum = win.active;
+    if (mplayer.sameTrack(win.active)) mplayer.pause;
+    else mplayer.play(win.active-5);
   }
   mplayer.offset = win.scrollOffset;
   return new ListElement[0];
