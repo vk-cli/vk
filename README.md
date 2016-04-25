@@ -35,6 +35,7 @@ This output indicates that file is properly signed and isn't damaged
 
 ```
 git clone https://github.com/HaCk3Dq/vk
+git checkout 0.7a1
 cd vk
 dub
 ```
