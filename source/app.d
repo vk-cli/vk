@@ -32,6 +32,7 @@ enum Sections { left, right }
 enum Buffers { none, friends, dialogs, music, chat }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
+string[string] storage;
 Win win;
 VkMan api;
 
@@ -1027,6 +1028,17 @@ void stop() {
   mplayer.exitMplayer;
 }
 
+public void failExit(string msg) {
+  storage.update;
+  storage.save;
+  stop;
+
+  writeln("FAIL");
+  writeln(msg);
+
+  exit(0);
+}
+
 void main(string[] args) {
   initdbm;
   //test;
@@ -1037,7 +1049,7 @@ void main(string[] args) {
   scope(exit)    endwin;
   scope(failure) endwin;
 
-  auto storage = load;
+  storage = load;
   storage.parse;
 
   try {

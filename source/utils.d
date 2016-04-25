@@ -22,7 +22,7 @@ module utils;
 import std.stdio, std.array, std.range, std.string, std.file;
 import core.thread, core.sync.mutex, core.exception;
 import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
-import localization;
+import localization, app;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
@@ -54,6 +54,10 @@ void dbmclose() {
 void dbm(string msg) {
     if(debugMessagesEnabled) writeln("[debug]" ~ msg);
     if(dbmfe) appendDbg(msg ~ "\n");
+}
+
+void dropClient(string msg) {
+    failExit(msg);
 }
 
 string tzr(int inpt) {

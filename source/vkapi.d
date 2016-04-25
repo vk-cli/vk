@@ -748,6 +748,8 @@ class VkApi {
 }
 
 class AsyncOrder : Thread {
+    const int maxFails = 10;
+
     struct Task {
         int id;
         void delegate() dg;
@@ -756,8 +758,12 @@ class AsyncOrder : Thread {
     private
         Task[] order;
         Mutex orderAccess;
+        int failCount;
+        string lastExp;
+        string title;
 
-    this() {
+    this(string t) {
+        title = t;
         orderAccess = new Mutex();
         super(&procOrder);
     }
@@ -781,7 +787,16 @@ class AsyncOrder : Thread {
                         order[i].dg();
                     }
                     catch (Exception e) {
-                        throw e;
+                        auto expstr = "procOrder " ~ title ~ " task: "
+                              ~ order[i].id.to!string ~ " " ~ typeof(e).stringof ~ ": " ~ e.msg;
+                        dbm(expstr);
+                        lastExp = expstr;
+
+                        ++failCount;
+                        if(failCount > maxFails) {
+                            dbm("too many errors in procOrder, performing exit");
+                            dropClient("too many errors in procOrder, last: \n" ~ lastExp);
+                        }
                     }
                 }
                 synchronized(orderAccess) {
@@ -870,7 +885,7 @@ class AsyncMan {
     void orderedAsync(string orderkey, int ordid, void delegate() d) {
         auto so = orderkey in orders;
         if(!so) {
-            orders[orderkey] = new AsyncOrder();
+            orders[orderkey] = new AsyncOrder(orderkey);
             so = orderkey in orders;
         }
 
