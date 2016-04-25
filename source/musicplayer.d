@@ -114,11 +114,11 @@ class MusicPlayer : Thread {
 
   void listenStdout() {
     while (!mplayerExit) {
-      //dbm("output try");
+      dbm("output try");
       if (output.length != lastOutputLn) {
         string answer = output[$-1];
         lastOutputLn = output.length;
-        //dbm("last mp: " ~ answer);
+        dbm("last mp: " ~ answer);
 
         if (musicState) {
           setPlaytime(answer);
@@ -127,6 +127,7 @@ class MusicPlayer : Thread {
       }
       Thread.sleep(listenWait);
     }
+    dbm("mplayer exit!");
   }
 
   void trackOver() {
