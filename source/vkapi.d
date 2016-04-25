@@ -787,6 +787,7 @@ class AsyncOrder : Thread {
                     order = [];
                 }
             }
+            Thread.sleep(dur!"msecs"(100));
         }
     }
 }
