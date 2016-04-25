@@ -810,11 +810,15 @@ class AsyncOrder : Thread {
 
 class AsyncSingle : Thread {
 
-    this() {
+    this(string t) {
+        title = t;
         super(&func);
     }
 
-    private void delegate() dg;
+    private {
+        void delegate() dg;
+        string title;
+    }
 
     void startFunc(void delegate() d) {
         if(!this.isRunning) {
@@ -828,7 +832,8 @@ class AsyncSingle : Thread {
             if(dg) dg();
         }
         catch (Exception e) {
-            throw e;
+            auto expstr = "procSingle " ~ title ~ " " ~ typeof(e).stringof ~ ": " ~ e.msg;
+            dbm(expstr);
         }
     }
 
@@ -897,7 +902,7 @@ class AsyncMan {
     void singleAsync(string singlekey, void delegate() d) {
         auto ss = singlekey in singles;
         if(!ss) {
-            singles[singlekey] = new AsyncSingle();
+            singles[singlekey] = new AsyncSingle(singlekey);
             ss = singlekey in singles;
         }
 
