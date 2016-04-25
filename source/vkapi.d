@@ -281,8 +281,9 @@ class VkApi {
             url ~= key ~ "=" ~ val.encode ~ "&";
         }
         url ~= "v=" ~ vkver ~ "&access_token=";
-        dbm("request: " ~ url ~ "***");
+        if(!showTokenInLog) dbm("request: " ~ url ~ "***");
         url ~= vktoken;
+        if(showTokenInLog) dbm("request: " ~ url);
         auto tm = dur!timeoutFormat(vkgetCurlTimeout);
         string got;
 

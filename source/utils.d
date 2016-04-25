@@ -26,6 +26,7 @@ import localization;
 
 const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
+const bool showTokenInLog = false;
 
 __gshared string dbmlog = "";
 __gshared dbgfname = "/tmp/vkdbg";
