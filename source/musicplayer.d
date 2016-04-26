@@ -168,6 +168,9 @@ class MusicPlayer : Thread {
     foreach (line; pipe.stdout.byLine) output ~= line.idup;
     dbm("MPLAYER EXIT");
     mplayerExit = true;
+    auto mpout = File("mplayerout", "w");
+    output.each!(q => mpout.write(q ~ "\n"));
+    mpout.close();
   }
 
   void startPlayer(VkMan vkapi) {
