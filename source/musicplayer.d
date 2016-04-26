@@ -183,7 +183,6 @@ class MusicPlayer : Thread {
   }
 
   void play(int position) {
-    trackNum = position;
     auto track = api.getBufferedMusic(1, position)[0];
     currentTrack = Track(track.artist, track.title, track.duration_str);
     send("loadfile " ~ track.url);

@@ -711,7 +711,7 @@ void downEvent() {
   else {
     if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
     if (win.activeBuffer != Buffers.none) {
-      if (activeBufferEventsAllowed) win.active++; 
+      if (activeBufferEventsAllowed) win.active++;
     } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
@@ -926,8 +926,8 @@ ListElement[] setCurrentTrack() {
       else win.scrollOffset += 5;
     }
     mplayer.play(win.active);
-    mplayer.trackNum = win.active;
     win.active += 5;
+    mplayer.trackNum = win.active;
     win.isMusicPlaying = true;
   } else {
     if (mplayer.sameTrack(win.active-5)) mplayer.pause;
