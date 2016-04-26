@@ -2,32 +2,16 @@
 A console (ncurses) client for vk.com written in D
 
 
+### Unstable branches
++ **master** - current upstream 
 
-### Our GPG keys
+### Stable Versions
++ **0.7a1** - [alpha release](https://vk.com/wall-69278962_1081)
 
-```
-C990 689C 7692 B5E0 2057  6092 67DB 7D5C 3457 ECED 
-vk-cli developers team <vk-cli.dev@ya.ru>
-https://pgp.mit.edu/
-```
+# Screenshots
 
-To verify signed files, first you need to import keys:
-
-` $ gpg  --keyserver pgp.mit.edu --recv-keys 0x3457ECED `
-
-Now you can verify files and install signed packages:
-
-` $ gpg --verify signed-file.sig signed-file `
-
-`gpg: Good signature from "vk-cli developers team <vk-cli.dev@ya.ru>"`
-
-This output indicates that file is properly signed and isn't damaged
-
-### Branches
-+ **master** - current upstream (may be unstable) 
-
-### Tags
-+ **0.7a1** - first alpha release (https://vk.com/wall-69278962_1081)
+![alt tag](http://cs630123.vk.me/v630123942/25fc7/YOqfnerj4bE.jpg)
+![alt tag](http://cs630123.vk.me/v630123942/25fd7/hcgITGtqEd0.jpg)
 
 # Install
 
@@ -99,3 +83,24 @@ Optional:
 + End - last entry
 + Q - to exit
 + R - force refresh current window
+
+### Our GPG keys
+
+```
+C990 689C 7692 B5E0 2057  6092 67DB 7D5C 3457 ECED 
+vk-cli developers team <vk-cli.dev@ya.ru>
+https://pgp.mit.edu/
+```
+
+To verify signed files, first you need to import keys:
+
+` $ gpg  --keyserver pgp.mit.edu --recv-keys 0x3457ECED `
+
+Now you can verify files and install signed packages:
+
+` $ gpg --verify signed-file.sig signed-file `
+
+`gpg: Good signature from "vk-cli developers team <vk-cli.dev@ya.ru>"`
+
+This output indicates that file is properly signed and isn't damaged
+
