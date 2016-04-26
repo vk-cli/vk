@@ -55,8 +55,8 @@ where `ver` - is the name of the branch that you want to build
 
 Make dependencies
 
-+ dub
-+ dmd
++ dub 
++ dmd >= 2.071
 
 Optional:
 
