@@ -150,10 +150,18 @@ class MusicPlayer : Thread {
 
   ListElement[] getMplayerUI(int cols) {
     ListElement[] playerUI;
-    playerUI ~= ListElement(" ".replicate((cols-16)/2-currentTrack.artist.utfLength/2)~currentTrack.artist);
-    playerUI ~= ListElement(" ".replicate((cols-16)/2-currentTrack.title.utfLength/2)~currentTrack.title);
-    playerUI ~= ListElement(center(currentTrack.playtime ~ " / " ~ currentTrack.duration, cols-16, ' '));
-    playerUI ~= ListElement(center("[" ~ realProgress ~ "] ⟲ ⤮", cols-16, ' '));
+    auto fcols = cols-16;
+    auto artistrepl = fcols/2-artistln/2;
+    auto titlerepl = fcols/2-titleln/2;
+
+    if(fcols < 1) fcols = cols;
+    if(artistrepl < 1) artistrepl = 1;
+    if(titlerepl < 1) titlerepl = 1;
+
+    playerUI ~= ListElement(" ".replicate(artistrepl)~currentTrack.artist);
+    playerUI ~= ListElement(" ".replicate(titlerepl)~currentTrack.title);
+    playerUI ~= ListElement(center(currentTrack.playtime ~ " / " ~ currentTrack.duration, fcols, ' '));
+    playerUI ~= ListElement(center("[" ~ realProgress ~ "] ⟲ ⤮", fcols, ' '));
     playerUI ~= ListElement("");
     return playerUI;
   }
@@ -188,6 +196,7 @@ class MusicPlayer : Thread {
   }
 
   void play(int position) {
+    trackOverStateCatched = true;
     auto track = api.getBufferedMusic(1, position)[0];
     currentTrack = Track(track.artist, track.title, track.duration_str);
     send("loadfile " ~ prepareTrackurl(track.url));
