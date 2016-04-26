@@ -57,7 +57,7 @@ class MusicPlayer : Thread {
   }
 
   void exitMplayer() {
-    send("quit");
+    //send("quit");
   }
 
   void send(string cmd) {
