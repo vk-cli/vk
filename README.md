@@ -31,6 +31,29 @@ This output indicates that file is properly signed and isn't damaged
 
 # Install
 
+## ArchLinux
+
+```
+yaourt -S vk-cli
+vk
+```
+
+## MacOS
+
+```
+brew install dub dmd curl openssl mplayer
+brew install homebrew/dupes/ncurses
+brew doctor
+brew link ncurses —force
+brew install libxslt xmlto
+export XML_CATALOG_FILES="/usr/local/etc/xml/catalog"
+git clone git://anongit.freedesktop.org/xdg/xdg-utils
+cd xdg-utils
+./configure —prefix=/usr/local
+make
+make install
+```
+
 ## Build
 
 ```
