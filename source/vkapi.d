@@ -278,7 +278,9 @@ class VkApi {
         auto url = vkurl ~ meth ~ "?"; //so blue
         foreach(key; params.keys) {
             auto val = params[key];
-            url ~= key ~ "=" ~ val.encode ~ "&";
+            //dbm("up " ~ key ~ "=" ~ val);
+            auto cval = val.encode.replace("+", "%2B");
+            url ~= key ~ "=" ~ cval ~ "&";
         }
         url ~= "v=" ~ vkver ~ "&access_token=";
         if(!showTokenInLog) dbm("request: " ~ url ~ "***");
@@ -738,8 +740,8 @@ class VkApi {
         };
 
         auto params = ["peer_id": pid.to!string ];
+        params["message"] = msg;
         if(rndid != 0) params["random_id"] = rndid.to!string;
-        if(msg != "") params["message"] = msg;
         if(fwd.length != 0) params["forward_messages"] = fwd.map!(q => q.to!string).join(",");
         if(attaches.length != 0) params["attachment"] = attaches.join(",");
 
