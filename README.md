@@ -54,6 +54,8 @@ make
 make install
 ```
 
+then `Build`
+
 ## Build
 
 ```
