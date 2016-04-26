@@ -138,7 +138,11 @@ class MusicPlayer : Thread {
       else userSelectTrack = false;
       auto track = api.getBufferedMusic(1, trackNum)[0];
       currentTrack.artist = track.artist;
-      send("loadfile " ~ track.url);
+
+      auto trackurl = track.url;
+      if(trackurl.startsWith("https://")) trackurl = trackurl.replace("https://", "http://");
+
+      send("loadfile " ~ trackurl);
       currentTrack = Track(track.artist, track.title, track.duration_str);
     }
     playtimeUpdated = true;
