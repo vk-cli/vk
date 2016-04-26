@@ -491,7 +491,8 @@ class VkApi {
             }
             ds.lastMessage = msg["body"].str;
             ds.lastmid = msg["id"].integer.to!int;
-            if(msg["out"].integer == 0 && msg["read_state"].integer == 0) ds.unread = true;
+            if(msg["read_state"].integer == 0) ds.unread = true;
+            if(msg["out"].integer == 1) ds.outbox = true;
             if("unread" in ditem) ds.unreadCount = ditem["unread"].integer.to!int;
             dialogs ~= ds;
             //dbm(ds.id.to!string ~ " " ~ ds.unread.to!string ~ "   " ~ ds.name ~ " " ~ ds.lastMessage);
