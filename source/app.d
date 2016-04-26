@@ -251,6 +251,7 @@ VkMan get_token(ref string[string] storage) {
   getstr(&token);
   noecho;
   auto strtoken = (cast(char*)&token).to!string;
+  if (strtoken.length != 85) strtoken = strtoken[45..130];
   storage["token"] = strtoken;
   return new VkMan(strtoken);
 }
@@ -710,7 +711,7 @@ void downEvent() {
   else {
     if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
     if (win.activeBuffer != Buffers.none) {
-      if (activeBufferEventsAllowed) win.active++; 
+      if (activeBufferEventsAllowed) win.active++;
     } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
   }
 }
@@ -894,9 +895,9 @@ ListElement[] GetDialogs() {
     if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length) {
       lastMsg = lastMsg.toUTF16wrepl[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].toUTF8wrepl;
     }
-    if (e.unreadCount != 0) {
-      if (e.unread) unreadText ~= e.unreadCount.to!string ~ inbox;
-      else unreadText ~= e.unreadCount.to!string ~ outbox;
+    if (e.unread) {
+      if (e.outbox) unreadText ~= outbox;
+      else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ inbox;
       ulong space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
       if (space < COLS) unreadText = " ".replicate(space) ~ unreadText;
       else unreadText = "   " ~ unreadText;
@@ -925,11 +926,11 @@ ListElement[] setCurrentTrack() {
       else win.scrollOffset += 5;
     }
     mplayer.play(win.active);
-    mplayer.trackNum = win.active;
     win.active += 5;
+    mplayer.trackNum = win.active;
     win.isMusicPlaying = true;
   } else {
-    if (mplayer.sameTrack(win.active)) mplayer.pause;
+    if (mplayer.sameTrack(win.active-5)) mplayer.pause;
     else {
       mplayer.userSelectTrack = true;
       mplayer.play(win.active-5);
