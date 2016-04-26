@@ -151,8 +151,8 @@ class MusicPlayer : Thread {
   ListElement[] getMplayerUI(int cols) {
     ListElement[] playerUI;
     auto fcols = cols-16;
-    auto artistrepl = fcols/2-artistln/2;
-    auto titlerepl = fcols/2-titleln/2;
+    auto artistrepl = fcols/2-currentTrack.artist.utfLength/2;
+    auto titlerepl = fcols/2-currentTrack.title.utfLength/2;
 
     if(fcols < 1) fcols = cols;
     if(artistrepl < 1) artistrepl = 1;
