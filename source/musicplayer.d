@@ -139,7 +139,7 @@ class MusicPlayer : Thread {
       dbm("catched trackOver");
       trackOverStateCatched = true;
       ++trackNum;
-      auto track = api.getBufferedMusic(1, trackNum)[0];
+      auto track = api.getBufferedMusic(1, trackNum-5)[0];
       currentTrack.artist = track.artist;
       send("loadfile " ~ prepareTrackurl(track.url));
       currentTrack = Track(track.artist, track.title, track.duration_str);
@@ -153,9 +153,9 @@ class MusicPlayer : Thread {
     auto artistrepl = fcols/2-currentTrack.artist.utfLength/2;
     auto titlerepl = fcols/2-currentTrack.title.utfLength/2;
 
-    if(fcols < 1) fcols = cols;
-    if(artistrepl < 1) artistrepl = 1;
-    if(titlerepl < 1) titlerepl = 1;
+    if (fcols < 1) fcols = cols;
+    if (artistrepl < 1) artistrepl = 1;
+    if (titlerepl < 1) titlerepl = 1;
 
     playerUI ~= ListElement(" ".replicate(artistrepl)~currentTrack.artist);
     playerUI ~= ListElement(" ".replicate(titlerepl)~currentTrack.title);

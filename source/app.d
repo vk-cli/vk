@@ -935,6 +935,7 @@ ListElement[] setCurrentTrack() {
     else {
       mplayer.userSelectTrack = true;
       mplayer.play(win.active-5);
+      mplayer.trackNum += 5;
     }
   }
   mplayer.offset = win.scrollOffset;
