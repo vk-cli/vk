@@ -37,7 +37,7 @@ class MusicPlayer : Thread {
   bool
     musicState,
     playtimeUpdated,
-    trackOverStateCatched,
+    trackOverStateCatched = true, //for reject empty strings before playback starts
     mplayerExit,
     userSelectTrack,
     isInit;
@@ -129,6 +129,11 @@ class MusicPlayer : Thread {
     }
   }
 
+  string prepareTrackurl(string trackurl) {
+    if(trackurl.startsWith("https://")) return trackurl.replace("https://", "http://");
+    else return trackurl;
+  }
+
   void trackOver() {
     if (musicState) {
       dbm("catched trackOver");
@@ -137,7 +142,7 @@ class MusicPlayer : Thread {
       else userSelectTrack = false;
       auto track = api.getBufferedMusic(1, trackNum)[0];
       currentTrack.artist = track.artist;
-      send("loadfile " ~ track.url);
+      send("loadfile " ~ prepareTrackurl(track.url));
       currentTrack = Track(track.artist, track.title, track.duration_str);
     }
     playtimeUpdated = true;
@@ -185,7 +190,7 @@ class MusicPlayer : Thread {
   void play(int position) {
     auto track = api.getBufferedMusic(1, position)[0];
     currentTrack = Track(track.artist, track.title, track.duration_str);
-    send("loadfile " ~ track.url);
+    send("loadfile " ~ prepareTrackurl(track.url));
     musicState = true;
   }
 }
