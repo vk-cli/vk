@@ -369,8 +369,8 @@ void drawMenu() {
 }
 
 string cut(ulong i, ListElement e) {
-  wstring tempText = e.text.to!wstring;
-  int cut = (COLS-win.menuOffset-win.mbody[i].name.utfLength-1).to!int;
+  wstring tempText = e.text.toUTF16wrepl;
+  auto cut = (COLS-win.menuOffset-win.mbody[i].name.utfLength-1).to!long;
   if (e.text.utfLength > cut) tempText = tempText[0..cut];
   return tempText.to!string;
 }
