@@ -58,9 +58,6 @@ class MusicPlayer : Thread {
 
   void exitMplayer() {
     send("quit");
-    auto mpout = File("mplayerout", "w");
-    output.each!(q => mpout.write(q ~ "\n"));
-    mpout.close();
   }
 
   void send(string cmd) {
@@ -117,11 +114,11 @@ class MusicPlayer : Thread {
 
   void listenStdout() {
     while (!mplayerExit) {
-      dbm("output try");
+      //dbm("output try");
       if (output.length != lastOutputLn) {
         string answer = output[$-1];
         lastOutputLn = output.length;
-        dbm("last mp: " ~ answer);
+        //dbm("last mp: " ~ answer);
 
         if (musicState) {
           setPlaytime(answer);
@@ -130,7 +127,6 @@ class MusicPlayer : Thread {
       }
       Thread.sleep(listenWait);
     }
-    dbm("mplayer exit!");
   }
 
   string prepareTrackurl(string trackurl) {
