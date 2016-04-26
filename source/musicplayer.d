@@ -138,8 +138,7 @@ class MusicPlayer : Thread {
     if (musicState) {
       dbm("catched trackOver");
       trackOverStateCatched = true;
-      if (!userSelectTrack) trackNum++;
-      else userSelectTrack = false;
+      ++trackNum;
       auto track = api.getBufferedMusic(1, trackNum)[0];
       currentTrack.artist = track.artist;
       send("loadfile " ~ prepareTrackurl(track.url));
@@ -197,6 +196,7 @@ class MusicPlayer : Thread {
 
   void play(int position) {
     trackOverStateCatched = true;
+    trackNum = position;
     auto track = api.getBufferedMusic(1, position)[0];
     currentTrack = Track(track.artist, track.title, track.duration_str);
     send("loadfile " ~ prepareTrackurl(track.url));
