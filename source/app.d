@@ -251,7 +251,8 @@ VkMan get_token(ref string[string] storage) {
   getstr(&token);
   noecho;
   auto strtoken = (cast(char*)&token).to!string;
-  if (strtoken.length != 85) strtoken = strtoken[45..130];
+  if (strtoken.length != 85) strtoken = strtoken.split("access_token=")[1].split("&expires")[0];
+  strtoken.print;
   storage["token"] = strtoken;
   return new VkMan(strtoken);
 }
