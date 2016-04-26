@@ -251,6 +251,7 @@ VkMan get_token(ref string[string] storage) {
   getstr(&token);
   noecho;
   auto strtoken = (cast(char*)&token).to!string;
+  if (strtoken.length != 85) strtoken = strtoken[45..130];
   storage["token"] = strtoken;
   return new VkMan(strtoken);
 }
