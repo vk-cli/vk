@@ -889,6 +889,7 @@ ListElement[] GetDialogs() {
   string newMsg;
   foreach(e; dialogs) {
     newMsg = e.unread ? unread : "  ";
+    if (e.outbox) newMsg = "  ";
     string
       unreadText,
       lastMsg = e.lastMessage.replace("\n", " ");
