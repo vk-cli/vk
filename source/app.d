@@ -929,7 +929,7 @@ ListElement[] setCurrentTrack() {
     win.active += 5;
     win.isMusicPlaying = true;
   } else {
-    if (mplayer.sameTrack(win.active)) mplayer.pause;
+    if (mplayer.sameTrack(win.active-5)) mplayer.pause;
     else {
       mplayer.userSelectTrack = true;
       mplayer.play(win.active-5);
