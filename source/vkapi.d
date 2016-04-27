@@ -1775,6 +1775,7 @@ class BlockFactory(T) {
         if(data.forceUpdate) {
             data.forceUpdate = false;
             data.serverCount = -1;
+            static if(is(T == ClDialog)) clearOverrides();
             initBackBlock();
             blockst.clear();
             prepare();
@@ -1850,9 +1851,17 @@ class BlockFactory(T) {
 
         private DialogOverrider[int] store; //by peer
 
+        private void updateBackBlock() {
+            backBlock.block = getOverrided().array;
+        }
+
+        void clearOverrides() {
+            store.clear();
+        }
+
         void overrideDialog(ClDialog dlg, long ut) {
             store[dlg.getPeer] = DialogOverrider(ut, dlg);
-            backBlock.block = getOverrided().array;
+            updateBackBlock();
         }
 
         void overrideBump(int peer, long ut) {
@@ -1860,6 +1869,7 @@ class BlockFactory(T) {
             if(b) {
                 b.utime = ut;
             }
+            updateBackBlock();
         }
 
         bool isOverrided(int peer) {
