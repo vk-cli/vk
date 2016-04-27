@@ -51,12 +51,6 @@ dub
 ```
 builds `vk` binary for your platform.
 
-If you want build one of specific versions instead of master upstream (alpha-1, for example), you need to run
-```
-git checkout ver
-```
-where `ver` - is the name of the branch that you want to build
-
 ## Dependencies
 
 + ncurses >= 5.7
