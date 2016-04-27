@@ -24,7 +24,7 @@ import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm, std.concurrency,
-       std.datetime, std.utf;
+       std.datetime, std.utf, std.regex;
 import vkapi, cfg, localization, utils, namecache, musicplayer;
 
 // INIT VARS
@@ -251,7 +251,17 @@ VkMan get_token(ref string[string] storage) {
   getstr(&token);
   noecho;
   auto strtoken = (cast(char*)&token).to!string;
-  if (strtoken.length != 85) strtoken = strtoken.split("access_token=")[1].split("&expires")[0];
+  auto ctoken = regex(r"^\s*[0-9a-f]{85}\s*$");
+  if (matchFirst(strtoken, ctoken).empty) {
+    auto rtoken = regex(r"(?:.*access_token=)([0-9a-f]{85})");
+    auto cap = matchFirst(strtoken, rtoken);
+    if(cap.length != 2) {
+      endwin;
+      writeln("Incorrect token or link, try again");
+      normalExit();
+    }
+    strtoken = cap[1];
+  }
   strtoken.print;
   storage["token"] = strtoken;
   return new VkMan(strtoken);
@@ -1033,7 +1043,7 @@ void stop() {
   mplayer.exitMplayer;
 }
 
-public void failExit(string msg) {
+public void failExit(string msg, int ecode = 0) {
   storage.update;
   storage.save;
   stop;
@@ -1041,6 +1051,13 @@ public void failExit(string msg) {
   writeln("FAIL");
   writeln(msg);
 
+  exit(ecode);
+}
+
+public void normalExit() {
+  storage.update;
+  storage.save;
+  stop;
   exit(0);
 }
 
@@ -1085,8 +1102,5 @@ void main(string[] args) {
     controller;
   }
 
-  storage.update;
-  storage.save;
-  stop;
-  exit(0);
+  normalExit();
 }
