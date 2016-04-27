@@ -54,11 +54,11 @@ struct Notify {
     clearTime;
 }
 
-ulong utfLength(string inp) {
+uint utfLength(string inp) {
   //dbm("utfln: " ~ inp);
   auto wstrInput = inp.toUTF16wrepl();
   //ulong s = wstrInput.walkLength;
-  ulong s = wstrInput.length;
+  auto s = wstrInput.length.to!uint;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
     foreach(r; utfranges) {
@@ -369,7 +369,7 @@ void drawMenu() {
   }
 }
 
-string cut(ulong i, ListElement e) {
+string cut(uint i, ListElement e) {
   wstring tempText = e.text.toUTF16wrepl;
   auto cut = (COLS-win.menuOffset-win.mbody[i].name.utfLength-1).to!long;
   if (e.text.utfLength > cut) tempText = tempText[0..cut];
@@ -406,22 +406,22 @@ void drawDialogsList() {
     if (i.to!int == win.active-win.scrollOffset) {
       e.name.selected;
       wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.utfLength.to!int+1);
-      cut(i, e).graySelected;
+      cut(i.to!uint, e).graySelected;
     } else {
       switch (win.msgDrawSetting) {
         case DrawSetting.allMessages:
-          allMessages(e, i); break;
+          allMessages(e, i.to!uint); break;
         case DrawSetting.onlySelectedMessage:
           onlySelectedMessage(e, i); break;
         case DrawSetting.onlySelectedMessageAndUnread:
-          onlySelectedMessageAndUnread(e, i); break;
+          onlySelectedMessageAndUnread(e, i.to!uint); break;
         default: break;
       }
     }
   }
 }
 
-void allMessages(ListElement e, ulong i) {
+void allMessages(ListElement e, uint i) {
   e.flag ? e.name.regular : e.name.secondColor;
   wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.walkLength.to!int+1);
   cut(i, e).white;
@@ -431,7 +431,7 @@ void onlySelectedMessage(ListElement e, ulong i) {
   e.flag ? e.name.regular : e.name.secondColor;
 }
 
-void onlySelectedMessageAndUnread(ListElement e, ulong i) {
+void onlySelectedMessageAndUnread(ListElement e, uint i) {
   if (e.name[0..3] == "⚫") {
     e.flag ? e.name.regular : e.name.secondColor;
     wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.walkLength.to!int+1);
@@ -901,7 +901,7 @@ ListElement[] GetDialogs() {
     if (e.unread) {
       if (e.outbox) unreadText ~= outbox;
       else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ inbox;
-      ulong space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
+      uint space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
       if (space < COLS) unreadText = " ".replicate(space) ~ unreadText;
       else unreadText = "   " ~ unreadText;
     }
