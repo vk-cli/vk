@@ -956,7 +956,7 @@ ListElement[] GetMusic() {
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
   foreach(e; music) {
-    string indicator = (mplayer.currentTrack.artist == e.artist && mplayer.currentTrack.title == e.title) ? mplayer.musicState ? play : pause : "    ";
+    string indicator = (mplayer.currentTrack.id == e.id.to!string) ? mplayer.musicState ? play : pause : "    ";
     artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
 
     int width = COLS-4-win.menuOffset-e.duration_str.length.to!int;

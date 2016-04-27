@@ -25,7 +25,7 @@ import app, utils;
 import vkapi: VkMan;
 
 struct Track {
-  string artist, title, duration, playtime;
+  string artist, title, duration, playtime, id;
 }
 
 __gshared MusicPlayer mplayer;
@@ -199,7 +199,7 @@ class MusicPlayer : Thread {
     trackOverStateCatched = true;
     trackNum = position;
     auto track = api.getBufferedMusic(1, position)[0];
-    currentTrack = Track(track.artist, track.title, track.duration_str);
+    currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
     send("loadfile " ~ prepareTrackurl(track.url));
     musicState = true;
   }
