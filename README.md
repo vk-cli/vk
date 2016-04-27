@@ -63,7 +63,7 @@ where `ver` - is the name of the branch that you want to build
 + curl
 + openssl
 
-Make dependencies
+Make dependencies:
 
 + dub 
 + dmd >= 2.071
@@ -71,6 +71,13 @@ Make dependencies
 Optional:
 
 + mplayer: for music playback
+
+### EXCLUSIVE UBUNTU DEPENDENCIES
+
++ libncursesw5-dev
++ libssl-dev
++ mplayer
++ curl
 
 # How to use
 
