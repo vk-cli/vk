@@ -40,6 +40,7 @@ class MusicPlayer : Thread {
     trackOverStateCatched = true, //for reject empty strings before playback starts
     mplayerExit,
     userSelectTrack,
+    repeatMode,
     isInit;
   Track[] playlist;
   ulong lastOutputLn;
@@ -138,7 +139,7 @@ class MusicPlayer : Thread {
     if (musicState) {
       dbm("catched trackOver");
       trackOverStateCatched = true;
-      ++trackNum;
+      if (!repeatMode) trackNum++;
       auto track = api.getBufferedMusic(1, trackNum-5)[0];
       currentTrack.artist = track.artist;
       send("loadfile " ~ prepareTrackurl(track.url));
