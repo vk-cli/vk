@@ -6,7 +6,8 @@ A console (ncurses) client for vk.com written in D
 + **master** - current upstream 
 
 ### Stable Versions
-+ **0.7a1** - [alpha release](https://vk.com/wall-69278962_1081)
++ **0.7.1a** - [some hotfixes](https://vk.com/wall-69278962_1157)
++ **0.7a1**  - [alpha release](https://vk.com/wall-69278962_1081)
 
 # Screenshots
 
@@ -45,7 +46,7 @@ then `Build`
 ```
 git clone https://github.com/HaCk3Dq/vk
 cd vk
-git checkout 0.7a1
+git checkout 0.7.1a
 dub
 ```
 builds `vk` binary for your platform.
