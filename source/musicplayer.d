@@ -141,9 +141,8 @@ class MusicPlayer : Thread {
       trackOverStateCatched = true;
       if (!repeatMode) trackNum++;
       auto track = api.getBufferedMusic(1, trackNum-5)[0];
-      currentTrack.artist = track.artist;
       send("loadfile " ~ prepareTrackurl(track.url));
-      currentTrack = Track(track.artist, track.title, track.duration_str);
+      currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
     }
     playtimeUpdated = true;
   }

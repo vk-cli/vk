@@ -746,7 +746,8 @@ void selectEvent() {
     win.lastScrollOffset = win.scrollOffset;
     win.lastScrollActive = win.active;
     if (win.isMusicPlaying && win.activeBuffer == Buffers.music) {
-      win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
+      if (win.active-win.scrollOffset >= 0)
+        win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
     } else if (win.mbody.length != 0 && win.mbody[win.active-win.scrollOffset].callback) win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
   }
 }
