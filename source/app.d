@@ -246,7 +246,7 @@ void print(int i) {
 VkMan get_token(ref string[string] storage) {
   char token;
   "e_input_token".getLocal.print;
-  spawnShell(`xdg-open "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
+  spawnShell(`xdg-open "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" &>/dev/null`);
   echo;
   getstr(&token);
   noecho;
