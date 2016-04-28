@@ -245,8 +245,22 @@ void print(int i) {
 
 VkMan get_token(ref string[string] storage) {
   char token;
+  char start_browser;
+  "e_start_browser".getLocal.print;
+  getstr(&start_browser);
+  auto strstart_browser = (cast(char*)&start_browser).to!string;
+  string token_link = "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
+  "e_token_info".getLocal.print;
+  "\n".print;
+  if(strstart_browser == "Y" || strstart_browser == "y" || strstart_browser == ""){
+    spawnShell(`xdg-open "`~token_link~`" &>/dev/null`);
+  }else{
+    "e_token_link".getLocal.print;
+    "\n".print;
+    token_link.print;
+    "\n\n".print;
+  }
   "e_input_token".getLocal.print;
-  spawnShell(`xdg-open "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token" >> /dev/null`);
   echo;
   getstr(&token);
   noecho;
