@@ -666,7 +666,7 @@ void msgBufferEvents() {
     win.cursor.x--;
     win.msgBufferSize = win.msgBuffer.utfLength.to!int;
   }
-  else if (win.key != -1 && !canFind(kg_ignore, win.key)) {
+  else if (win.key > 0 && !canFind(kg_ignore, win.key)) {
     try {
       validate(win.msgBuffer);
       win.msgBufferSize = win.msgBuffer.utfLength.to!int;
