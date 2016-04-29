@@ -73,6 +73,8 @@ uint utfLength(string inp) {
 
 private:
 
+const string currentVersion = "0.7.2";
+
 const int 
   // func keys
   k_up          = -2,
@@ -578,7 +580,7 @@ void forceRefresh() {
   }
 }
 
-void jumpToBegin() {
+void jumpToBeginning() {
   win.active = 0;
   win.scrollOffset = 0;
 }
@@ -736,7 +738,7 @@ void chatEvents() {
 }
 
 void checkBounds() {
-  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToBegin;
+  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToBeginning;
   else if(win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active < 0) jumpToEnd; 
 }
 
@@ -1086,6 +1088,13 @@ public void normalExit() {
 }
 
 void main(string[] args) {
+  foreach(e; args) {
+    if (e == "-v" || e == "-version") {
+      writefln("vk-cli v%s", currentVersion);
+      exit(0);
+    }
+  }
+
   initdbm;
   //test;
   init;
