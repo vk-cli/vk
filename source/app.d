@@ -126,6 +126,21 @@ const int[]
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
                 k_home, k_tab, k_ctrl_bckspc];
 
+const utfranges = [
+  utf(19968, 40959, 1),
+  utf(12288, 12351, 1),
+  utf(11904, 12031, 1),
+  utf(13312, 19903, 1),
+  utf(63744, 64255, 1),
+  utf(12800, 13055, 1),
+  utf(13056, 13311, 1),
+  utf(12736, 12783, 1),
+  utf(12448, 12543, 1),
+  utf(12352, 12447, 1),
+  utf(110592, 110847, 1),
+  utf(65280, 65519, 1)
+  ];
+
 string getChar(string charName) {
   if(win.unicodeChars.to!bool) {
     switch (charName) {
@@ -155,22 +170,6 @@ string getChar(string charName) {
     }
   }
 }
-
-
-const utfranges = [
-  utf(19968, 40959, 1),
-  utf(12288, 12351, 1),
-  utf(11904, 12031, 1),
-  utf(13312, 19903, 1),
-  utf(63744, 64255, 1),
-  utf(12800, 13055, 1),
-  utf(13056, 13311, 1),
-  utf(12736, 12783, 1),
-  utf(12448, 12543, 1),
-  utf(12352, 12447, 1),
-  utf(110592, 110847, 1),
-  utf(65280, 65519, 1)
-  ];
 
 struct Cursor {
   int x, y;
@@ -237,7 +236,7 @@ void parse(ref string[string] storage) {
   if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
   if ("show_conv_notif" in storage) win.showConvNotifications = storage["show_conv_notif"].to!bool;
   if ("send_online" in storage) win.sendOnline = storage["send_online"].to!bool;
-  if ("unicode_chars" in storage) win.unicodeChars = !storage["unicode_chars"].to!bool;
+  if ("unicode_chars" in storage) win.unicodeChars = storage["unicode_chars"].to!bool;
   relocale;
 }
 
@@ -849,10 +848,10 @@ void chat(ref ListElement le) {
   win.chatID = le.id;
   win.scrollOffset = 0;
   open(le);
-  le.name.SetStatusbar;
   if (le.isConference) {
-    // if (le.name[0..3] == "⚫") le.name[3..$].SetStatusbar;
-    // else le.name.SetStatusbar;
+    auto len = getChar("unread").length;
+    if (le.name[0..len] == getChar("unread")) le.name[len..$].SetStatusbar;
+    else le.name.SetStatusbar;
     win.isConferenceOpened = true;
   }
   win.lastBuffer = win.activeBuffer;
@@ -942,10 +941,10 @@ ListElement[] GenerateSettings() {
   ];
   if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &toggleChatRenderOnlyGroup);
   list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &toggleShowTyping);
-  list ~= ListElement("unicode_chars".getLocal ~ (win.unicodeChars.to!string).getLocal, "", &toggleUnicodeChars);
   list ~= ListElement("show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal, "", &toggleShowConvNotifications);
   list ~= ListElement(center("general_settings".getLocal, COLS-16, ' '));
   list ~= ListElement("send_online".getLocal ~ (win.sendOnline.to!string).getLocal, "", &toggleSendOnline);
+  list ~= ListElement("unicode_chars".getLocal ~ (win.unicodeChars.to!string).getLocal, "", &toggleUnicodeChars);
   return list;
 }
 
