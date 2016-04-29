@@ -231,7 +231,7 @@ void parse(ref string[string] storage) {
   if ("main_color" in storage) win.namecolor = storage["main_color"].to!int;
   if ("second_color" in storage) win.textcolor = storage["second_color"].to!int;
   if ("message_setting" in storage) win.msgDrawSetting = storage["message_setting"].to!int;
-  if ("lang" in storage) if (storage["lang"] == "1") swapLang;
+  if ("lang" in storage) if (storage["lang"] != getLang) swapLang;
   if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
   if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
   if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
