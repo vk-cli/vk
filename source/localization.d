@@ -38,8 +38,8 @@ __gshared {
 void localize() {
   local["e_start_browser"] = lang("You need to copy access token from your web browser. Would you like to launch it now? [Y/n]", "Необходимо скопировать ваш access token из веб-браузера. Хотите запустить его сейчас? [Y/n]");
   local["e_token_link"] = lang("Follow this link to get your access_token: ", "Перейдите по следующей ссылке, чтобы получить ваш access_token: ");
-  local["e_token_info"] = lang("Please allow access to your data and then copy access_token value from the address bar.", "Пожалуйста, разрешите приложению доступ к вашим данным, а затем скопируйте значение access_token из адресной строки.");
-  local["e_input_token"] = lang("Insert your access token here: ", "Вставьте свой access token сюда: ");
+  local["e_token_info"] = lang("Please allow access to your data and then copy link from the address bar.", "Пожалуйста, разрешите приложению доступ к вашим данным, а затем скопируйте содержимое адресной строки.");
+  local["e_input_token"] = lang("Insert your link here: ", "Вставьте адрес из браузера сюда:  ");
   local["e_wrong_token"] = lang("Wrong token, try again\n", "Неверный access token, попробуйте еще раз");
   local["m_friends"] = lang("Friends", "Друзья");
   local["m_conversations"] = lang("Conversations", "Диалоги");
