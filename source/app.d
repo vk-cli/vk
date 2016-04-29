@@ -75,7 +75,7 @@ private:
 
 const string currentVersion = "0.7.2";
 
-const int 
+const int
   // func keys
   k_up          = -2,
   k_down        = -3,
@@ -114,7 +114,7 @@ const int
   k_rus_k    = 187,
   k_rus_l    = 180;
 
-const int[] 
+const int[]
   // key groups
   kg_esc     = [k_q, k_rus_q],
   kg_refresh = [k_r, k_rus_r],
@@ -126,13 +126,36 @@ const int[]
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
                 k_home, k_tab, k_ctrl_bckspc];
 
-const string 
-  unread = "⚫ ",
-  fwd    = "➥ ",
-  play   = " ▶  ",
-  pause  = " ▮▮ ",
-  outbox = " ⇡ ",
-  inbox  = " ⇣ ";
+string getChar(string charName) {
+  if(win.unicodeChars.to!bool) {
+    switch (charName) {
+      case "unread" : return "⚫ ";
+      case "fwd"    : return "➥ ";
+      case "play"   : return " ▶  ";
+      case "pause"  : return " ▮▮ ";
+      case "outbox" : return " ⇡ ";
+      case "inbox"  : return " ⇣ ";
+      case "cross"  : return " ✖ ";
+      case "mail"   : return " ✉ ";
+      case "refresh": return " ⟲";
+      default       : return charName;
+    }
+  } else {
+    switch(charName) {
+      case "unread" : return "! ";
+      case "fwd"    : return "fwd ";
+      case "play"   : return " >  ";
+      case "pause"  : return " || ";
+      case "outbox" : return " ^ ";
+      case "inbox"  : return " v ";
+      case "cross"  : return " X ";
+      case "mail"   : return " M ";
+      case "refresh": return " ?";
+      default       : return charName;
+    }
+  }
+}
+
 
 const utfranges = [
   utf(19968, 40959, 1),
@@ -154,7 +177,7 @@ struct Cursor {
 }
 
 struct utf {
-  ulong 
+  ulong
     start, end;
   int spaces;
 }
@@ -172,7 +195,7 @@ struct Win {
     {callback:&open, getter: &GenerateHelp},
     {callback:&open, getter: &GenerateSettings},
     {callback:&exit}
-  ], 
+  ],
   buffer, mbody;
   Notify notify;
   Cursor cursor;
@@ -191,7 +214,8 @@ struct Win {
     isMusicPlaying, isConferenceOpened,
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag,
-    showConvNotifications, sendOnline;
+    showConvNotifications, sendOnline,
+    unicodeChars;
 }
 
 void relocale() {
@@ -207,12 +231,13 @@ void parse(ref string[string] storage) {
   if ("main_color" in storage) win.namecolor = storage["main_color"].to!int;
   if ("second_color" in storage) win.textcolor = storage["second_color"].to!int;
   if ("message_setting" in storage) win.msgDrawSetting = storage["message_setting"].to!int;
-  if ("lang" in storage) if (storage["lang"] == "0") swapLang;
+  if ("lang" in storage) if (storage["lang"] != getLang) swapLang;
   if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
   if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
   if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
   if ("show_conv_notif" in storage) win.showConvNotifications = storage["show_conv_notif"].to!bool;
   if ("send_online" in storage) win.sendOnline = storage["send_online"].to!bool;
+  if ("unicode_chars" in storage) win.unicodeChars = !storage["unicode_chars"].to!bool;
   relocale;
 }
 
@@ -226,11 +251,13 @@ void update(ref string[string] storage) {
   storage["show_typing"] = win.showTyping.to!string;
   storage["show_conv_notif"] = win.showConvNotifications.to!string;
   storage["send_online"] = win.sendOnline.to!string;
+  storage["unicode_chars"] = win.unicodeChars.to!string;
 }
 
 void init() {
   setlocale(LC_CTYPE,"");
   win.lastBuffer = Buffers.none;
+  setEnvLanguage;
   localize;
   relocale;
   initscr;
@@ -365,10 +392,10 @@ void notifyManager() {
 
 void statusbar() {
   string counter;
-  if (win.counter == -1) counter = " ✖ ";
+  if (win.counter == -1) counter = getChar("cross");
   else {
-    counter = " " ~ win.counter.to!string ~ " ✉ ";
-    if (api.isLoading) counter ~= " ⟲";
+    counter = " " ~ win.counter.to!string ~ getChar("mail");
+    if (api.isLoading) counter ~= getChar("refresh");
   }
   counter.selected;
   if (win.notify.text != "") center(win.notify.text, COLS-counter.utfLength, ' ').selected;
@@ -412,7 +439,7 @@ void bodyToBuffer() {
   else win.buffer = win.mbody.dup;
   if (win.activeBuffer != Buffers.chat) {
     foreach(i, e; win.buffer) {
-      if (e.name.utfLength.to!int + win.menuOffset+1 > COLS) 
+      if (e.name.utfLength.to!int + win.menuOffset+1 > COLS)
         win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-1].to!string;
       else
         win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
@@ -452,11 +479,11 @@ void onlySelectedMessage(ListElement e, ulong i) {
 }
 
 void onlySelectedMessageAndUnread(ListElement e, uint i) {
-  if (e.name[0..3] == "⚫") {
-    e.flag ? e.name.regular : e.name.secondColor;
+  e.flag ? e.name.regular : e.name.secondColor;
+  if (e.name.indexOf(getChar("unread")) == 0) { // <- probably bad code, possible collisions
     wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.walkLength.to!int+1);
     cut(i, e).white;
-  } else e.flag ? e.name.regular : e.name.secondColor;
+  }
 }
 
 void drawFriendsList() {
@@ -482,7 +509,7 @@ void drawMusicList() {
     if (win.isMusicPlaying) {
       if (i < 5) e.name.regular;
       else {
-        if (e.name.canFind(play) || e.name.canFind(pause)) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
+        if (e.name.canFind(getChar("play")) || e.name.canFind(getChar("pause"))) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
         else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
       }
     } else
@@ -515,7 +542,7 @@ int colorHash(string name) {
 
 void renderColoredOrRegularText(string text) {
   if (win.isRainbowChat && (!win.isRainbowOnlyInGroupChats || win.isConferenceOpened))
-    text == api.me.first_name~" "~api.me.last_name ? text.secondColor : text.colored(text.colorHash);  
+    text == api.me.first_name~" "~api.me.last_name ? text.secondColor : text.colored(text.colorHash);
   else
     text == api.me.first_name~" "~api.me.last_name ? text.secondColor : text.regular;
 }
@@ -534,7 +561,7 @@ void drawChat() {
         wmove(stdscr, 2+i.to!int, (COLS-e.text.length-1).to!int);
         e.text.secondColor;
       }
-    } else 
+    } else
       e.name.regularWhite;
   }
   if (win.isMessageWriting) {
@@ -555,7 +582,7 @@ int activeBufferMaxLen() {
   }
 }
 
-bool activeBufferEventsAllowed() { 
+bool activeBufferEventsAllowed() {
   switch (win.activeBuffer) {
     case Buffers.dialogs: return api.isScrollAllowed(blockType.dialogs);
     case Buffers.friends: return api.isScrollAllowed(blockType.friends);
@@ -733,7 +760,7 @@ void chatEvents() {
 
 void checkBounds() {
   if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToBeginning;
-  else if(win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active < 0) jumpToEnd; 
+  else if(win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active < 0) jumpToEnd;
 }
 
 void downEvent() {
@@ -822,9 +849,10 @@ void chat(ref ListElement le) {
   win.chatID = le.id;
   win.scrollOffset = 0;
   open(le);
+  le.name.SetStatusbar;
   if (le.isConference) {
-    if (le.name[0..3] == "⚫") le.name[3..$].SetStatusbar;
-    else le.name.SetStatusbar;
+    // if (le.name[0..3] == "⚫") le.name[3..$].SetStatusbar;
+    // else le.name.SetStatusbar;
     win.isConferenceOpened = true;
   }
   win.lastBuffer = win.activeBuffer;
@@ -863,6 +891,11 @@ void toggleChatRender(ref ListElement le) {
 
 void toggleShowTyping(ref ListElement le) {
   win.showTyping = !win.showTyping;
+  win.mbody = GenerateSettings;
+}
+
+void toggleUnicodeChars(ref ListElement le) {
+  win.unicodeChars = !win.unicodeChars;
   win.mbody = GenerateSettings;
 }
 
@@ -909,6 +942,7 @@ ListElement[] GenerateSettings() {
   ];
   if (win.isRainbowChat) list ~= ListElement("rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal, "", &toggleChatRenderOnlyGroup);
   list ~= ListElement("show_typing".getLocal ~ (win.showTyping.to!string).getLocal, "", &toggleShowTyping);
+  list ~= ListElement("unicode_chars".getLocal ~ (win.unicodeChars.to!string).getLocal, "", &toggleUnicodeChars);
   list ~= ListElement("show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal, "", &toggleShowConvNotifications);
   list ~= ListElement(center("general_settings".getLocal, COLS-16, ' '));
   list ~= ListElement("send_online".getLocal ~ (win.sendOnline.to!string).getLocal, "", &toggleSendOnline);
@@ -920,7 +954,7 @@ ListElement[] GetDialogs() {
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   string newMsg;
   foreach(e; dialogs) {
-    newMsg = e.unread ? unread : "  ";
+    newMsg = e.unread ? getChar("unread") : "  ";
     if (e.outbox) newMsg = "  ";
     string
       unreadText,
@@ -929,8 +963,8 @@ ListElement[] GetDialogs() {
       lastMsg = lastMsg.toUTF16wrepl[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].toUTF8wrepl;
     }
     if (e.unread) {
-      if (e.outbox) unreadText ~= outbox;
-      else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ inbox;
+      if (e.outbox) unreadText ~= getChar("outbox");
+      else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ getChar("inbox");
       uint space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
       if (space < COLS) unreadText = " ".replicate(space) ~ unreadText;
       else unreadText = "   " ~ unreadText;
@@ -987,7 +1021,7 @@ ListElement[] GetMusic() {
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
   foreach(e; music) {
-    string indicator = (mplayer.currentTrack.id == e.id.to!string) ? mplayer.musicState ? play : pause : "    ";
+    string indicator = (mplayer.currentTrack.id == e.id.to!string) ? mplayer.musicState ? getChar("play") : getChar("pause") : "    ";
     artistAndSong = indicator ~ e.artist ~ " - " ~ e.title;
 
     int width = COLS-4-win.menuOffset-e.duration_str.length.to!int;
@@ -1017,13 +1051,13 @@ ListElement[] GetChat() {
       if (e.isName && !e.isSpacing) {
         line.flag = true;
         line.id = line.name.length.to!int + 4;
-        line.name ~= fwd ~ e.text;
+        line.name ~= getChar("fwd") ~ e.text;
         line.text = e.time;
-      } else 
+      } else
         line.name ~= e.text;
       list ~= line;
     } else {
-      string unreadSign = e.unread ? unread : " ";
+      string unreadSign = e.unread ? getChar("unread") : " ";
       list ~= !e.isName ? ListElement("  " ~ unreadSign ~ e.text) : ListElement(e.text, e.time, null, null, true, -1);
     }
   }

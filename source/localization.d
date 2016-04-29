@@ -19,7 +19,7 @@ limitations under the License.
 
 module localization;
 
-import std.stdio, std.conv, utils;
+import std.stdio, std.conv, std.string, std.process, utils;
 
 struct lang {
   string en;
@@ -32,7 +32,15 @@ const int
 
 __gshared {
   private lang[string] local;
-  private int currentLang = 1;
+  private int currentLang = 0;
+}
+
+void setEnvLanguage() {
+  // note: this would work only on UNIXes.
+  auto pipes = pipeShell(`echo "$LANG"`, Redirect.stdout);
+  scope(exit) wait(pipes.pid);
+  string output = pipes.stdout.readln;
+  currentLang = output.indexOf("RU") != -1 ? Ru : En;
 }
 
 void localize() {
@@ -74,6 +82,7 @@ void localize() {
   local["help_refr"]   = lang("R                              ->   Refresh window", "R                             ->   Обновить окно");
   local["help_123"]   = lang("1-3                            ->   Friends, Chats, Music", "1-3                           ->   Друзья, Сообщения, Музыка");
   local["rainbow"] = lang("Render rainbow in chat: ", "Рисовать радугу в диалогах: ");
+  local["unicode_chars"] = lang("Use unicode characters: ", "Использовать символы Unicode: ");
   local["true"] = lang("On", "Да");
   local["false"] = lang("Off", "Нет");
   local["rainbow_in_chat"] = lang("Color only in group chats: ", "Выделять цветом только конференции: ");
