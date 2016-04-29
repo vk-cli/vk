@@ -180,7 +180,7 @@ struct Win {
     namecolor = Colors.white,
     textcolor = Colors.gray,
     counter, active, section,
-    menuActive, menuOffset, key,
+    menuActive, menuOffset = 15, key,
     scrollOffset, msgDrawSetting,
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive,
@@ -207,7 +207,7 @@ void parse(ref string[string] storage) {
   if ("main_color" in storage) win.namecolor = storage["main_color"].to!int;
   if ("second_color" in storage) win.textcolor = storage["second_color"].to!int;
   if ("message_setting" in storage) win.msgDrawSetting = storage["message_setting"].to!int;
-  if ("lang" in storage) if (storage["lang"] == "1") swapLang;
+  if ("lang" in storage) if (storage["lang"] == "0") swapLang;
   if ("rainbow" in storage) win.isRainbowChat = storage["rainbow"].to!bool;
   if ("rainbow_in_chat" in storage) win.isRainbowOnlyInGroupChats = storage["rainbow_in_chat"].to!bool;
   if ("show_typing" in storage) win.showTyping = storage["show_typing"].to!bool;
@@ -234,7 +234,6 @@ void init() {
   localize;
   relocale;
   initscr;
-  setOffset;
 }
 
 void print(string s) {
@@ -377,13 +376,6 @@ void statusbar() {
 
 void SetStatusbar(string s = "") {
   win.statusbarText = s;
-}
-
-void setOffset() {
-  foreach(le; win.menu) {
-    win.menuOffset = le.name.walkLength.to!int > win.menuOffset ? le.name.walkLength.to!int : win.menuOffset;
-  }
-  win.menuOffset++;
 }
 
 void drawMenu() {
