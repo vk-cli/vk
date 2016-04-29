@@ -32,7 +32,7 @@ const int
 
 __gshared {
   private lang[string] local;
-  private int currentLang = 0;
+  private int currentLang = 1;
 }
 
 void localize() {
