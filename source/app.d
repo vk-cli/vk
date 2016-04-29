@@ -73,6 +73,8 @@ uint utfLength(string inp) {
 
 private:
 
+const string currentVersion = "0.7.2";
+
 const int
   // func keys
   k_up          = -2,
@@ -273,18 +275,20 @@ VkMan get_token(ref string[string] storage) {
   char token;
   char start_browser;
   "e_start_browser".getLocal.print;
+  echo;
   getstr(&start_browser);
+  noecho;
   auto strstart_browser = (cast(char*)&start_browser).to!string;
   string token_link = "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
   "e_token_info".getLocal.print;
   "\n".print;
-  if(strstart_browser == "Y" || strstart_browser == "y" || strstart_browser == ""){
-    spawnShell(`xdg-open "`~token_link~`" &>/dev/null`);
-  }else{
+  if(strstart_browser == "N" || strstart_browser == "n"){
     "e_token_link".getLocal.print;
     "\n".print;
     token_link.print;
     "\n\n".print;
+  }else{
+    spawnShell(`xdg-open "`~token_link~`" &>/dev/null`);
   }
   "e_input_token".getLocal.print;
   echo;
@@ -297,7 +301,7 @@ VkMan get_token(ref string[string] storage) {
     auto cap = matchFirst(strtoken, rtoken);
     if(cap.length != 2) {
       endwin;
-      writeln("Incorrect token or link, try again");
+      writeln(getLocal("e_wrong_token"));
       normalExit();
     }
     strtoken = cap[1];
@@ -604,7 +608,7 @@ void forceRefresh() {
   }
 }
 
-void jumpToBegin() {
+void jumpToBeginning() {
   win.active = 0;
   win.scrollOffset = 0;
 }
@@ -690,7 +694,7 @@ void msgBufferEvents() {
     win.cursor.x--;
     win.msgBufferSize = win.msgBuffer.utfLength.to!int;
   }
-  else if (win.key != -1 && !canFind(kg_ignore, win.key)) {
+  else if (win.key > 0 && !canFind(kg_ignore, win.key)) {
     try {
       validate(win.msgBuffer);
       win.msgBufferSize = win.msgBuffer.utfLength.to!int;
@@ -762,7 +766,7 @@ void chatEvents() {
 }
 
 void checkBounds() {
-  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToBegin;
+  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToBeginning;
   else if(win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active < 0) jumpToEnd;
 }
 
@@ -1119,6 +1123,13 @@ public void normalExit() {
 }
 
 void main(string[] args) {
+  foreach(e; args) {
+    if (e == "-v" || e == "-version") {
+      writefln("vk-cli v%s", currentVersion);
+      exit(0);
+    }
+  }
+
   initdbm;
   //test;
   init;

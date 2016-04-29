@@ -1717,7 +1717,7 @@ class BlockFactory(T) {
         }
     }
 
-    private T getBlockObject(int off) {
+    T getBlockObject(int off) {
         auto bk = backBlock.getBlock();
         if(off < bk.length) {
             auto bkobj = bk[off];
