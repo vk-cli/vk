@@ -578,9 +578,17 @@ void forceRefresh() {
   }
 }
 
+void jumpToBegin() {
+  win.active = 0;
+  win.scrollOffset = 0;
+}
+
 void jumpToEnd() {
   win.active = activeBufferMaxLen-1;
   win.scrollOffset = activeBufferMaxLen-LINES+2;
+  if(win.scrollOffset < 0){
+    win.scrollOffset = 0;
+  }
 }
 
 int _getch() {
@@ -728,7 +736,8 @@ void chatEvents() {
 }
 
 void checkBounds() {
-  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToEnd;
+  if (win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active > activeBufferMaxLen-1) jumpToBegin;
+  else if(win.activeBuffer != Buffers.none && activeBufferMaxLen > 0 && win.active < 0) jumpToEnd; 
 }
 
 void downEvent() {
@@ -745,7 +754,8 @@ void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
     if (win.activeBuffer != Buffers.none) {
-      if (win.active != 0 && activeBufferEventsAllowed) {
+      if (activeBufferEventsAllowed) {
+        // adjust scrollOffset
         if (win.scrollOffset == win.active || win.activeBuffer == Buffers.music && win.isMusicPlaying && win.active-win.scrollOffset == 5) win.scrollOffset--;
         if (win.scrollOffset < 0) win.scrollOffset = 0;
         win.active--;
