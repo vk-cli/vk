@@ -74,6 +74,7 @@ void localize() {
   local["help_refr"]   = lang("R                              ->   Refresh window", "R                             ->   Обновить окно");
   local["help_123"]   = lang("1-3                            ->   Friends, Chats, Music", "1-3                           ->   Друзья, Сообщения, Музыка");
   local["rainbow"] = lang("Render rainbow in chat: ", "Рисовать радугу в диалогах: ");
+  local["unicode_chars"] = lang("Use unicode characters: ", "Использовать символы Unicode: ");
   local["true"] = lang("On", "Да");
   local["false"] = lang("Off", "Нет");
   local["rainbow_in_chat"] = lang("Color only in group chats: ", "Выделять цветом только конференции: ");
