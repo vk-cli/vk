@@ -203,7 +203,7 @@ struct Win {
     namecolor = Colors.white,
     textcolor = Colors.gray,
     counter, active, section,
-    menuActive, menuOffset, key,
+    menuActive, menuOffset = 15, key,
     scrollOffset, msgDrawSetting,
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive,
@@ -261,7 +261,6 @@ void init() {
   localize;
   relocale;
   initscr;
-  setOffset;
 }
 
 void print(string s) {
@@ -406,13 +405,6 @@ void statusbar() {
 
 void SetStatusbar(string s = "") {
   win.statusbarText = s;
-}
-
-void setOffset() {
-  foreach(le; win.menu) {
-    win.menuOffset = le.name.walkLength.to!int > win.menuOffset ? le.name.walkLength.to!int : win.menuOffset;
-  }
-  win.menuOffset++;
 }
 
 void drawMenu() {
