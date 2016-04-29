@@ -257,6 +257,7 @@ void update(ref string[string] storage) {
 void init() {
   setlocale(LC_CTYPE,"");
   win.lastBuffer = Buffers.none;
+  setEnvLanguage;
   localize;
   relocale;
   initscr;
