@@ -69,6 +69,24 @@ uint utfLength(string inp) {
   return s;
 }
 
+void failExit(string msg, int ecode = 0) {
+  storage.update;
+  storage.save;
+  stop;
+
+  writeln("FAIL");
+  writeln(msg);
+
+  exit(ecode);
+}
+
+void normalExit() {
+  storage.update;
+  storage.save;
+  stop;
+  exit(0);
+}
+
 private:
 
 const string currentVersion = "0.7.2";
@@ -1093,24 +1111,6 @@ void stop() {
   dbmclose;
   endwin;
   mplayer.exitMplayer;
-}
-
-public void failExit(string msg, int ecode = 0) {
-  storage.update;
-  storage.save;
-  stop;
-
-  writeln("FAIL");
-  writeln(msg);
-
-  exit(ecode);
-}
-
-public void normalExit() {
-  storage.update;
-  storage.save;
-  stop;
-  exit(0);
 }
 
 void main(string[] args) {
