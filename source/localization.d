@@ -36,10 +36,7 @@ __gshared {
 }
 
 void setEnvLanguage() {
-  // note: this would work only on UNIXes.
-  auto pipes = pipeShell(`echo "$LANG"`, Redirect.stdout);
-  scope(exit) wait(pipes.pid);
-  string output = pipes.stdout.readln;
+  string output = environment["LANG"];
   currentLang = output.indexOf("RU") != -1 ? Ru : En;
 }
 
