@@ -55,9 +55,7 @@ struct Notify {
 }
 
 uint utfLength(string inp) {
-  //dbm("utfln: " ~ inp);
-  auto wstrInput = inp.toUTF16wrepl();
-  //ulong s = wstrInput.walkLength;
+  auto wstrInput = inp.toUTF16wrepl;
   auto s = wstrInput.length.to!uint;
   foreach(w; wstrInput) {
     auto c = (cast(ulong)w);
@@ -376,12 +374,13 @@ void white(string text) {
 }
 
 void notifyManager() {
-  string notifyMsg = api.getLastLongpollMessage;
+  string notifyMsg = api.getLastLongpollMessage.replace("\n", " ");
   win.notify.currentTime = cast(TimeOfDay)Clock.currTime;
+
   if (notifyMsg != "" && notifyMsg != "-1") {
     if (notifyMsg.utfLength > COLS - 10) win.notify.text = notifyMsg.to!wstring[0..COLS-10].to!string;
     else win.notify.text = notifyMsg;
-    win.notify.clearTime = win.notify.currentTime + seconds(3);
+    win.notify.clearTime = win.notify.currentTime + seconds(1);
   }
   if (win.notify.currentTime > win.notify.clearTime) {
     win.notify.clearTime = TimeOfDay(23, 59, 59);
@@ -1141,10 +1140,7 @@ void main(string[] args) {
     writeln(e.msg);
     exit(0);
   }
-  /*while (!api.isTokenValid) {
-    "e_wrong_token".getLocal.print;
-    api = storage.get_token;
-  }*/
+
   api.showConvNotifications(win.showConvNotifications);
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
