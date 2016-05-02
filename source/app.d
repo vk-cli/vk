@@ -80,7 +80,7 @@ void failExit(string msg, int ecode = 0) {
   exit(ecode);
 }
 
-void normalExit() {
+void gracefulExit() {
   storage.update;
   storage.save;
   stop;
@@ -89,7 +89,10 @@ void normalExit() {
 
 private:
 
-const string currentVersion = "0.7.2";
+const string
+  currentVersion = "0.7.2",
+  repeat  = "⟲ ",
+  shuffle = "⤮";
 
 const int
   // func keys
@@ -107,9 +110,14 @@ const int
   k_esc         = 27,
   k_tab         = 8,
   k_ctrl_bckspc = 9,
+  
   // keys
   k_q        = 113,
   k_rus_q    = 185,
+  k_p        = 112,
+  k_rus_p    = 183,
+  k_m        = 109,
+  k_rus_m    = 140,
   k_r        = 114,
   k_rus_r    = 186,
   k_bckspc   = 127,
@@ -134,6 +142,9 @@ const int[]
   // key groups
   kg_esc     = [k_q, k_rus_q],
   kg_refresh = [k_r, k_rus_r],
+  kg_pause   = [k_p, k_rus_p],
+  kg_loop    = [k_l, k_rus_l],
+  kg_mix     = [k_m, k_rus_m],
   kg_up      = [k_up, k_w, k_k, k_rus_w, k_rus_k],
   kg_down    = [k_down, k_s, k_j, k_rus_s, k_rus_j],
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
@@ -287,8 +298,9 @@ void print(int i) {
 }
 
 VkMan get_token(ref string[string] storage) {
-  char token;
-  char start_browser;
+  char
+    token,
+    start_browser;
   "e_start_browser".getLocal.print;
   echo;
   getstr(&start_browser);
@@ -297,12 +309,12 @@ VkMan get_token(ref string[string] storage) {
   string token_link = "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
   "e_token_info".getLocal.print;
   "\n".print;
-  if(strstart_browser == "N" || strstart_browser == "n"){
+  if (strstart_browser == "N" || strstart_browser == "n"){
     "e_token_link".getLocal.print;
     "\n".print;
     token_link.print;
     "\n\n".print;
-  }else{
+  } else {
     spawnShell(`xdg-open "`~token_link~`" &>/dev/null`);
   }
   "e_input_token".getLocal.print;
@@ -317,7 +329,7 @@ VkMan get_token(ref string[string] storage) {
     if(cap.length != 2) {
       endwin;
       writeln(getLocal("e_wrong_token"));
-      normalExit();
+      gracefulExit;
     }
     strtoken = cap[1];
   }
@@ -523,7 +535,14 @@ void drawMusicList() {
   foreach(i, e; win.buffer) {
     wmove(stdscr, 2+i.to!int, win.menuOffset+1);
     if (win.isMusicPlaying) {
-      if (i < 5) e.name.regular;
+      if (i < 5) {
+        e.name.regular;
+        if (i == 3) {
+          wmove(stdscr, 2+i.to!int, win.menuOffset+73);
+          mplayer.repeatMode  ? repeat.regular  : repeat.secondColor;
+          mplayer.shuffleMode ? shuffle.regular : shuffle.secondColor;
+        }
+      }
       else {
         if (e.name.canFind(getChar("play")) || e.name.canFind(getChar("pause"))) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
         else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
@@ -737,6 +756,10 @@ void msgBufferEvents() {
 
 void nonChatEvents() {
   if (canFind(kg_down, win.key)) downEvent;
+  if (canFind(kg_pause, win.key)) mplayer.pause;
+  if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
+  //if (canFind(kg_mix, win.key)) mixTracks;
+  
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key) && !win.selectFlag) {
     win.selectFlag = true;
@@ -941,6 +964,9 @@ ListElement[] GenerateHelp() {
     ListElement("help_homend".getLocal),
     ListElement("help_exit".getLocal),
     ListElement("help_refr".getLocal),
+    ListElement("help_pause".getLocal),
+    ListElement("help_loop".getLocal),
+    ListElement("help_mix".getLocal),
     ListElement("help_123".getLocal),
   ];
 }
@@ -1158,5 +1184,5 @@ void main(string[] args) {
     controller;
   }
 
-  normalExit();
+  gracefulExit;
 }
