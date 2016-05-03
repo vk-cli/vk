@@ -41,6 +41,7 @@ class MusicPlayer : Thread {
     mplayerExit,
     userSelectTrack,
     repeatMode,
+    shuffleMode,
     isInit;
   Track[] playlist;
   ulong lastOutputLn;
@@ -92,8 +93,6 @@ class MusicPlayer : Thread {
           trackd = strToDur(currentTrack.duration).to!real,
           step =  trackd / 50;
         int newPos = floor(sec / step).to!int;
-        //dbm("sec: " ~ sec.to!string ~ ", step: " ~ step.to!string ~ ", newPos: " ~ newPos.to!string ~
-        //                ", mdur: " ~ trackd.to!string);
         if (position != newPos) {
           position = newPos;
 
@@ -115,11 +114,9 @@ class MusicPlayer : Thread {
 
   void listenStdout() {
     while (!mplayerExit) {
-      //dbm("output try");
       if (output.length != lastOutputLn) {
         string answer = output[$-1];
         lastOutputLn = output.length;
-        //dbm("last mp: " ~ answer);
 
         if (musicState) {
           setPlaytime(answer);
@@ -130,7 +127,7 @@ class MusicPlayer : Thread {
     }
   }
 
-  string prepareTrackurl(string trackurl) {
+  string prepareTrackUrl(string trackurl) {
     if(trackurl.startsWith("https://")) return trackurl.replace("https://", "http://");
     else return trackurl;
   }
@@ -141,7 +138,7 @@ class MusicPlayer : Thread {
       trackOverStateCatched = true;
       if (!repeatMode) trackNum++;
       auto track = api.getBufferedMusic(1, trackNum-5)[0];
-      send("loadfile " ~ prepareTrackurl(track.url));
+      send("loadfile " ~ prepareTrackUrl(track.url));
       currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
     }
     playtimeUpdated = true;
@@ -160,7 +157,7 @@ class MusicPlayer : Thread {
     playerUI ~= ListElement(" ".replicate(artistrepl)~currentTrack.artist);
     playerUI ~= ListElement(" ".replicate(titlerepl)~currentTrack.title);
     playerUI ~= ListElement(center(currentTrack.playtime ~ " / " ~ currentTrack.duration, fcols, ' '));
-    playerUI ~= ListElement(center("[" ~ realProgress ~ "] ⟲ ⤮", fcols, ' '));
+    playerUI ~= ListElement(center("[" ~ realProgress ~ "]", fcols+4, ' '));
     playerUI ~= ListElement("");
     return playerUI;
   }
@@ -199,7 +196,7 @@ class MusicPlayer : Thread {
     trackNum = position;
     auto track = api.getBufferedMusic(1, position)[0];
     currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
-    send("loadfile " ~ prepareTrackurl(track.url));
+    send("loadfile " ~ prepareTrackUrl(track.url));
     musicState = true;
   }
 }

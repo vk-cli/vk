@@ -77,6 +77,9 @@ void localize() {
   local["help_homend"] = lang("Home/End                       ->   Jump to the beginning/end", "Home/End                      ->   Прыгнуть в начало/конец");
   local["help_exit"]   = lang("Q                              ->   Exit", "Q                             ->   Выход");
   local["help_refr"]   = lang("R                              ->   Refresh window", "R                             ->   Обновить окно");
+  local["help_pause"]   = lang("P                              ->   Pause music", "P                             ->   Остановить музыку");
+  local["help_loop"]   = lang("L                              ->   Toggle looping", "L                             ->   Поставить на повтор");
+  local["help_mix"]   = lang("M                              ->   Shuffle tracks", "M                             ->   Перемешать треки");
   local["help_123"]   = lang("1-3                            ->   Friends, Chats, Music", "1-3                           ->   Друзья, Сообщения, Музыка");
   local["rainbow"] = lang("Render rainbow in chat: ", "Рисовать радугу в диалогах: ");
   local["unicode_chars"] = lang("Use unicode characters: ", "Использовать символы Unicode: ");
