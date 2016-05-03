@@ -169,7 +169,7 @@ const utfranges = [
   ];
 
 string getChar(string charName) {
-  if(win.unicodeChars.to!bool) {
+  if (win.unicodeChars) {
     switch (charName) {
       case "unread" : return "⚫ ";
       case "fwd"    : return "➥ ";
@@ -241,7 +241,7 @@ struct Win {
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag,
     showConvNotifications, sendOnline,
-    unicodeChars;
+    unicodeChars = true;
 }
 
 void relocale() {
