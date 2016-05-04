@@ -90,9 +90,7 @@ void gracefulExit() {
 private:
 
 const string
-  currentVersion = "0.7.2",
-  repeat  = "⟲ ",
-  shuffle = "⤮";
+  currentVersion = "0.7.2";
 
 const int
   // func keys
@@ -110,7 +108,7 @@ const int
   k_esc         = 27,
   k_tab         = 8,
   k_ctrl_bckspc = 9,
-  
+
   // keys
   k_q        = 113,
   k_rus_q    = 185,
@@ -180,6 +178,8 @@ string getChar(string charName) {
       case "cross"  : return " ✖ ";
       case "mail"   : return " ✉ ";
       case "refresh": return " ⟲";
+      case "repeat" : return "⟲ ";
+      case "shuffle": return "⤮";
       default       : return charName;
     }
   } else {
@@ -193,6 +193,8 @@ string getChar(string charName) {
       case "cross"  : return " X ";
       case "mail"   : return " M ";
       case "refresh": return " ?";
+      case "repeat" : return "o ";
+      case "shuffle": return "x";
       default       : return charName;
     }
   }
@@ -539,8 +541,8 @@ void drawMusicList() {
         e.name.regular;
         if (i == 3) {
           wmove(stdscr, 2+i.to!int, win.menuOffset+73);
-          mplayer.repeatMode  ? repeat.regular  : repeat.secondColor;
-          mplayer.shuffleMode ? shuffle.regular : shuffle.secondColor;
+          mplayer.repeatMode  ? getChar("repeat").regular  : getChar("repeat").secondColor;
+          mplayer.shuffleMode ? getChar("shuffle").regular : getChar("shuffle").secondColor;
         }
       }
       else {
@@ -759,7 +761,7 @@ void nonChatEvents() {
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
   //if (canFind(kg_mix, win.key)) mixTracks;
-  
+
   else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key) && !win.selectFlag) {
     win.selectFlag = true;
