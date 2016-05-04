@@ -93,6 +93,7 @@ void localize() {
   local["send_online"] = lang("Send that you are online: ", "Показывать, что вы онлайн: ");
   local["banned"] = lang("banned", "заблокирован");
   local["general_settings"] = lang("[ General Settings ]", "[ Общие настройки ]");
+  local["no_connection"] = lang("No connection", "Нет соединения");
 }
 
 void swapLang() {

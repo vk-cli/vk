@@ -422,8 +422,12 @@ void notifyManager() {
 
 void statusbar() {
   string counter;
-  if (win.counter == -1) counter = getChar("cross");
+  if (win.counter == -1) {
+    counter = getChar("cross");
+    "no_connection".getLocal.SetStatusbar;
+  }
   else {
+    SetStatusbar;
     counter = " " ~ win.counter.to!string ~ getChar("mail");
     if (api.isLoading) counter ~= getChar("refresh");
   }
