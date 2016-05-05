@@ -427,7 +427,7 @@ void statusbar() {
     "no_connection".getLocal.SetStatusbar;
   }
   else {
-    SetStatusbar;
+    if (win.statusbarText == "no_connection".getLocal) SetStatusbar;
     counterStr = " " ~ win.counter.to!string ~ getChar("mail");
     if (api.isLoading) counterStr ~= getChar("refresh");
   }
@@ -514,7 +514,7 @@ void onlySelectedMessage(ListElement e, ulong i) {
 
 void onlySelectedMessageAndUnread(ListElement e, uint i) {
   e.flag ? e.name.regular : e.name.secondColor;
-  if (e.name.indexOf(getChar("unread")) == 0) { // <- probably bad code, possible collisions
+  if (e.name.indexOf(getChar("unread")) == 0) {
     wmove(stdscr, 2+i.to!int, win.menuOffset+win.mbody[i].name.walkLength.to!int+1);
     cut(i, e).white;
   }
@@ -649,10 +649,8 @@ void jumpToBeginning() {
 
 void jumpToEnd() {
   win.active = activeBufferMaxLen-1;
-  win.scrollOffset = activeBufferMaxLen-LINES+2;
-  if(win.scrollOffset < 0){
-    win.scrollOffset = 0;
-  }
+  win.scrollOffset = win.active-LINES+3;
+  if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
 int _getch() {
