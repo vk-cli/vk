@@ -544,7 +544,7 @@ void drawMusicList() {
       if (i < 5) {
         e.name.regular;
         if (i == 3) {
-          wmove(stdscr, 2+i.to!int, win.menuOffset+73);
+          wmove(stdscr, 2+i.to!int, win.menuOffset+COLS/2+22);
           mplayer.repeatMode  ? getChar("repeat").regular  : getChar("repeat").secondColor;
           mplayer.shuffleMode ? getChar("shuffle").regular : getChar("shuffle").secondColor;
         }
