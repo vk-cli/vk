@@ -649,7 +649,7 @@ void jumpToBeginning() {
 
 void jumpToEnd() {
   win.active = activeBufferMaxLen-1;
-  win.scrollOffset = win.active-LINES+3;
+  win.scrollOffset = activeBufferMaxLen-LINES+2;
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
