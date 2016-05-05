@@ -1,5 +1,3 @@
-#!/usr/bin/rdmd -L-lncursesw
-
 /*
 Copyright 2016 HaCk3D, substanceof
 
