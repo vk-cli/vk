@@ -419,19 +419,21 @@ void notifyManager() {
 }
 
 void statusbar() {
-  string counter;
+  string counterStr;
+  notifyManager;
+  win.counter = api.messagesCounter;
   if (win.counter == -1) {
-    counter = getChar("cross");
+    counterStr = getChar("cross");
     "no_connection".getLocal.SetStatusbar;
   }
   else {
     SetStatusbar;
-    counter = " " ~ win.counter.to!string ~ getChar("mail");
-    if (api.isLoading) counter ~= getChar("refresh");
+    counterStr = " " ~ win.counter.to!string ~ getChar("mail");
+    if (api.isLoading) counterStr ~= getChar("refresh");
   }
-  counter.selected;
-  if (win.notify.text != "") center(win.notify.text, COLS-counter.utfLength, ' ').selected;
-  else center(win.statusbarText, COLS-counter.utfLength, ' ').selected;
+  counterStr.selected;
+  if (win.notify.text != "") center(win.notify.text, COLS-counterStr.utfLength, ' ').selected;
+  else center(win.statusbarText, COLS-counterStr.utfLength, ' ').selected;
   "\n".print;
 }
 
@@ -1171,16 +1173,14 @@ void main(string[] args) {
     exit(0);
   }
 
-  api.showConvNotifications(win.showConvNotifications);
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
+  api.showConvNotifications(win.showConvNotifications);
   api.sendOnline(win.sendOnline);
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
     clear;
-    win.counter = api.messagesCounter;
     statusbar;
-    notifyManager;
     if (win.activeBuffer != Buffers.chat) drawMenu;
     bodyToBuffer;
     drawBuffer;
