@@ -1068,7 +1068,7 @@ ListElement[] GetMusic() {
   } else
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
-  if (api.musicFactory.getBlockObject(win.scrollOffset) !is null && music.length != LINES-2 && activeBufferMaxLen > LINES-2) 
+  if (api.musicFactory.getBlockObject(win.scrollOffset) !is null && music.length != LINES-2-win.isMusicPlaying*4 && activeBufferMaxLen > LINES-2) 
     music = api.getBufferedMusic(LINES-2, win.scrollOffset-(LINES-2-music.length).to!int);
 
   foreach(e; music) {
