@@ -1062,7 +1062,7 @@ ListElement[] GetMusic() {
 
   if (win.isMusicPlaying) {
     music = api.getBufferedMusic(LINES-6, win.scrollOffset);
-    list ~= mplayer.getMplayerUI(COLS);
+    list  = mplayer.getMplayerUI(COLS);
   } else
     music = api.getBufferedMusic(LINES-2, win.scrollOffset);
 
