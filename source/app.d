@@ -852,6 +852,7 @@ void selectEvent() {
       if (win.active-win.scrollOffset >= 0)
         win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
     } else if (win.mbody.length != 0 && win.mbody[win.active-win.scrollOffset].callback) win.mbody[win.active-win.scrollOffset].callback(win.mbody[win.active-win.scrollOffset]);
+    if (win.menuActive == 4) storage.update;
   }
 }
 
@@ -919,57 +920,48 @@ void changeLang(ref ListElement le) {
 void changeMainColor(ref ListElement le) {
   win.namecolor == Colors.max ? win.namecolor = 0 : win.namecolor++;
   le.name = "main_color".getLocal ~ ("color"~win.namecolor.to!string).getLocal;
-  storage.update;
 }
 
 void changeSecondColor(ref ListElement le) {
   win.textcolor == Colors.max ? win.textcolor = 0 : win.textcolor++;
   le.name = "second_color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
-  storage.update;
 }
 
 void changeMsgSetting(ref ListElement le) {
   win.msgDrawSetting = win.msgDrawSetting != 2 ? win.msgDrawSetting+1 : 0;
   le.name = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
-  storage.update;
 }
 
 void toggleChatRender(ref ListElement le) {
   win.isRainbowChat = !win.isRainbowChat;
   win.mbody = GenerateSettings;
-  storage.update;
 }
 
 void toggleShowTyping(ref ListElement le) {
   win.showTyping = !win.showTyping;
   win.mbody = GenerateSettings;
-  storage.update;
 }
 
 void toggleUnicodeChars(ref ListElement le) {
   win.unicodeChars = !win.unicodeChars;
   win.mbody = GenerateSettings;
-  storage.update;
 }
 
 void toggleChatRenderOnlyGroup(ref ListElement le) {
   win.isRainbowOnlyInGroupChats = !win.isRainbowOnlyInGroupChats;
   le.name = "rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal;
-  storage.update;
 }
 
 void toggleShowConvNotifications(ref ListElement le) {
   win.showConvNotifications = !win.showConvNotifications;
   api.showConvNotifications(win.showConvNotifications);
   le.name = "show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal;
-  storage.update;
 }
 
 void toggleSendOnline(ref ListElement le) {
   win.sendOnline = !win.sendOnline;
   api.sendOnline(win.sendOnline);
   le.name = "send_online".getLocal ~ (win.sendOnline.to!string).getLocal;
-  storage.update;
 }
 
 ListElement[] GenerateHelp() {
