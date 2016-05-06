@@ -67,22 +67,13 @@ uint utfLength(string inp) {
   return s;
 }
 
-void failExit(string msg, int ecode = 0) {
-  storage.update;
-  storage.save;
+void Exit(string msg = "", int ecode = 0) {
   stop;
-
-  writeln("FAIL");
-  writeln(msg);
-
+  if (msg != "") {
+    writeln("FAIL");
+    writeln(msg);
+  }
   exit(ecode);
-}
-
-void gracefulExit() {
-  storage.update;
-  storage.save;
-  stop;
-  exit(0);
 }
 
 private:
@@ -329,7 +320,7 @@ VkMan get_token(ref string[string] storage) {
     if(cap.length != 2) {
       endwin;
       writeln(getLocal("e_wrong_token"));
-      gracefulExit;
+      Exit;
     }
     strtoken = cap[1];
   }
@@ -1200,5 +1191,5 @@ void main(string[] args) {
     controller;
   }
 
-  gracefulExit;
+  Exit;
 }
