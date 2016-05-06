@@ -30,7 +30,7 @@ enum Sections { left, right }
 enum Buffers { none, friends, dialogs, music, chat }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
-string[string] storage;
+__gshared string[string] storage;
 Win win;
 VkMan api;
 
@@ -97,6 +97,10 @@ const int
   k_esc         = 27,
   k_tab         = 8,
   k_ctrl_bckspc = 9,
+  k_next        = 91,
+  k_prev        = 93,
+  k_rus_next    = 133,
+  k_rus_prev    = 138,
 
   // keys
   k_q        = 113,
@@ -138,7 +142,9 @@ const int[]
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter],
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
-                k_home, k_tab, k_ctrl_bckspc];
+                k_home, k_tab, k_ctrl_bckspc],
+  kg_next    = [k_next, k_rus_next],
+  kg_prev    = [k_prev, k_rus_prev];
 
 const utfranges = [
   utf(19968, 40959, 1),
@@ -269,6 +275,7 @@ void update(ref string[string] storage) {
   storage["show_conv_notif"] = win.showConvNotifications.to!string;
   storage["send_online"] = win.sendOnline.to!string;
   storage["unicode_chars"] = win.unicodeChars.to!string;
+  storage.save;
 }
 
 void init() {
@@ -690,7 +697,7 @@ void controller() {
     else if (api.isSomethingUpdated) break;
     else if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
-  //win.key.print;
+  //if (win.key != -1) win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
@@ -750,6 +757,7 @@ void nonChatEvents() {
   if (canFind(kg_down, win.key)) downEvent;
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
+  //if (canFind(kg_next, win.key)) mplayer.trackOver;
   //if (canFind(kg_mix, win.key)) mixTracks;
 
   else if (canFind(kg_up, win.key)) upEvent;
@@ -905,53 +913,63 @@ void changeLang(ref ListElement le) {
   swapLang;
   win.mbody = GenerateSettings;
   relocale;
+  storage.update;
 }
 
 void changeMainColor(ref ListElement le) {
   win.namecolor == Colors.max ? win.namecolor = 0 : win.namecolor++;
   le.name = "main_color".getLocal ~ ("color"~win.namecolor.to!string).getLocal;
+  storage.update;
 }
 
 void changeSecondColor(ref ListElement le) {
   win.textcolor == Colors.max ? win.textcolor = 0 : win.textcolor++;
   le.name = "second_color".getLocal ~ ("color"~win.textcolor.to!string).getLocal;
+  storage.update;
 }
 
 void changeMsgSetting(ref ListElement le) {
   win.msgDrawSetting = win.msgDrawSetting != 2 ? win.msgDrawSetting+1 : 0;
   le.name = "msg_setting_info".getLocal ~ ("msg_setting"~win.msgDrawSetting.to!string).getLocal;
+  storage.update;
 }
 
 void toggleChatRender(ref ListElement le) {
   win.isRainbowChat = !win.isRainbowChat;
   win.mbody = GenerateSettings;
+  storage.update;
 }
 
 void toggleShowTyping(ref ListElement le) {
   win.showTyping = !win.showTyping;
   win.mbody = GenerateSettings;
+  storage.update;
 }
 
 void toggleUnicodeChars(ref ListElement le) {
   win.unicodeChars = !win.unicodeChars;
   win.mbody = GenerateSettings;
+  storage.update;
 }
 
 void toggleChatRenderOnlyGroup(ref ListElement le) {
   win.isRainbowOnlyInGroupChats = !win.isRainbowOnlyInGroupChats;
   le.name = "rainbow_in_chat".getLocal ~ (win.isRainbowOnlyInGroupChats.to!string).getLocal;
+  storage.update;
 }
 
 void toggleShowConvNotifications(ref ListElement le) {
   win.showConvNotifications = !win.showConvNotifications;
   api.showConvNotifications(win.showConvNotifications);
   le.name = "show_conv_notif".getLocal ~ (win.showConvNotifications.to!string).getLocal;
+  storage.update;
 }
 
 void toggleSendOnline(ref ListElement le) {
   win.sendOnline = !win.sendOnline;
   api.sendOnline(win.sendOnline);
   le.name = "send_online".getLocal ~ (win.sendOnline.to!string).getLocal;
+  storage.update;
 }
 
 ListElement[] GenerateHelp() {

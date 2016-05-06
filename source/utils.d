@@ -57,7 +57,7 @@ void dbm(string msg) {
 }
 
 void dropClient(string msg) {
-    failExit(msg);
+    Exit(msg);
 }
 
 string tzr(int inpt) {
