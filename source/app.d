@@ -1001,8 +1001,12 @@ ListElement[] GenerateSettings() {
 
 ListElement[] GetDialogs() {
   ListElement[] list;
-  auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   string newMsg;
+  auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
+  
+  if (api.dialogsFactory.getBlockObject(win.scrollOffset) !is null && dialogs.length != LINES-2 && activeBufferMaxLen > LINES-2) 
+    dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset-(LINES-2-dialogs.length).to!int);
+
   foreach(e; dialogs) {
     newMsg = e.unread ? getChar("unread") : "  ";
     if (e.outbox) newMsg = "  ";
@@ -1027,12 +1031,15 @@ ListElement[] GetDialogs() {
 
 ListElement[] GetFriends() {
   ListElement[] list;
-  auto friends = api.getBufferedFriends(LINES-2, win.scrollOffset);
-  foreach(e; friends) {
-    list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.last_seen_str, &chat, &GetChat, e.online, e.id);
-  }
   win.activeBuffer = Buffers.friends;
-    return list;
+  auto friends = api.getBufferedFriends(LINES-2, win.scrollOffset);
+
+  if (api.friendsFactory.getBlockObject(win.scrollOffset) !is null && friends.length != LINES-2 && activeBufferMaxLen > LINES-2) 
+    friends = api.getBufferedFriends(LINES-2, win.scrollOffset-(LINES-2-friends.length).to!int);
+  
+  foreach(e; friends) 
+    list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.last_seen_str, &chat, &GetChat, e.online, e.id);
+  return list;
 }
 
 ListElement[] setCurrentTrack() {
