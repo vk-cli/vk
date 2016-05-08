@@ -39,7 +39,6 @@ class MusicPlayer : Thread {
     playtimeUpdated,
     trackOverStateCatched = true, //for reject empty strings before playback starts
     mplayerExit,
-    userSelectTrack,
     repeatMode,
     shuffleMode,
     isInit;
@@ -137,7 +136,7 @@ class MusicPlayer : Thread {
       dbm("catched trackOver");
       trackOverStateCatched = true;
       if (!repeatMode) trackNum++;
-      auto track = api.getBufferedMusic(1, trackNum-5)[0];
+      auto track = api.getBufferedMusic(1, trackNum)[0];
       send("loadfile " ~ prepareTrackUrl(track.url));
       currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
     }
@@ -157,8 +156,7 @@ class MusicPlayer : Thread {
     playerUI ~= ListElement(" ".replicate(artistrepl)~currentTrack.artist);
     playerUI ~= ListElement(" ".replicate(titlerepl)~currentTrack.title);
     playerUI ~= ListElement(center(currentTrack.playtime ~ " / " ~ currentTrack.duration, fcols, ' '));
-    playerUI ~= ListElement(center("[" ~ realProgress ~ "]", fcols+4, ' '));
-    playerUI ~= ListElement("");
+    playerUI ~= ListElement(center("[" ~ realProgress ~ "]", fcols, ' '));
     return playerUI;
   }
 
@@ -183,7 +181,7 @@ class MusicPlayer : Thread {
 
   bool sameTrack(int position) {
     auto track = api.getBufferedMusic(1, position)[0];
-    return currentTrack.artist == track.artist && currentTrack.title == track.title;
+    return currentTrack.id == track.id.to!string;
   }
 
   void pause() {
@@ -194,9 +192,9 @@ class MusicPlayer : Thread {
   void play(int position) {
     trackOverStateCatched = true;
     trackNum = position;
+    musicState = true;
     auto track = api.getBufferedMusic(1, position)[0];
     currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
     send("loadfile " ~ prepareTrackUrl(track.url));
-    musicState = true;
   }
 }

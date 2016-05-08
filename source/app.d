@@ -219,7 +219,7 @@ struct Win {
     {callback:&open, getter: &GenerateSettings},
     {callback:&exit}
   ],
-  buffer, mbody;
+  buffer, mbody, playerUI;
   Notify notify;
   Cursor cursor;
   int
@@ -532,23 +532,25 @@ void drawFriendsList() {
 }
 
 void drawMusicList() {
+  //(win.active.to!string ~ " " ~ win.scrollOffset.to!string).SetStatusbar;
+  if (win.isMusicPlaying) {
+    foreach(i, e; win.playerUI) {
+      wmove(stdscr, 2+i.to!int, win.menuOffset);
+      e.name.regular;
+    }
+    wmove(stdscr, 5, win.menuOffset+COLS/2+19);
+    mplayer.repeatMode  ? getChar("repeat").regular  : getChar("repeat").secondColor;
+    mplayer.shuffleMode ? getChar("shuffle").regular : getChar("shuffle").secondColor;
+  }
+
   foreach(i, e; win.buffer) {
-    wmove(stdscr, 2+i.to!int, win.menuOffset+1);
-    if (win.isMusicPlaying) {
-      if (i < 5) {
-        e.name.regular;
-        if (i == 3) {
-          wmove(stdscr, 2+i.to!int, win.menuOffset+COLS/2+22);
-          mplayer.repeatMode  ? getChar("repeat").regular  : getChar("repeat").secondColor;
-          mplayer.shuffleMode ? getChar("shuffle").regular : getChar("shuffle").secondColor;
-        }
-      }
-      else {
-        if (e.name.canFind(getChar("play")) || e.name.canFind(getChar("pause"))) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
-        else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
-      }
-    } else
+    wmove(stdscr, win.isMusicPlaying*5+2+i.to!int, win.menuOffset+1);
+    if (!win.isMusicPlaying)
       i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.regular;
+    else {
+      if (e.name.canFind(getChar("play")) || e.name.canFind(getChar("pause"))) if (i.to!int == win.active-win.scrollOffset) e.name.selected; else e.name.regular;
+      else i.to!int == win.active-win.scrollOffset ? e.name.selected : e.name.secondColor;
+    }
   }
 }
 
@@ -637,14 +639,13 @@ void forceRefresh() {
 }
 
 void jumpToBeginning() {
-  if (win.activeBuffer == Buffers.music && win.isMusicPlaying) win.active = 5;
-  else win.active = 0;
+  win.active = 0;
   win.scrollOffset = 0;
 }
 
 void jumpToEnd() {
   win.active = activeBufferMaxLen-1;
-  win.scrollOffset = activeBufferMaxLen-LINES+2;
+  win.scrollOffset = activeBufferMaxLen-LINES+2+(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5;
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
@@ -755,12 +756,11 @@ void msgBufferEvents() {
 
 void nonChatEvents() {
   if (canFind(kg_down, win.key)) downEvent;
+  else if (canFind(kg_up, win.key)) upEvent;
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
   //if (canFind(kg_next, win.key)) mplayer.trackOver;
   //if (canFind(kg_mix, win.key)) mixTracks;
-
-  else if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key) && !win.selectFlag) {
     win.selectFlag = true;
     selectEvent;
@@ -808,7 +808,8 @@ void downEvent() {
   else {
     if (win.active == activeBufferMaxLen-1) jumpToBeginning;
     else {
-      if (win.active-win.scrollOffset == LINES-3) win.scrollOffset++;
+      if (win.active-win.scrollOffset == LINES-3-(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5)
+        win.scrollOffset++;
       if (win.activeBuffer != Buffers.none) {
         if (activeBufferEventsAllowed) win.active++;
       } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
@@ -820,15 +821,12 @@ void upEvent() {
   if (win.section == Sections.left) win.active == 0 ? win.active = win.menu.length.to!int-1 : win.active--;
   else {
     if (win.activeBuffer != Buffers.none) {
-      if (activeBufferEventsAllowed) {
-        if (win.activeBuffer == Buffers.music && win.isMusicPlaying && win.active == 5) jumpToEnd;
+        if (win.active == 0) jumpToEnd;
         else {
+          if (win.active == win.scrollOffset) win.scrollOffset--;
           win.active--;
-          if (win.scrollOffset == win.active || win.activeBuffer == Buffers.music && win.isMusicPlaying && win.active-win.scrollOffset == 4) win.scrollOffset--;
-          if (win.activeBuffer == Buffers.music && win.active < 5 && win.isMusicPlaying) win.active = 5;
           if (win.scrollOffset < 0) win.scrollOffset = 0;
         }
-      }
     } else {
       win.active == 0 ? win.active = win.buffer.length.to!int-1 : win.active--;
     }
@@ -1045,24 +1043,12 @@ ListElement[] GetFriends() {
 
 ListElement[] setCurrentTrack() {
   vkAudio track;
-  if (!win.isMusicPlaying) {
-    if (win.active > LINES-8) {
-      if (win.scrollOffset == 0) win.scrollOffset += win.active-LINES+8;
-      else win.scrollOffset += 5;
-    }
+  if (win.isMusicPlaying && mplayer.sameTrack(win.active)) mplayer.pause;
+  else {
     mplayer.play(win.active);
-    win.active += 5;
-    mplayer.trackNum = win.active;
+    mplayer.offset = win.scrollOffset;
     win.isMusicPlaying = true;
-  } else {
-    if (mplayer.sameTrack(win.active-5)) mplayer.pause;
-    else {
-      mplayer.userSelectTrack = true;
-      mplayer.play(win.active-5);
-      mplayer.trackNum += 5;
-    }
   }
-  mplayer.offset = win.scrollOffset;
   return new ListElement[0];
 }
 
@@ -1072,14 +1058,12 @@ ListElement[] GetMusic() {
   int amount;
   vkAudio[] music;
 
-  if (win.isMusicPlaying) {
-    music = api.getBufferedMusic(LINES-6, win.scrollOffset);
-    list  = mplayer.getMplayerUI(COLS);
-  } else
-    music = api.getBufferedMusic(LINES-2, win.scrollOffset);
+  win.activeBuffer = Buffers.music;
+  music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
+  win.playerUI = mplayer.getMplayerUI(COLS);
 
   if (api.musicFactory.getBlockObject(win.scrollOffset) !is null && music.length != LINES-2-win.isMusicPlaying*4 && activeBufferMaxLen > LINES-2) 
-    music = api.getBufferedMusic(LINES-2, win.scrollOffset-(LINES-2-music.length).to!int);
+    music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset-(LINES-2-music.length-win.isMusicPlaying*5).to!int);
 
   foreach(e; music) {
     string indicator = (mplayer.currentTrack.id == e.id.to!string) ? mplayer.musicState ? getChar("play") : getChar("pause") : "    ";
@@ -1094,7 +1078,6 @@ ListElement[] GetMusic() {
     space = " ".replicate(amount);
     list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url, &run, &setCurrentTrack);
   }
-  win.activeBuffer = Buffers.music;
   return list;
 }
 
