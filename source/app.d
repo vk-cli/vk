@@ -101,6 +101,8 @@ const int
   k_next        = 93,
   k_rus_prev    = 133,
   k_rus_next    = 138,
+  k_o           = 111,
+  k_rus_o       = 137,
 
   // keys
   k_q        = 113,
@@ -134,7 +136,6 @@ const int[]
   kg_esc     = [k_q, k_rus_q],
   kg_refresh = [k_r, k_rus_r],
   kg_pause   = [k_p, k_rus_p],
-  kg_loop    = [k_l, k_rus_l],
   kg_mix     = [k_m, k_rus_m],
   kg_up      = [k_up, k_w, k_k, k_rus_w, k_rus_k],
   kg_down    = [k_down, k_s, k_j, k_rus_s, k_rus_j],
@@ -143,6 +144,7 @@ const int[]
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
                 k_home, k_tab, k_ctrl_bckspc],
+  kg_loop    = [k_o, k_rus_o],
   kg_prev    = [k_prev, k_rus_prev],
   kg_next    = [k_next, k_rus_next];
 
@@ -759,12 +761,12 @@ void nonChatEvents() {
   else if (canFind(kg_up, win.key)) upEvent;
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
+  //if (canFind(kg_mix, win.key)) mixTracks;
   if (canFind(kg_next, win.key)) mplayer.trackOver;
   if (canFind(kg_prev, win.key)) {
     mplayer.trackNum -= 2;
     mplayer.trackOver;
   }
-  //if (canFind(kg_mix, win.key)) mixTracks;
   else if (canFind(kg_right, win.key) && !win.selectFlag) {
     win.selectFlag = true;
     selectEvent;
