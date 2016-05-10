@@ -762,9 +762,12 @@ void nonChatEvents() {
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
   //if (canFind(kg_mix, win.key)) mixTracks;
-  if (canFind(kg_next, win.key)) mplayer.trackOver;
+  if (canFind(kg_next, win.key)) {
+    if (mplayer.repeatMode) mplayer.trackNum++;
+    mplayer.trackOver;
+  }
   if (canFind(kg_prev, win.key)) {
-    mplayer.trackNum -= 2;
+    mplayer.trackNum -= 2-mplayer.repeatMode;
     mplayer.trackOver;
   }
   else if (canFind(kg_right, win.key) && !win.selectFlag) {
