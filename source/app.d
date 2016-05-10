@@ -778,7 +778,6 @@ void nonChatEvents() {
       win.active -= LINES/2;
       if (win.active < 0) win.active = win.scrollOffset = 0;
       if (win.scrollOffset < 0) win.scrollOffset = 0;
-      if (win.activeBuffer == Buffers.music && win.isMusicPlaying) win.active = 5;
     }
   }
 }
@@ -1043,6 +1042,7 @@ ListElement[] GetFriends() {
 
 ListElement[] setCurrentTrack() {
   vkAudio track;
+  if (!win.isMusicPlaying && LINES-3-(win.active-win.scrollOffset) <= 5) win.scrollOffset += 5-(LINES-3-(win.active-win.scrollOffset));
   if (win.isMusicPlaying && mplayer.sameTrack(win.active)) mplayer.pause;
   else {
     mplayer.play(win.active);
