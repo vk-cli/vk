@@ -97,10 +97,10 @@ const int
   k_esc         = 27,
   k_tab         = 8,
   k_ctrl_bckspc = 9,
-  k_next        = 91,
-  k_prev        = 93,
-  k_rus_next    = 133,
-  k_rus_prev    = 138,
+  k_prev        = 91,
+  k_next        = 93,
+  k_rus_prev    = 133,
+  k_rus_next    = 138,
 
   // keys
   k_q        = 113,
@@ -143,8 +143,8 @@ const int[]
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
                 k_home, k_tab, k_ctrl_bckspc],
-  kg_next    = [k_next, k_rus_next],
-  kg_prev    = [k_prev, k_rus_prev];
+  kg_prev    = [k_prev, k_rus_prev],
+  kg_next    = [k_next, k_rus_next];
 
 const utfranges = [
   utf(19968, 40959, 1),
@@ -759,7 +759,11 @@ void nonChatEvents() {
   else if (canFind(kg_up, win.key)) upEvent;
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
-  //if (canFind(kg_next, win.key)) mplayer.trackOver;
+  if (canFind(kg_next, win.key)) mplayer.trackOver;
+  if (canFind(kg_prev, win.key)) {
+    mplayer.trackNum -= 2;
+    mplayer.trackOver;
+  }
   //if (canFind(kg_mix, win.key)) mixTracks;
   else if (canFind(kg_right, win.key) && !win.selectFlag) {
     win.selectFlag = true;
