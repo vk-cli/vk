@@ -55,10 +55,10 @@ struct Notify {
 uint utfLength(string inp) {
   auto wstrInput = inp.toUTF16wrepl;
   auto s = wstrInput.length.to!uint;
-  foreach(w; wstrInput) {
+  foreach (w; wstrInput) {
     auto c = (cast(ulong)w);
-    foreach(r; utfranges) {
-      if(c >= r.start && c <= r.end) {
+    foreach (r; utfranges) {
+      if (c >= r.start && c <= r.end) {
         s += r.spaces;
         break;
       }
