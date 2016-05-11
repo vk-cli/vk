@@ -22,7 +22,7 @@ import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm, std.concurrency,
-       std.datetime, std.utf, std.regex;
+       std.datetime, std.utf, std.regex, std.random;
 import vkapi, cfg, localization, utils, namecache, musicplayer;
 
 // INIT VARS
@@ -76,6 +76,18 @@ void Exit(string msg = "", int ecode = 0) {
   exit(ecode);
 }
 
+vkAudio[] getShuffledOrServerMusic(int count, int offset) {
+  if (mplayer.shuffleMode) {
+    if (win.shuffledMusic.length != api.getServerCount(blockType.music)-3) {
+      win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
+      ("[" ~ win.shuffledMusic.length.to!string ~ "/" ~ api.getServerCount(blockType.music).to!string ~ "]").SetStatusbar;
+      randomShuffle(win.shuffledMusic);
+    }
+    return win.shuffledMusic[offset..offset+count];
+  } else
+    return api.getBufferedMusic(count, offset);
+}
+
 private:
 
 const string
@@ -98,19 +110,19 @@ const int
   k_tab         = 8,
   k_ctrl_bckspc = 9,
   k_prev        = 91,
-  k_next        = 93,
   k_rus_prev    = 133,
+  k_next        = 93,
   k_rus_next    = 138,
   k_o           = 111,
   k_rus_o       = 137,
+  k_m           = 109,
+  k_rus_m       = 140,
 
   // keys
   k_q        = 113,
   k_rus_q    = 185,
   k_p        = 112,
   k_rus_p    = 183,
-  k_m        = 109,
-  k_rus_m    = 140,
   k_r        = 114,
   k_rus_r    = 186,
   k_bckspc   = 127,
@@ -135,8 +147,6 @@ const int[]
   // key groups
   kg_esc     = [k_q, k_rus_q],
   kg_refresh = [k_r, k_rus_r],
-  kg_pause   = [k_p, k_rus_p],
-  kg_mix     = [k_m, k_rus_m],
   kg_up      = [k_up, k_w, k_k, k_rus_w, k_rus_k],
   kg_down    = [k_down, k_s, k_j, k_rus_s, k_rus_j],
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
@@ -144,7 +154,9 @@ const int[]
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
                 k_home, k_tab, k_ctrl_bckspc],
+  kg_pause   = [k_p, k_rus_p],
   kg_loop    = [k_o, k_rus_o],
+  kg_mix     = [k_m, k_rus_m],
   kg_prev    = [k_prev, k_rus_prev],
   kg_next    = [k_next, k_rus_next];
 
@@ -222,6 +234,7 @@ struct Win {
     {callback:&exit}
   ],
   buffer, mbody, playerUI;
+  vkAudio[] shuffledMusic;
   Notify notify;
   Cursor cursor;
   int
@@ -534,7 +547,6 @@ void drawFriendsList() {
 }
 
 void drawMusicList() {
-  //(win.active.to!string ~ " " ~ win.scrollOffset.to!string).SetStatusbar;
   if (win.isMusicPlaying) {
     foreach(i, e; win.playerUI) {
       wmove(stdscr, 2+i.to!int, win.menuOffset);
@@ -758,10 +770,10 @@ void msgBufferEvents() {
 
 void nonChatEvents() {
   if (canFind(kg_down, win.key)) downEvent;
-  else if (canFind(kg_up, win.key)) upEvent;
+  if (canFind(kg_up, win.key)) upEvent;
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
-  //if (canFind(kg_mix, win.key)) mixTracks;
+  if (canFind(kg_mix, win.key)) toggleShuffleMode;
   if (canFind(kg_next, win.key)) {
     if (mplayer.repeatMode) mplayer.trackNum++;
     mplayer.trackOver;
@@ -1061,6 +1073,11 @@ ListElement[] setCurrentTrack() {
   return new ListElement[0];
 }
 
+void toggleShuffleMode() {
+  mplayer.shuffleMode = !mplayer.shuffleMode;
+  randomShuffle(win.shuffledMusic);
+}
+
 ListElement[] GetMusic() {
   ListElement[] list;
   string space, artistAndSong;
@@ -1068,11 +1085,11 @@ ListElement[] GetMusic() {
   vkAudio[] music;
 
   win.activeBuffer = Buffers.music;
-  music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
+  music = getShuffledOrServerMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
   win.playerUI = mplayer.getMplayerUI(COLS);
 
-  if (api.musicFactory.getBlockObject(win.scrollOffset) !is null && music.length != LINES-2-win.isMusicPlaying*4 && activeBufferMaxLen > LINES-2) 
-    music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset-(LINES-2-music.length-win.isMusicPlaying*5).to!int);
+  //if (api.musicFactory.getBlockObject(win.scrollOffset) !is null && music.length != LINES-2-win.isMusicPlaying*4 && activeBufferMaxLen > LINES-2) 
+    //music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset-(LINES-2-music.length-win.isMusicPlaying*5).to!int);
 
   foreach(e; music) {
     string indicator = (mplayer.currentTrack.id == e.id.to!string) ? mplayer.musicState ? getChar("play") : getChar("pause") : "    ";
