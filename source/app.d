@@ -22,7 +22,8 @@ import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm, std.concurrency,
-       std.datetime, std.utf, std.regex, std.random;
+       std.datetime, std.utf, std.regex, std.random,
+       std.math;
 import vkapi, cfg, localization, utils, namecache, musicplayer;
 
 // INIT VARS
@@ -80,8 +81,15 @@ vkAudio[] getShuffledOrServerMusic(int count, int offset) {
   if (mplayer.shuffleMode) {
     if (win.shuffledMusic.length != api.getServerCount(blockType.music)-3) {
       win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
-      ("[" ~ win.shuffledMusic.length.to!string ~ "/" ~ api.getServerCount(blockType.music).to!string ~ "]").SetStatusbar;
-      randomShuffle(win.shuffledMusic);
+      ("[" ~ "=".replicate(floor(win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real * 20).to!int) ~ "|" ~ "=".replicate(20 - (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real * 20).to!int) ~ "]")
+      .SetStatusbar;
+      //("[" ~ win.shuffledMusic.length.to!string ~ "/" ~ api.getServerCount(blockType.music).to!string ~ "]").SetStatusbar;
+    } else {
+      if (!win.shuffled) {
+        SetStatusbar;
+        randomShuffle(win.shuffledMusic);
+        win.shuffled = true;
+      }
     }
     return win.shuffledMusic[offset..offset+count];
   } else
@@ -253,7 +261,7 @@ struct Win {
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag,
     showConvNotifications, sendOnline,
-    unicodeChars = true;
+    unicodeChars = true, shuffled;
 }
 
 void relocale() {

@@ -136,7 +136,7 @@ class MusicPlayer : Thread {
       dbm("catched trackOver");
       trackOverStateCatched = true;
       if (!repeatMode) trackNum++;
-      auto track = api.getBufferedMusic(1, trackNum)[0];
+      auto track = getShuffledOrServerMusic(1, trackNum)[0];
       send("loadfile " ~ prepareTrackUrl(track.url));
       currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
     }
@@ -180,7 +180,7 @@ class MusicPlayer : Thread {
   }
 
   bool sameTrack(int position) {
-    auto track = api.getBufferedMusic(1, position)[0];
+    auto track = getShuffledOrServerMusic(1, position)[0];
     return currentTrack.id == track.id.to!string;
   }
 
@@ -193,7 +193,7 @@ class MusicPlayer : Thread {
     trackOverStateCatched = true;
     trackNum = position;
     musicState = true;
-    auto track = api.getBufferedMusic(1, position)[0];
+    auto track = getShuffledOrServerMusic(1, position)[0];
     currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
     send("loadfile " ~ prepareTrackUrl(track.url));
   }
