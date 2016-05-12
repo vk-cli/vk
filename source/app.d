@@ -773,7 +773,7 @@ void nonChatEvents() {
   if (canFind(kg_up, win.key)) upEvent;
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
-  if (canFind(kg_mix, win.key)) toggleShuffleMode;
+  if (canFind(kg_mix, win.key) && win.activeBuffer == Buffers.music) toggleShuffleMode;
   if (canFind(kg_next, win.key)) {
     if (mplayer.repeatMode) mplayer.trackNum++;
     mplayer.trackOver;
