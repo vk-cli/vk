@@ -445,8 +445,10 @@ void statusbar() {
     if (api.isLoading) counterStr ~= getChar("refresh");
   }
   counterStr.selected;
+  auto counterStrLen = counterStr.utfLength + (counterStr.utfLength == 7) * 2;
   if (win.notify.text != "") center(win.notify.text, COLS-counterStr.utfLength, ' ').selected;
-  else center(win.statusbarText, COLS-counterStr.utfLength, ' ').selected;
+  else center(win.statusbarText, COLS-counterStrLen, ' ').selected;
+  " ".replicate((counterStr.utfLength == 7) * 2).selected;
   "\n".print;
 }
 
