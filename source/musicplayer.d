@@ -174,7 +174,7 @@ class MusicPlayer {
 class mpv: Thread {
 
   enum ipcCmd {
-    playbackTime,
+    timeset,
     pause,
     exit,
     load
@@ -182,7 +182,8 @@ class mpv: Thread {
 
   struct ipcCmdParams {
     ipcCmd command;
-    string argument;
+    string strargument;
+    real realargument;
   }
 
   const
@@ -242,9 +243,10 @@ class mpv: Thread {
     JSONValue cm = parseJSON(commandTemplate);
 
     switch(c.command) {
-      case ipcCmd.playbackTime:
-        cm.object["command"].array ~= JSONValue("get_property");
+      case ipcCmd.timeset:
+        cm.object["command"].array ~= JSONValue("set_property");
         cm.object["command"].array ~= JSONValue("playback-time");
+        cm.object["command"].array ~= JSONValue(c.realargument);
         break;
       case ipcCmd.pause:
         cm.object["command"].array ~= JSONValue("set_property");
@@ -256,7 +258,7 @@ class mpv: Thread {
         break;
       case ipcCmd.load:
         cm.object["command"].array ~= JSONValue("loadfile");
-        cm.object["command"].array ~= JSONValue(c.argument);
+        cm.object["command"].array ~= JSONValue(c.strargument);
         break;
       default: assert(0);
     }
@@ -401,6 +403,11 @@ class mpv: Thread {
       musicState = true;
       notFirstPlay = true;
     }
+  }
+
+  void setPosition(real sec) {
+    auto c = ipcCmdParams(ipcCmd.timeset, "", sec);
+    mpvsend(c);
   }
 
 }
