@@ -53,7 +53,8 @@ class MusicPlayer {
 
   this() {
     player = new mpv(
-      sec => setPlaytime(sec, false)
+      sec => setPlaytime(sec, false),
+      () => setPlaytime(0, true)
     );
   }
 
@@ -189,25 +190,33 @@ class mpv: Thread {
 
   const
     int
+      endRequestId = 3,
       posPropertyId = 1,
       idlePropertyId = 2;
 
   alias posCallback = void delegate(real sec);
+  alias endCallback = void delegate();
 
   posCallback posChanged;
+  endCallback endReached;
 
-  string commandTemplate = "{ \"command\": [] }";
-  string[] output;
-  Socket comm;
-  Address commAddr;
-  bool
-    isInit,
-    playerExit,
-    musicState;
+  __gshared {
+    string commandTemplate = "{ \"command\": [] }";
+    Thread endChecker;
+    string[] output;
+    Socket comm;
+    Address commAddr;
+    bool
+      isInit,
+      playerExit,
+      notFirstPlay,
+      musicState;
+  }
 
 
-  this(posCallback pos) {
+  this(posCallback pos, endCallback end) {
     posChanged = pos;
+    endReached = end;
     super(&runPlayer);
   }
 
@@ -261,7 +270,14 @@ class mpv: Thread {
     try {
       auto m = parseJSON(rc);
       if(m.type != JSON_TYPE.OBJECT) return;
-      if("error" in m) {
+      if(
+        "request_id" in m &&
+        m["request_id"].integer == endRequestId &&
+        m["error"].str == "property unavailable"
+      ) {
+        endReached();
+      }
+      else if("error" in m) {
         if(m["error"].str != "success") {
           dbm("mpv - error: " ~ rc);
         }
@@ -287,6 +303,21 @@ class mpv: Thread {
     }
   }
 
+  private void checkEnd() {
+    while(!playerExit) {
+      Thread.sleep(dur!"msecs"(500));
+      if(musicState) req(checkEndCmd().toString());
+    }
+  }
+
+  private JSONValue checkEndCmd() {
+    JSONValue c = parseJSON("{ \"command\": [], \"request_id\": 0 }");
+    c["command"].array ~= JSONValue("get_property");
+    c["command"].array ~= JSONValue("percent-pos");
+    c["request_id"].integer = endRequestId;
+    return c;
+  }
+
   private JSONValue observePropertyCmd(int id, string prop) {
     auto c = parseJSON(commandTemplate);
     c["command"].array ~= JSONValue("observe_property");
@@ -297,7 +328,9 @@ class mpv: Thread {
 
   private void setup() {
     req(observePropertyCmd(posPropertyId, "playback-time").toString());
-    req(observePropertyCmd(idlePropertyId, "idle").toString());
+    //req(observePropertyCmd(idlePropertyId, "end-file").toString());
+    endChecker = new Thread(&checkEnd);
+    endChecker.start();
   }
 
   void runPlayer() {
@@ -364,7 +397,10 @@ class mpv: Thread {
   void loadfile(string p) {
     auto c = ipcCmdParams(ipcCmd.load, p);
     mpvsend(c);
-    musicState = true;
+    if(!notFirstPlay) {
+      musicState = true;
+      notFirstPlay = true;
+    }
   }
 
 }
