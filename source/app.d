@@ -22,7 +22,8 @@ import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm, std.concurrency,
-       std.datetime, std.utf, std.regex, std.random;
+       std.datetime, std.utf, std.regex, std.random,
+       std.math;
 import vkapi, cfg, localization, utils, namecache, musicplayer;
 
 // INIT VARS
@@ -55,10 +56,10 @@ struct Notify {
 uint utfLength(string inp) {
   auto wstrInput = inp.toUTF16wrepl;
   auto s = wstrInput.length.to!uint;
-  foreach(w; wstrInput) {
+  foreach (w; wstrInput) {
     auto c = (cast(ulong)w);
-    foreach(r; utfranges) {
-      if(c >= r.start && c <= r.end) {
+    foreach (r; utfranges) {
+      if (c >= r.start && c <= r.end) {
         s += r.spaces;
         break;
       }
@@ -80,8 +81,15 @@ vkAudio[] getShuffledOrServerMusic(int count, int offset) {
   if (mplayer.shuffleMode) {
     if (win.shuffledMusic.length != api.getServerCount(blockType.music)-3) {
       win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
-      ("[" ~ win.shuffledMusic.length.to!string ~ "/" ~ api.getServerCount(blockType.music).to!string ~ "]").SetStatusbar;
-      randomShuffle(win.shuffledMusic);
+      ("[" ~ "=".replicate(floor(win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real * 20).to!int) ~ "|" ~ "=".replicate(20 - (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real * 20).to!int) ~ "]")
+      .SetStatusbar;
+      //("[" ~ win.shuffledMusic.length.to!string ~ "/" ~ api.getServerCount(blockType.music).to!string ~ "]").SetStatusbar;
+    } else {
+      if (!win.shuffled) {
+        SetStatusbar;
+        randomShuffle(win.shuffledMusic);
+        win.shuffled = true;
+      }
     }
     return win.shuffledMusic[offset..offset+count];
   } else
@@ -253,7 +261,7 @@ struct Win {
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag,
     showConvNotifications, sendOnline,
-    unicodeChars = true;
+    unicodeChars = true, shuffled;
 }
 
 void relocale() {
@@ -445,8 +453,10 @@ void statusbar() {
     if (api.isLoading) counterStr ~= getChar("refresh");
   }
   counterStr.selected;
+  auto counterStrLen = counterStr.utfLength + (counterStr.utfLength == 7) * 2;
   if (win.notify.text != "") center(win.notify.text, COLS-counterStr.utfLength, ' ').selected;
-  else center(win.statusbarText, COLS-counterStr.utfLength, ' ').selected;
+  else center(win.statusbarText, COLS-counterStrLen, ' ').selected;
+  " ".replicate((counterStr.utfLength == 7) * 2).selected;
   "\n".print;
 }
 
@@ -773,7 +783,7 @@ void nonChatEvents() {
   if (canFind(kg_up, win.key)) upEvent;
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
-  if (canFind(kg_mix, win.key)) toggleShuffleMode;
+  if (canFind(kg_mix, win.key) && win.activeBuffer == Buffers.music) toggleShuffleMode;
   if (canFind(kg_next, win.key)) {
     if (mplayer.repeatMode) mplayer.trackNum++;
     mplayer.trackOver;
