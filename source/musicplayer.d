@@ -175,6 +175,7 @@ class mpv: Thread {
 
   enum ipcCmd {
     timeset,
+    seek,
     pause,
     exit,
     load
@@ -243,6 +244,11 @@ class mpv: Thread {
     JSONValue cm = parseJSON(commandTemplate);
 
     switch(c.command) {
+      case ipcCmd.seek:
+        cm.object["command"].array ~= JSONValue("seek");
+        cm.object["command"].array ~= JSONValue(c.realargument);
+        cm.object["command"].array ~= JSONValue(c.strargument);
+        break;
       case ipcCmd.timeset:
         cm.object["command"].array ~= JSONValue("set_property");
         cm.object["command"].array ~= JSONValue("playback-time");
@@ -407,6 +413,12 @@ class mpv: Thread {
 
   void setPosition(real sec) {
     auto c = ipcCmdParams(ipcCmd.timeset, "", sec);
+    mpvsend(c);
+  }
+
+  void relativeSeek(real rval, bool percent) {
+    auto mode = percent ? "relative-percent" : "relative";
+    auto c = ipcCmdParams(ipcCmd.seek, mode, rval);
     mpvsend(c);
   }
 
