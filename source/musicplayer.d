@@ -19,79 +19,109 @@ limitations under the License.
 
 import std.process, std.stdio, std.string,
        std.array, std.algorithm, std.conv,
-       std.math;
+       std.math, std.file, std.ascii,
+       std.socket, std.json;
 import core.thread;
 import app, utils;
 import vkapi: VkMan;
 
 struct Track {
   string artist, title, duration, playtime, id;
+  int durationSeconds;
 }
 
 __gshared MusicPlayer mplayer;
 __gshared VkMan api;
 
 class MusicPlayer : Thread {
-  File delegate() stdinPipe;
-  Track currentTrack;
-  bool
-    musicState,
-    playtimeUpdated,
-    trackOverStateCatched = true, //for reject empty strings before playback starts
-    mplayerExit,
-    repeatMode,
-    shuffleMode,
-    isInit;
-  Track[] playlist;
-  ulong lastOutputLn;
-  string
-    stockProgress = "=".replicate(50),
-    realProgress  = "|" ~ "=".replicate(49);
-  int position, trackNum, offset;
+  __gshared {
+    mpv player;
+    Track currentTrack;
+    bool
+      playtimeUpdated,
+      trackOverStateCatched = true, //for reject empty strings before playback starts
+      repeatMode,
+      shuffleMode;
+    Track[] playlist;
+    string
+      stockProgress = "=".replicate(50),
+      realProgress  = "|" ~ "=".replicate(49);
+    int position, trackNum, offset;
+  }
 
-  __gshared string[] output;
-  Thread listen;
-  const listenWait = dur!"msecs"(500);
+  const updateWait = dur!"msecs"(1000);
 
   this() {
-    super(&runPlayer);
+    player = new mpv();
+    super(&playerControl);
   }
 
-  void exitMplayer() {
-    send("quit");
+  void exitPlayer() {
+    player.exit();
   }
 
-  void send(string cmd) {
-    if (!isInit) return;
-    if (canFind("loadfile", cmd)) realProgress ~= "|" ~ "=".replicate(49);
-    auto stdin = stdinPipe();
-    stdin.writeln(cmd);
-    stdin.flush();
+  bool musicState() {
+    return player.getMusicState();
   }
 
-  string durToStr(string duration) {
-    auto intDuration = lround(duration.to!real);
+  void pause() {
+    player.pause();
+  }
+
+  bool playerExit() {
+    return player.isPlayerExit();
+  }
+
+  bool isInit() {
+    return player.isPlayerInit();
+  }
+
+  void play(int position) {
+    trackOverStateCatched = true;
+    trackNum = position;
+    auto track = api.getBufferedMusic(1, position)[0];
+    currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string, track.duration_sec);
+    loadFile(track.url);
+  }
+
+  void playerControl() {
+    while(!playerExit) {
+      Thread.sleep(updateWait);
+      if(isInit) {
+        bool t_end;
+        auto t_time = player.getPlaytime(t_end);
+        setPlaytime(t_time, t_end);
+      }
+    }
+  }
+
+  void loadFile(string url) {
+    realProgress = "|" ~ "=".replicate(49);
+    auto p = prepareTrackUrl(url);
+    player.loadfile(p);
+  }
+
+  void startPlayer(VkMan vkapi) {
+    currentTrack.playtime = "0:00";
+    api = vkapi;
+    player.start();
+    this.start();
+  }
+
+  string durToStr(real duration) {
+    auto intDuration = lround(duration);
     auto min = intDuration / 60;
     auto sec = intDuration - (60*min);
     return min.to!string ~ ":" ~ sec.to!int.tzr;
   }
 
-  int strToDur(string duration) {
-    auto temp = duration.split(":");
-    return temp[0].to!int*60 + temp[1].to!int;
-  }
-
-  void setPlaytime(string answer) {
-    const string start = "ANS_TIME_POSITION=";
-    if (answer != "") {
-      if(answer.startsWith(start)) {
-        auto strtime = answer[start.length..$];
-        currentTrack.playtime = durToStr(strtime);
+  void setPlaytime(real sec, bool end) {
+    if (!end) {
         real
-          sec = strtime.to!real,
-          trackd = strToDur(currentTrack.duration).to!real,
+          trackd = currentTrack.durationSeconds.to!real,
           step =  trackd / 50;
         int newPos = floor(sec / step).to!int;
+        currentTrack.playtime = durToStr(sec);
         if (position != newPos) {
           position = newPos;
 
@@ -104,25 +134,9 @@ class MusicPlayer : Thread {
         }
         playtimeUpdated = true;
         trackOverStateCatched = false;
-      }
     }
     else {
       if(!trackOverStateCatched) trackOver();
-    }
-  }
-
-  void listenStdout() {
-    while (!mplayerExit) {
-      if (output.length != lastOutputLn) {
-        string answer = output[$-1];
-        lastOutputLn = output.length;
-
-        if (musicState) {
-          setPlaytime(answer);
-          send("get_time_pos");
-        }
-      }
-      Thread.sleep(listenWait);
     }
   }
 
@@ -137,8 +151,8 @@ class MusicPlayer : Thread {
       trackOverStateCatched = true;
       if (!repeatMode) trackNum++;
       auto track = api.getBufferedMusic(1, trackNum)[0];
-      send("loadfile " ~ prepareTrackUrl(track.url));
-      currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
+      loadFile(track.url);
+      currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string, track.duration_sec);
     }
     playtimeUpdated = true;
   }
@@ -160,41 +174,224 @@ class MusicPlayer : Thread {
     return playerUI;
   }
 
-  void runPlayer() {
-    auto pipe = pipeProcess("sh", Redirect.stdin | Redirect.stdout);
-    pipe.stdin.writeln("cat /dev/stdin | mplayer -slave -idle 2> /dev/null");
-    pipe.stdin.flush;
-    stdinPipe = &(pipe.stdin);
-    isInit = true;
-    currentTrack.playtime = "0:00";
-    foreach (line; pipe.stdout.byLine) output ~= line.idup;
-    dbm("MPLAYER EXIT");
-    mplayerExit = true;
-  }
-
-  void startPlayer(VkMan vkapi) {
-    api = vkapi;
-    listen = new Thread(&listenStdout);
-    listen.start;
-    this.start;
-  }
-
   bool sameTrack(int position) {
     auto track = api.getBufferedMusic(1, position)[0];
     return currentTrack.id == track.id.to!string;
   }
+}
+
+class mpv: Thread {
+
+  enum ipcCmd {
+    playbackTime,
+    pause,
+    exit,
+    load
+  }
+
+  struct ipcResult {
+    bool success;
+    bool nodata;
+    string error;
+
+    real realval;
+    int intval;
+    bool boolval;
+  }
+
+  struct ipcCmdParams {
+    ipcCmd command;
+    string argument;
+  }
+
+  const
+    socketPath = "/tmp/vkmpv",
+    playerExec = "mpv --idle --no-audio-display --input-ipc-server=" ~ socketPath ~ " > /dev/null 2> /dev/null";
+
+  string[] output;
+  Socket comm;
+  Address commAddr;
+  bool
+    isInit,
+    playerExit,
+    musicState;
+
+
+  this() {
+    super(&runPlayer);
+  }
+
+
+  private string req(string cmd) {
+    if(!isInit) {
+      dbm("mpv - req: noinit");
+      return "";
+    }
+
+    dbm("mpv - req cmd: " ~ cmd);
+
+    auto s_answ = comm.send(cmd ~ "\n");
+    if(s_answ == Socket.ERROR) {
+      dbm("mpv - req: s_answ error");
+      return "";
+    }
+
+    string str_recv;
+
+    for(int i; i < 1; i++) {
+      byte[] recv;
+      auto r_answ = comm.receive(recv);
+      dbm("mpv - req: r_answ " ~ r_answ.to!string);
+      if(r_answ == Socket.ERROR) {
+        return "";
+      }
+      str_recv = recv.to!string;
+      dbm("mpv - req recv: " ~ str_recv);
+    }
+    return str_recv;
+  }
+
+  private ipcResult mpvsend(ipcCmdParams c) {
+
+    JSONValue cm = parseJSON("{ \"command\": [] }");
+
+    switch(c.command) {
+      case ipcCmd.playbackTime:
+        cm.object["command"].array ~= JSONValue("get_property");
+        cm.object["command"].array ~= JSONValue("playback-time");
+        break;
+      case ipcCmd.pause:
+        cm.object["command"].array ~= JSONValue("set_property");
+        cm.object["command"].array ~= JSONValue("pause");
+        cm.object["command"].array ~= JSONValue(musicState);
+        break;
+      case ipcCmd.exit:
+        cm.object["command"].array ~= JSONValue("quit");
+        break;
+      case ipcCmd.load:
+        cm.object["command"].array ~= JSONValue("loadfile");
+        cm.object["command"].array ~= JSONValue(c.argument);
+        break;
+      default: assert(0);
+    }
+
+    dbm("mpv - cmd: " ~ c.command.to!string);
+
+    auto answ = req(cm.toString());
+    auto rt = ipcResult();
+    JSONValue recv;
+
+    if(answ == "") {
+        dbm("mpv - empty answer");
+        return rt;
+    }
+    try {
+      recv = parseJSON(answ);
+
+      if("error" in recv) {
+        auto err = recv["error"].str;
+        rt.error = err;
+        if(err == "success") {
+          rt.success = true;
+        }
+        else {
+          dbm("mpv - error: " ~  err);
+        }
+      }
+
+      if(rt.success) {
+        if("data" in recv) {
+          auto d = recv["data"];
+          switch(d.type) {
+            case JSON_TYPE.INTEGER:
+              rt.intval = d.integer.to!int;
+              break;
+            case JSON_TYPE.FLOAT:
+              rt.realval = d.floating.to!real;
+              break;
+            case JSON_TYPE.TRUE:
+              rt.boolval = true;
+              break;
+            case JSON_TYPE.FALSE:
+              rt.boolval = false;
+              break;
+            default:
+              dbm("mpv - unknown data");
+              rt.nodata = true;
+              break;
+          }
+        }
+        else {
+          dbm("mpv - no data");
+          rt.nodata = true;
+        }
+      }
+
+    }
+    catch(JSONException e) {
+      dbm("mpv - json exception " ~ e.msg);
+    }
+
+    return rt;
+
+  }
+
+  void runPlayer() {
+    dbm("mpv - starting");
+    auto pipe = pipeProcess("sh", Redirect.stdin);
+    pipe.stdin.writeln(playerExec);
+    pipe.stdin.flush;
+    Thread.sleep(dur!"msecs"(500)); //wait for init
+    dbm("mpv - running");
+
+    assert(exists(socketPath));
+    commAddr = new UnixAddress(socketPath);
+    comm = new Socket(AddressFamily.UNIX, SocketType.STREAM);
+    comm.connect(commAddr);
+    dbm("mpv - socket connected");
+
+    isInit = true;
+    /*foreach (line; pipe.stdout.byLine) {
+      output ~= line.idup;
+      dbm("mpv out: " ~ line.to!string);
+    }*/
+    while (true) Thread.sleep( dur!"msecs"(1000));
+    dbm("PLAYER EXIT");
+    playerExit = true;
+  }
 
   void pause() {
-    send("pause");
+    auto c = ipcCmdParams(ipcCmd.pause);
+    auto a = mpvsend(c);
     musicState = !musicState;
   }
 
-  void play(int position) {
-    trackOverStateCatched = true;
-    trackNum = position;
-    musicState = true;
-    auto track = api.getBufferedMusic(1, position)[0];
-    currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string);
-    send("loadfile " ~ prepareTrackUrl(track.url));
+  bool getMusicState() {
+    return musicState;
   }
+
+  bool isPlayerExit() {
+    return playerExit;
+  }
+
+  bool isPlayerInit() {
+    return isInit;
+  }
+
+  void exit() {
+    auto c = ipcCmdParams(ipcCmd.exit);
+    auto a = mpvsend(c);
+  }
+
+  void loadfile(string p) {
+    auto c = ipcCmdParams(ipcCmd.load, p);
+    auto a = mpvsend(c);
+    musicState = true;
+  }
+
+  real getPlaytime(out bool trackEnd) {
+    trackEnd = false;
+    return 0;
+  }
+
 }

@@ -1164,7 +1164,7 @@ void test() {
 void stop() {
   dbmclose;
   endwin;
-  mplayer.exitMplayer;
+  mplayer.exitPlayer;
 }
 
 void main(string[] args) {

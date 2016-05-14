@@ -1226,6 +1226,7 @@ class OnlineNotifier : Thread {
     }
 
     void setOnlineSw(bool sw) {
+        if(enabled == sw) return;
         enabled = sw;
         if(sw) {
             dbm("starting onlineNotifier...");
