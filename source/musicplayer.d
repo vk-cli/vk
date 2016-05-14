@@ -33,7 +33,7 @@ struct Track {
 __gshared MusicPlayer mplayer;
 __gshared VkMan api;
 
-class MusicPlayer : Thread {
+class MusicPlayer {
   __gshared {
     mpv player;
     Track currentTrack;
@@ -52,8 +52,9 @@ class MusicPlayer : Thread {
   const updateWait = dur!"msecs"(1000);
 
   this() {
-    player = new mpv();
-    super(&playerControl);
+    player = new mpv(
+      sec => setPlaytime(sec, false)
+    );
   }
 
   void exitPlayer() {
@@ -84,17 +85,6 @@ class MusicPlayer : Thread {
     loadFile(track.url);
   }
 
-  void playerControl() {
-    while(!playerExit) {
-      Thread.sleep(updateWait);
-      if(isInit) {
-        bool t_end;
-        auto t_time = player.getPlaytime(t_end);
-        setPlaytime(t_time, t_end);
-      }
-    }
-  }
-
   void loadFile(string url) {
     realProgress = "|" ~ "=".replicate(49);
     auto p = prepareTrackUrl(url);
@@ -105,7 +95,6 @@ class MusicPlayer : Thread {
     currentTrack.playtime = "0:00";
     api = vkapi;
     player.start();
-    this.start();
   }
 
   string durToStr(real duration) {
@@ -189,16 +178,6 @@ class mpv: Thread {
     load
   }
 
-  struct ipcResult {
-    bool success;
-    bool nodata;
-    string error;
-
-    real realval;
-    int intval;
-    bool boolval;
-  }
-
   struct ipcCmdParams {
     ipcCmd command;
     string argument;
@@ -208,6 +187,16 @@ class mpv: Thread {
     socketPath = "/tmp/vkmpv",
     playerExec = "mpv --idle --no-audio-display --input-ipc-server=" ~ socketPath ~ " > /dev/null 2> /dev/null";
 
+  const
+    int
+      posPropertyId = 1,
+      idlePropertyId = 2;
+
+  alias posCallback = void delegate(real sec);
+
+  posCallback posChanged;
+
+  string commandTemplate = "{ \"command\": [] }";
   string[] output;
   Socket comm;
   Address commAddr;
@@ -217,15 +206,16 @@ class mpv: Thread {
     musicState;
 
 
-  this() {
+  this(posCallback pos) {
+    posChanged = pos;
     super(&runPlayer);
   }
 
 
-  private string req(string cmd) {
+  private void req(string cmd) {
     if(!isInit) {
       dbm("mpv - req: noinit");
-      return "";
+      return;
     }
 
     dbm("mpv - req cmd: " ~ cmd);
@@ -233,27 +223,14 @@ class mpv: Thread {
     auto s_answ = comm.send(cmd ~ "\n");
     if(s_answ == Socket.ERROR) {
       dbm("mpv - req: s_answ error");
-      return "";
+      return;
     }
 
-    string str_recv;
-
-    for(int i; i < 1; i++) {
-      byte[] recv;
-      auto r_answ = comm.receive(recv);
-      dbm("mpv - req: r_answ " ~ r_answ.to!string);
-      if(r_answ == Socket.ERROR) {
-        return "";
-      }
-      str_recv = recv.to!string;
-      dbm("mpv - req recv: " ~ str_recv);
-    }
-    return str_recv;
   }
 
-  private ipcResult mpvsend(ipcCmdParams c) {
+  private void mpvsend(ipcCmdParams c) {
 
-    JSONValue cm = parseJSON("{ \"command\": [] }");
+    JSONValue cm = parseJSON(commandTemplate);
 
     switch(c.command) {
       case ipcCmd.playbackTime:
@@ -277,63 +254,50 @@ class mpv: Thread {
 
     dbm("mpv - cmd: " ~ c.command.to!string);
 
-    auto answ = req(cm.toString());
-    auto rt = ipcResult();
-    JSONValue recv;
+    req(cm.toString());
+  }
 
-    if(answ == "") {
-        dbm("mpv - empty answer");
-        return rt;
-    }
+  private void mpvhandle(string rc) {
     try {
-      recv = parseJSON(answ);
-
-      if("error" in recv) {
-        auto err = recv["error"].str;
-        rt.error = err;
-        if(err == "success") {
-          rt.success = true;
-        }
-        else {
-          dbm("mpv - error: " ~  err);
+      auto m = parseJSON(rc);
+      if(m.type != JSON_TYPE.OBJECT) return;
+      if("error" in m) {
+        if(m["error"].str != "success") {
+          dbm("mpv - error: " ~ rc);
         }
       }
+      else if("event" in m) {
+        auto e = m["event"].str;
 
-      if(rt.success) {
-        if("data" in recv) {
-          auto d = recv["data"];
-          switch(d.type) {
-            case JSON_TYPE.INTEGER:
-              rt.intval = d.integer.to!int;
-              break;
-            case JSON_TYPE.FLOAT:
-              rt.realval = d.floating.to!real;
-              break;
-            case JSON_TYPE.TRUE:
-              rt.boolval = true;
-              break;
-            case JSON_TYPE.FALSE:
-              rt.boolval = false;
-              break;
-            default:
-              dbm("mpv - unknown data");
-              rt.nodata = true;
-              break;
-          }
+        switch(e) {
+          case "property-change":
+            auto eid = m["id"].integer.to!int;
+            if(eid == posPropertyId) posChanged(m["data"].floating.to!real);
+          break;
+
+
+
+          default: break;
         }
-        else {
-          dbm("mpv - no data");
-          rt.nodata = true;
-        }
+
       }
-
     }
     catch(JSONException e) {
-      dbm("mpv - json exception " ~ e.msg);
+      dbm("mpv - json exception: " ~ e.msg);
     }
+  }
 
-    return rt;
+  private JSONValue observePropertyCmd(int id, string prop) {
+    auto c = parseJSON(commandTemplate);
+    c["command"].array ~= JSONValue("observe_property");
+    c["command"].array ~= JSONValue(id);
+    c["command"].array ~= JSONValue(prop);
+    return c;
+  }
 
+  private void setup() {
+    req(observePropertyCmd(posPropertyId, "playback-time").toString());
+    req(observePropertyCmd(idlePropertyId, "idle").toString());
   }
 
   void runPlayer() {
@@ -351,18 +315,32 @@ class mpv: Thread {
     dbm("mpv - socket connected");
 
     isInit = true;
-    /*foreach (line; pipe.stdout.byLine) {
-      output ~= line.idup;
-      dbm("mpv out: " ~ line.to!string);
-    }*/
-    while (true) Thread.sleep( dur!"msecs"(1000));
+    long r_answ = -1;
+    setup();
+
+    while( r_answ != 0 ){
+      char[1024] recv;
+      string recv_str;
+      r_answ = comm.receive(recv);
+      if(r_answ != 0) {
+        foreach(r; recv) {
+          if(r == '\n' || r == '\x00') break;
+          recv_str ~= r;
+        }
+        output ~= recv_str;
+        dbm("mpv - recv: " ~ recv_str);
+        mpvhandle(recv_str);
+        Thread.sleep( dur!"msecs"(100) );
+      }
+    }
+
     dbm("PLAYER EXIT");
     playerExit = true;
   }
 
   void pause() {
     auto c = ipcCmdParams(ipcCmd.pause);
-    auto a = mpvsend(c);
+    mpvsend(c);
     musicState = !musicState;
   }
 
@@ -380,18 +358,13 @@ class mpv: Thread {
 
   void exit() {
     auto c = ipcCmdParams(ipcCmd.exit);
-    auto a = mpvsend(c);
+    mpvsend(c);
   }
 
   void loadfile(string p) {
     auto c = ipcCmdParams(ipcCmd.load, p);
-    auto a = mpvsend(c);
+    mpvsend(c);
     musicState = true;
-  }
-
-  real getPlaytime(out bool trackEnd) {
-    trackEnd = false;
-    return 0;
   }
 
 }
