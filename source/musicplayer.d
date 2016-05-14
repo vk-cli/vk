@@ -203,7 +203,6 @@ class mpv: Thread {
   __gshared {
     string commandTemplate = "{ \"command\": [] }";
     Thread endChecker;
-    string[] output;
     Socket comm;
     Address commAddr;
     bool
@@ -360,7 +359,6 @@ class mpv: Thread {
           if(r == '\n' || r == '\x00') break;
           recv_str ~= r;
         }
-        output ~= recv_str;
         dbm("mpv - recv: " ~ recv_str);
         mpvhandle(recv_str);
         Thread.sleep( dur!"msecs"(100) );
