@@ -87,6 +87,7 @@ class MusicPlayer {
   }
 
   void loadFile(string url) {
+    trackOverStateCatched = true;
     realProgress = "|" ~ "=".replicate(49);
     auto p = prepareTrackUrl(url);
     player.loadfile(p);
@@ -272,7 +273,8 @@ class mpv: Thread {
       if(
         "request_id" in m &&
         m["request_id"].integer == endRequestId &&
-        m["error"].str == "property unavailable"
+        "data" in m &&
+        m["data"].type == JSON_TYPE.TRUE
       ) {
         endReached();
       }
@@ -312,7 +314,7 @@ class mpv: Thread {
   private JSONValue checkEndCmd() {
     JSONValue c = parseJSON("{ \"command\": [], \"request_id\": 0 }");
     c["command"].array ~= JSONValue("get_property");
-    c["command"].array ~= JSONValue("percent-pos");
+    c["command"].array ~= JSONValue("idle");
     c["request_id"].integer = endRequestId;
     return c;
   }
