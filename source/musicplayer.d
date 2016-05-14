@@ -229,7 +229,7 @@ class mpv: Thread {
       return;
     }
 
-    dbm("mpv - req cmd: " ~ cmd);
+    //dbm("mpv - req cmd: " ~ cmd);
 
     auto s_answ = comm.send(cmd ~ "\n");
     if(s_answ == Socket.ERROR) {
@@ -369,7 +369,7 @@ class mpv: Thread {
           if(r == '\n' || r == '\x00') break;
           recv_str ~= r;
         }
-        dbm("mpv - recv: " ~ recv_str);
+        //dbm("mpv - recv: " ~ recv_str);
         mpvhandle(recv_str);
         Thread.sleep( dur!"msecs"(100) );
       }
