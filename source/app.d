@@ -98,9 +98,6 @@ vkAudio[] getShuffledOrServerMusic(int count, int offset) {
 
 private:
 
-const string
-  currentVersion = "0.7.2";
-
 const int
   // func keys
   k_up          = -2,

@@ -28,6 +28,9 @@ const bool debugMessagesEnabled = false;
 const bool dbmfe = true;
 const bool showTokenInLog = false;
 
+const string
+  currentVersion = "0.7.2-master";
+
 __gshared string dbmlog = "";
 __gshared dbgfname = "/tmp/vkdbg";
 File dbgff;
@@ -43,7 +46,7 @@ void initdbm() {
     if(!dbmfe) return;
     dbgmutex = new Mutex();
     dbgff = File(dbgfname, "w");
-    dbgff.write("log\n");
+    dbgff.write("vk-cli " ~ currentVersion ~ " log\n");
     dbgff.close();
 }
 
