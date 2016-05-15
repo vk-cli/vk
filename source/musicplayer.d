@@ -53,8 +53,10 @@ class MusicPlayer {
 
   this() {
     player = new mpv(
-      sec => setPlaytime(sec, false),
-      () => setPlaytime(0, true)
+      sec => setPlaytime(sec),
+      {
+        if(!trackOverStateCatched) trackOver();
+      }
     );
   }
 
@@ -106,29 +108,24 @@ class MusicPlayer {
     return min.to!string ~ ":" ~ sec.to!int.tzr;
   }
 
-  void setPlaytime(real sec, bool end) {
-    if (!end) {
-        real
-          trackd = currentTrack.durationSeconds.to!real,
-          step =  trackd / 50;
-        int newPos = floor(sec / step).to!int;
-        currentTrack.playtime = durToStr(sec);
-        if (position != newPos) {
-          position = newPos;
+  void setPlaytime(real sec) {
+    real
+      trackd = currentTrack.durationSeconds.to!real,
+      step =  trackd / 50;
+    int newPos = floor(sec / step).to!int;
+    currentTrack.playtime = durToStr(sec);
+    if (position != newPos) {
+      position = newPos;
 
-          if(newPos >= 50) newPos = 49;
-          else if (newPos < 0) newPos = 0;
+      if(newPos >= 50) newPos = 49;
+      else if (newPos < 0) newPos = 0;
 
-          auto newProgress = stockProgress.dup;
-          newProgress[newPos] = '|';
-          realProgress = newProgress.to!string;
-        }
-        playtimeUpdated = true;
-        trackOverStateCatched = false;
+      auto newProgress = stockProgress.dup;
+      newProgress[newPos] = '|';
+      realProgress = newProgress.to!string;
     }
-    else {
-      if(!trackOverStateCatched) trackOver();
-    }
+    playtimeUpdated = true;
+    trackOverStateCatched = false;
   }
 
   string prepareTrackUrl(string trackurl) {
@@ -189,7 +186,7 @@ class mpv: Thread {
 
   const
     socketPath = "/tmp/vkmpv",
-    socketArgument = "--input-unix-socket=", //compatibility with older versions, changed to "--input-ipc-server=" in mpv 0.17.0 
+    socketArgument = "--input-unix-socket=", //compatibility with older versions, changed to "--input-ipc-server=" in mpv 0.17.0
     playerExec = "mpv --idle --no-audio-display " ~ socketArgument ~ socketPath ~ " > /dev/null 2> /dev/null";
 
   const
@@ -299,10 +296,7 @@ class mpv: Thread {
           case "property-change":
             auto eid = m["id"].integer.to!int;
             if(eid == posPropertyId) posChanged(m["data"].floating.to!real);
-          break;
-
-
-
+            break;
           default: break;
         }
 
