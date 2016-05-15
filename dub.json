@@ -7,5 +7,6 @@
     "ncurses": "~master",
     "dcrypto": "~>1.2.2"
   },
-  "buildRequirements": ["allowWarnings"]
+  "buildRequirements": ["allowWarnings"],
+  "preGenerateCommands": ["rdmd generateVersion.d"]
 }
