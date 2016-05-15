@@ -64,7 +64,7 @@ Make dependencies:
 
 Optional:
 
-+ mplayer: for music playback
++ mpv >= 0.9.0: for music playback
 
 ### EXCLUSIVE UBUNTU DEPENDENCIES
 
