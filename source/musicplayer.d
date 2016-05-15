@@ -189,7 +189,8 @@ class mpv: Thread {
 
   const
     socketPath = "/tmp/vkmpv",
-    playerExec = "mpv --idle --no-audio-display --input-ipc-server=" ~ socketPath ~ " > /dev/null 2> /dev/null";
+    socketArgument = "--input-unix-socket=", //compatibility with older versions, changed to "--input-ipc-server=" in mpv 0.17.0 
+    playerExec = "mpv --idle --no-audio-display " ~ socketArgument ~ socketPath ~ " > /dev/null 2> /dev/null";
 
   const
     int
