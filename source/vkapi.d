@@ -1110,7 +1110,7 @@ class Longpoll : Thread {
 
         auto df = man.dialogsFactory;
 
-        if(!df.isOverrided(peer)) {
+        if(!df.isOverrided(peer) && !df.isBlank()) {
             auto blockdlg = df.getLoadedObjects
                                 .filter!(q => q.getPeer == peer)
                                 .takeOne;
@@ -1673,6 +1673,8 @@ class BlockFactory(T) {
             oid,
             iter,
             backiter = -1;
+        bool
+            blank = true;
         Block!T[uint] blockst;
         Block!T backBlock;
     }
@@ -1695,6 +1697,10 @@ class BlockFactory(T) {
 
     uint objectCount() {
         return blockst.values.map!(q => q.length).sum();
+    }
+
+    bool isBlank() {
+        return blank;
     }
 
     auto getLoadedObjects() {
@@ -1733,6 +1739,7 @@ class BlockFactory(T) {
 
         if(!nblk.isFilled) {
             nblk.downloadBlock();
+            blank = false;
             return null;
         }
         if(rel >= nblk.length) return null;
