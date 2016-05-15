@@ -199,6 +199,11 @@ struct sentMsg {
     sendState state = sendState.pending;
 }
 
+struct overridedLastseen {
+    long last_seen_utime;
+    string last_seen_str;
+}
+
 enum blockType {
     dialogs,
     music,
@@ -217,6 +222,7 @@ struct apiFwdIter {
 }
 
 __gshared {
+    overridedLastseen[int] lsc; //by uid
     nameCache nc;
     apiState ps;
     Mutex
@@ -1024,10 +1030,10 @@ class Longpoll : Thread {
                         triggerRead(u);
                         break;
                     case 8: //online\offline
-                        triggerOnline(u);
+                        triggerOnline(u, ct);
                         break;
                     case 9: //online\offline
-                        triggerOnline(u);
+                        triggerOnline(u, ct);
                         break;
                     default:
                         break;
@@ -1190,14 +1196,19 @@ class Longpoll : Thread {
         man.toggleUpdate();
     }
 
-    void triggerOnline(JSONValue u) {
+    void triggerOnline(JSONValue u, SysTime ct) {
         auto uid = u[1].integer.to!int * -1;
         auto flags = u[2].integer.to!int;
         auto event = u[0].integer.to!int;
         bool exit = (event == 9);
         if(!exit && event != 8) return;
 
-        if(exit) nc.setOnline(uid, false);
+        if(exit) {
+            nc.setOnline(uid, false);
+            auto uct = ct.toUnixTime();
+            lsc[uid].last_seen_utime = uct;
+            lsc[uid].last_seen_str = vktime(ct, uct);
+        }
         else nc.setOnline(uid, true);
 
         man.toggleUpdate();
@@ -2019,6 +2030,13 @@ class ClFriend : ClObject!vkFriend {
 
     override vkFriend* getObject() {
         obj.online = nc.getOnline(obj.id);
+        auto ovr_ls = obj.id in lsc;
+        if(ovr_ls) {
+            dbm("ovr_ls");
+            //obj.last_seen_utime = ovr_ls.last_seen_utime;
+            //obj.last_seen_str = ovr_ls.last_seen_str;
+            //todo resolve this shit << Override lastseen on offline trigger
+        }
         return &obj;
     }
 
