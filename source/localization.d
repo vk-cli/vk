@@ -95,6 +95,10 @@ void localize() {
   local["general_settings"] = lang("[ General Settings ]", "[ Общие настройки ]");
   local["no_connection"] = lang("No connection", "Нет соединения");
   local["err_noplayer"] = lang("mpv is not installed or not working properly", "mpv не установлен или работает неверно");
+  local["music_settings"] = lang("[ Music Settings ]", "[ Настройки музыки ]");
+  local["seek_percent_or_value"] = lang("Rewind track by: ", "Перематывать трек по: ");
+  local["seek_true"] = lang("2 %", "2 %");
+  local["seek_false"] = lang("15 sec", "15 сек");
 }
 
 void swapLang() {

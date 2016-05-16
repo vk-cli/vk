@@ -100,28 +100,32 @@ private:
 
 const int
   // func keys
-  k_up          = -2,
-  k_down        = -3,
-  k_right       = -4,
-  k_left        = -5,
-  k_home        = -6,
-  k_ins         = -7,
-  k_del         = -8,
-  k_end         = -9,
-  k_pageup      = -10,
-  k_pagedown    = -11,
-  k_enter       = 10,
-  k_esc         = 27,
-  k_tab         = 8,
-  k_ctrl_bckspc = 9,
-  k_prev        = 91,
-  k_rus_prev    = 133,
-  k_next        = 93,
-  k_rus_next    = 138,
-  k_o           = 111,
-  k_rus_o       = 137,
-  k_m           = 109,
-  k_rus_m       = 140,
+  k_up           = -2,
+  k_down         = -3,
+  k_right        = -4,
+  k_left         = -5,
+  k_home         = -6,
+  k_ins          = -7,
+  k_del          = -8,
+  k_end          = -9,
+  k_pageup       = -10,
+  k_pagedown     = -11,
+  k_enter        = 10,
+  k_esc          = 27,
+  k_tab          = 8,
+  k_ctrl_bckspc  = 9,
+  k_prev         = 91,
+  k_rus_prev     = 133,
+  k_next         = 93,
+  k_rus_next     = 138,
+  k_o            = 111,
+  k_rus_o        = 137,
+  k_m            = 109,
+  k_rus_m        = 140,
+  kg_rew_bck     = 60,
+  kg_rew_fwd     = 62,
+  kg_rew_bck_rus = 145,
+  kg_rew_fwd_rus = 174,
 
   // keys
   k_q        = 113,
@@ -163,7 +167,9 @@ const int[]
   kg_loop    = [k_o, k_rus_o],
   kg_mix     = [k_m, k_rus_m],
   kg_prev    = [k_prev, k_rus_prev],
-  kg_next    = [k_next, k_rus_next];
+  kg_next    = [k_next, k_rus_next],
+  kg_rewind_backward = [kg_rew_bck, kg_rew_bck_rus],
+  kg_rewind_forward  = [kg_rew_fwd, kg_rew_fwd_rus];
 
 const utfranges = [
   utf(19968, 40959, 1),
@@ -250,7 +256,7 @@ struct Win {
     scrollOffset, msgDrawSetting,
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive,
-    msgBufferSize;
+    msgBufferSize, seekValue = 15;
   string
     statusbarText, msgBuffer;
   bool
@@ -258,7 +264,7 @@ struct Win {
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag,
     showConvNotifications, sendOnline,
-    unicodeChars = true, shuffled;
+    unicodeChars = true, shuffled, seekPercentFlag;
 }
 
 void relocale() {
@@ -281,6 +287,8 @@ void parse(ref string[string] storage) {
   if ("show_conv_notif" in storage) win.showConvNotifications = storage["show_conv_notif"].to!bool;
   if ("send_online" in storage) win.sendOnline = storage["send_online"].to!bool;
   if ("unicode_chars" in storage) win.unicodeChars = storage["unicode_chars"].to!bool;
+  if ("seek_percent_or_value" in storage) win.seekPercentFlag = storage["seek_percent_or_value"].to!bool;
+
   relocale;
 }
 
@@ -295,6 +303,7 @@ void update(ref string[string] storage) {
   storage["show_conv_notif"] = win.showConvNotifications.to!string;
   storage["send_online"] = win.sendOnline.to!string;
   storage["unicode_chars"] = win.unicodeChars.to!string;
+  storage["seek_percent_or_value"] = win.seekPercentFlag.to!string;
   storage.save;
 }
 
@@ -777,8 +786,6 @@ void msgBufferEvents() {
 
 void globalMplayerShortcuts() {
   if (canFind(kg_pause, win.key)) mplayer.pause;
-  if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
-  if (canFind(kg_mix, win.key) && win.activeBuffer == Buffers.music) toggleShuffleMode;
   if (canFind(kg_next, win.key)) {
     if (mplayer.repeatMode) mplayer.trackNum++;
     mplayer.trackOver;
@@ -787,6 +794,10 @@ void globalMplayerShortcuts() {
     mplayer.trackNum -= 2-mplayer.repeatMode;
     mplayer.trackOver;
   }
+  if (canFind(kg_rewind_forward, win.key)) mplayer.player.relativeSeek(win.seekValue, win.seekPercentFlag);
+  if (canFind(kg_rewind_backward, win.key)) mplayer.player.relativeSeek(-win.seekValue, win.seekPercentFlag);
+  if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
+  if (canFind(kg_mix, win.key) && win.activeBuffer == Buffers.music) toggleShuffleMode;
 }
 
 void nonChatEvents() {
@@ -994,6 +1005,12 @@ void toggleSendOnline(ref ListElement le) {
   le.name = "send_online".getLocal ~ (win.sendOnline.to!string).getLocal;
 }
 
+void toggleSeekPercentOrValue(ref ListElement le) {
+  win.seekPercentFlag = !win.seekPercentFlag;
+  win.seekValue = win.seekPercentFlag ? 2 : 15;
+  le.name = "seek_percent_or_value".getLocal ~ ("seek_" ~ win.seekPercentFlag.to!string).getLocal;
+}
+
 ListElement[] GenerateHelp() {
   return [
     ListElement(center("general_navig".getLocal, COLS-16, ' ')),
@@ -1027,6 +1044,8 @@ ListElement[] GenerateSettings() {
   list ~= ListElement(center("general_settings".getLocal, COLS-16, ' '));
   list ~= ListElement("send_online".getLocal ~ (win.sendOnline.to!string).getLocal, "", &toggleSendOnline);
   list ~= ListElement("unicode_chars".getLocal ~ (win.unicodeChars.to!string).getLocal, "", &toggleUnicodeChars);
+  list ~= ListElement(center("music_settings".getLocal, COLS-16, ' '));
+  list ~= ListElement("seek_percent_or_value".getLocal ~ ("seek_" ~ win.seekPercentFlag.to!string).getLocal, "", &toggleSeekPercentOrValue);
   return list;
 }
 
