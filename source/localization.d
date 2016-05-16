@@ -94,7 +94,7 @@ void localize() {
   local["banned"] = lang("banned", "заблокирован");
   local["general_settings"] = lang("[ General Settings ]", "[ Общие настройки ]");
   local["no_connection"] = lang("No connection", "Нет соединения");
-  local["err_noplayer"] = lang("mpv haven't installed or not working properly", "mpv не установлен или работает неверно");
+  local["err_noplayer"] = lang("mpv is not installed or not working properly", "mpv не установлен или работает неверно");
 }
 
 void swapLang() {

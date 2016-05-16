@@ -1074,13 +1074,16 @@ ListElement[] GetFriends() {
 }
 
 ListElement[] setCurrentTrack() {
-  vkAudio track;
-  if (!win.isMusicPlaying && LINES-3-(win.active-win.scrollOffset) <= 5) win.scrollOffset += 5-(LINES-3-(win.active-win.scrollOffset));
-  if (win.isMusicPlaying && mplayer.sameTrack(win.active)) mplayer.pause;
+  if (!mplayer.player.isPlayerInit) "err_noplayer".getLocal.SetStatusbar;
   else {
-    mplayer.play(win.active);
-    mplayer.offset = win.scrollOffset;
-    win.isMusicPlaying = true;
+    vkAudio track;
+    if (!win.isMusicPlaying && LINES-3-(win.active-win.scrollOffset) <= 5) win.scrollOffset += 5-(LINES-3-(win.active-win.scrollOffset));
+    if (win.isMusicPlaying && mplayer.sameTrack(win.active)) mplayer.pause;
+    else {
+      mplayer.play(win.active);
+      mplayer.offset = win.scrollOffset;
+      win.isMusicPlaying = true;
+    }
   }
   return new ListElement[0];
 }
