@@ -78,22 +78,27 @@ void Exit(string msg = "", int ecode = 0) {
 }
 
 vkAudio[] getShuffledOrServerMusic(int count, int offset) {
+  //("[" ~ win.savedShuffledLen.to!string ~ "]").SetStatusbar;
   if (mplayer.shuffleMode) {
-    if (win.shuffledMusic.length != api.getServerCount(blockType.music)-3) {
+    if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
+    if (!win.shuffleLoadingIsOver) {
+      win.workaroundCounter++;
       win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
-      ("[" ~ "=".replicate(floor(win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real * 20).to!int) ~ "|" ~ "=".replicate(20 - (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real * 20).to!int) ~ "]")
-      .SetStatusbar;
-      //("[" ~ win.shuffledMusic.length.to!string ~ "/" ~ api.getServerCount(blockType.music).to!string ~ "]").SetStatusbar;
+      auto step = (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real) * 20;
+      ("[" ~ "=".replicate(floor(step).to!int) ~ "|" ~ "=".replicate(20 - floor(step).to!int) ~ "]").SetStatusbar;
     } else {
       if (!win.shuffled) {
         SetStatusbar;
         randomShuffle(win.shuffledMusic);
         win.shuffled = true;
-      }
+        win.savedShuffledLen = win.shuffledMusic.length.to!int;
+    } else 
+        dbm("offset = " ~ offset.to!string);
+        dbm("offset + count = " ~ (offset+count).to!string);
+        return win.shuffledMusic[offset..offset+count];
     }
-    return win.shuffledMusic[offset..offset+count];
-  } else
-    return api.getBufferedMusic(count, offset);
+  }
+  return api.getBufferedMusic(count, offset);
 }
 
 private:
@@ -256,7 +261,8 @@ struct Win {
     scrollOffset, msgDrawSetting,
     activeBuffer, chatID, lastBuffer,
     lastScrollOffset, lastScrollActive,
-    msgBufferSize, seekValue = 15;
+    msgBufferSize, seekValue = 15,
+    savedShuffledLen, workaroundCounter;
   string
     statusbarText, msgBuffer;
   bool
@@ -264,7 +270,8 @@ struct Win {
     isRainbowChat, isRainbowOnlyInGroupChats,
     isMessageWriting, showTyping, selectFlag,
     showConvNotifications, sendOnline,
-    unicodeChars = true, shuffled, seekPercentFlag;
+    unicodeChars = true, shuffled, seekPercentFlag,
+    shuffleLoadingIsOver;
 }
 
 void relocale() {
@@ -674,8 +681,13 @@ void jumpToBeginning() {
 }
 
 void jumpToEnd() {
-  win.active = activeBufferMaxLen-1;
-  win.scrollOffset = activeBufferMaxLen-LINES+2+(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5;
+  if (win.shuffled && win.activeBuffer == Buffers.music) {
+    win.active = win.savedShuffledLen-1;
+    win.scrollOffset = win.savedShuffledLen-LINES+2+(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5;
+  } else {
+    win.active = activeBufferMaxLen-1;
+    win.scrollOffset = activeBufferMaxLen-LINES+2+(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5;
+  }
   if (win.scrollOffset < 0) win.scrollOffset = 0;
 }
 
@@ -853,6 +865,11 @@ void downEvent() {
     else {
       if (win.active-win.scrollOffset == LINES-3-(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5)
         win.scrollOffset++;
+
+      if (win.shuffled && win.activeBuffer == Buffers.music && win.scrollOffset+LINES-2-win.isMusicPlaying*4 > win.savedShuffledLen) {
+        jumpToBeginning;
+        win.active--;
+      }
       if (win.activeBuffer != Buffers.none) {
         if (activeBufferEventsAllowed) win.active++;
       } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;
