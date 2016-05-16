@@ -2,12 +2,11 @@
 A console (ncurses) client for vk.com written in D
 
 
-### Unstable branches
+### Unstable branch
 + **master** - current upstream 
 
-### Stable Versions
-+ **0.7.1a** - [some hotfixes](https://vk.com/wall-69278962_1157)
-+ **0.7a1**  - [alpha release](https://vk.com/wall-69278962_1081)
+### Stable Version
++ **0.7.1a** - [latest release](https://vk.com/wall-69278962_1157)
 
 # Screenshots
 
