@@ -775,9 +775,7 @@ void msgBufferEvents() {
   else if (win.key == k_right && win.cursor.x != win.msgBuffer.utfLength) win.cursor.x++;
 }
 
-void nonChatEvents() {
-  if (canFind(kg_down, win.key)) downEvent;
-  if (canFind(kg_up, win.key)) upEvent;
+void globalMplayerShortcuts() {
   if (canFind(kg_pause, win.key)) mplayer.pause;
   if (canFind(kg_loop, win.key)) mplayer.repeatMode = !mplayer.repeatMode;
   if (canFind(kg_mix, win.key) && win.activeBuffer == Buffers.music) toggleShuffleMode;
@@ -789,6 +787,12 @@ void nonChatEvents() {
     mplayer.trackNum -= 2-mplayer.repeatMode;
     mplayer.trackOver;
   }
+}
+
+void nonChatEvents() {
+  globalMplayerShortcuts;
+  if (canFind(kg_down, win.key)) downEvent;
+  if (canFind(kg_up, win.key)) upEvent;
   else if (canFind(kg_right, win.key) && !win.selectFlag) {
     win.selectFlag = true;
     selectEvent;
@@ -811,6 +815,7 @@ void nonChatEvents() {
 }
 
 void chatEvents() {
+  globalMplayerShortcuts;
   if (canFind(kg_up, win.key)) win.scrollOffset += 2;
   else if (canFind(kg_down, win.key)) win.scrollOffset -= 2;
   else if (win.key == k_pagedown) win.scrollOffset -= LINES/2;
