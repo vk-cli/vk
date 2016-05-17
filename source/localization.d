@@ -99,6 +99,7 @@ void localize() {
   local["seek_percent_or_value"] = lang("Rewind track by: ", "Перематывать трек по: ");
   local["seek_true"] = lang("2 %", "2 %");
   local["seek_false"] = lang("15 sec", "15 сек");
+  local["help_rewind"]   = lang("< >                            ->   Rewind track", "< >                           ->   Перематывать трек");
 }
 
 void swapLang() {
