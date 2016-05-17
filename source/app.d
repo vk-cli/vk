@@ -79,8 +79,6 @@ void Exit(string msg = "", int ecode = 0) {
 
 vkAudio[] getShuffledOrServerMusic(int count, int offset) {
   if (mplayer.shuffleMode) {
-    dbm("offset = " ~ offset.to!string);
-    dbm("offset + count = " ~ (offset+count).to!string);
     if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
     if (!win.shuffleLoadingIsOver) {
       win.workaroundCounter++;
