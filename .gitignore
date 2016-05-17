@@ -10,3 +10,4 @@ out
 *.iml
 dbg
 dub.selections.json
+source/vkversion.d
