@@ -8,7 +8,7 @@ void main() {
     lastCommitHash = matchFirst(executeShell("git log -1").output, regex(r"(?:^commit\s+)([0-9a-f]{40})"))[1][0..7],
     currentBranch = matchFirst(executeShell("git status").output, regex(r"(?:^On branch\s+)(.+)"))[1];
 
-  auto fileName = "source/utils.d";
+  auto fileName = "source/vkversion.d";
   auto text = readText(fileName).split("\n");
   auto reg = regex("(^\\s*currentVersion\\s*=\\s*\")(.+)(\"\\s*;)");
   foreach (ref line; text) {
