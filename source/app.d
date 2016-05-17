@@ -69,7 +69,9 @@ uint utfLength(string inp) {
 }
 
 void Exit(string msg = "", int ecode = 0) {
-  stop;
+  dbmclose;
+  endwin;
+  mplayer.exitPlayer;
   if (msg != "") {
     writeln("FAIL");
     writeln(msg);
@@ -1214,12 +1216,6 @@ void test() {
     }*/
 }
 
-void stop() {
-  dbmclose;
-  endwin;
-  mplayer.exitPlayer;
-}
-
 void main(string[] args) {
   foreach(e; args) {
     if (e == "-v" || e == "-version") {
@@ -1234,19 +1230,15 @@ void main(string[] args) {
   color;
   curs_set(0);
   noecho;
-  scope(exit)    endwin;
-  scope(failure) endwin;
+  scope(failure) Exit;
 
   storage = load;
   storage.parse;
 
-  try {
+  try 
     api = "token" in storage ? new VkMan(storage["token"]) : storage.get_token;
-  } catch (BackendException e) {
-    stop;
-    writeln(e.msg);
-    exit(0);
-  }
+  catch
+    (BackendException e) Exit(e.msg);
 
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
