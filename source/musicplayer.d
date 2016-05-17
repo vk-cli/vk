@@ -148,6 +148,8 @@ class MusicPlayer {
   ListElement[] getMplayerUI(int cols) {
     ListElement[] playerUI;
     auto fcols = cols-16;
+    if (currentTrack.artist.utfLength / 2 > fcols / 2) currentTrack.artist = currentTrack.artist[0..fcols-4];
+    if (currentTrack.title.utfLength / 2 > fcols / 2) currentTrack.title = currentTrack.title[0..fcols-4];
     auto artistrepl = fcols/2-currentTrack.artist.utfLength/2;
     auto titlerepl = fcols/2-currentTrack.title.utfLength/2;
 
