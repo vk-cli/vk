@@ -78,7 +78,6 @@ void Exit(string msg = "", int ecode = 0) {
 }
 
 vkAudio[] getShuffledOrServerMusic(int count, int offset) {
-  //("[" ~ win.savedShuffledLen.to!string ~ "]").SetStatusbar;
   if (mplayer.shuffleMode) {
     if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
     if (!win.shuffleLoadingIsOver) {
@@ -870,6 +869,7 @@ void downEvent() {
         jumpToBeginning;
         win.active--;
       }
+
       if (win.activeBuffer != Buffers.none) {
         if (activeBufferEventsAllowed) win.active++;
       } else win.active >= win.buffer.length-1 ? win.active = 0 : win.active++;

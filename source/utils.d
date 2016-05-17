@@ -30,7 +30,7 @@ const bool
     showTokenInLog = false;
 
 const string
-  currentVersion = "0.7.2-master-f77c16b";
+  currentVersion = "0.7.2-master-757ae59";
 
 File dbgff;
 __gshared string dbmlog = "";
