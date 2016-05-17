@@ -22,15 +22,12 @@ module utils;
 import std.stdio, std.array, std.range, std.string, std.file;
 import core.thread, core.sync.mutex, core.exception;
 import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
-import localization, app;
+import localization, app, vkversion;
 
 const bool
     debugMessagesEnabled = false,
     dbmfe = true,
     showTokenInLog = false;
-
-const string
-  currentVersion = "0.7.2-master-d645a2b";
 
 File dbgff;
 __gshared string dbmlog = "";
