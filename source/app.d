@@ -79,6 +79,8 @@ void Exit(string msg = "", int ecode = 0) {
 
 vkAudio[] getShuffledOrServerMusic(int count, int offset) {
   if (mplayer.shuffleMode) {
+    dbm("offset = " ~ offset.to!string);
+    dbm("offset + count = " ~ (offset+count).to!string);
     if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
     if (!win.shuffleLoadingIsOver) {
       win.workaroundCounter++;
@@ -91,9 +93,7 @@ vkAudio[] getShuffledOrServerMusic(int count, int offset) {
         randomShuffle(win.shuffledMusic);
         win.shuffled = true;
         win.savedShuffledLen = win.shuffledMusic.length.to!int;
-    } else 
-        dbm("offset = " ~ offset.to!string);
-        dbm("offset + count = " ~ (offset+count).to!string);
+      } else 
         return win.shuffledMusic[offset..offset+count];
     }
   }
@@ -681,8 +681,8 @@ void jumpToBeginning() {
 
 void jumpToEnd() {
   if (win.shuffled && win.activeBuffer == Buffers.music) {
-    win.active = win.savedShuffledLen-1;
-    win.scrollOffset = win.savedShuffledLen-LINES+2+(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5;
+    win.active = win.savedShuffledLen-1-1*(win.isMusicPlaying);
+    win.scrollOffset = win.savedShuffledLen-LINES+2+(win.isMusicPlaying)*4;
   } else {
     win.active = activeBufferMaxLen-1;
     win.scrollOffset = activeBufferMaxLen-LINES+2+(win.activeBuffer == Buffers.music && win.isMusicPlaying)*5;
