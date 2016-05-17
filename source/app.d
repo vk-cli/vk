@@ -1224,12 +1224,14 @@ void main(string[] args) {
     }
   }
 
-  initdbm;
   //test;
+  initdbm;
   init;
   color;
   curs_set(0);
   noecho;
+  
+  scope(exit) Exit;
   scope(failure) Exit;
 
   storage = load;
@@ -1254,6 +1256,4 @@ void main(string[] args) {
     refresh;
     controller;
   }
-
-  Exit;
 }
