@@ -46,13 +46,6 @@ struct ListElement {
   bool isConference;
 }
 
-struct Notify {
-  string text;
-  TimeOfDay
-    currentTime,
-    clearTime;
-}
-
 uint utfLength(string inp) {
   auto wstrInput = inp.toUTF16wrepl;
   auto s = wstrInput.length.to!uint;
@@ -220,6 +213,13 @@ string getChar(string charName) {
       default       : return charName;
     }
   }
+}
+
+struct Notify {
+  string text;
+  TimeOfDay
+    currentTime,
+    clearTime;
 }
 
 struct Cursor {
