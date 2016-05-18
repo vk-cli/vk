@@ -1247,7 +1247,7 @@ class OnlineNotifier : Thread {
             a.singleAsync(a.S_ONLINE_STATUS, () => api.accountSetOffline());
             dbm("offline status sent (shed)");
             dbm("sheduled onlineNotifier shutdown");
-            pragma(msg, "reticulating splines...");
+            pragma(msg, "Reticulating splines...");
         }
     }
 
@@ -1461,6 +1461,8 @@ class VkMan {
             if(!f.prepare) return [];
             f.seek(0);
 
+            f.isBlank();
+
             auto rt = (*f)
                     .filter!(q => q !is null)
                     .inputRetro
@@ -1468,7 +1470,6 @@ class VkMan {
                     .joinerBidirectional
                     .dropBack(offset)
                     .takeBackArray(count);
-
             return rt;
         }
     }
@@ -1750,7 +1751,6 @@ class BlockFactory(T) {
 
         if(!nblk.isFilled) {
             nblk.downloadBlock();
-            blank = false;
             return null;
         }
         if(rel >= nblk.length) return null;
@@ -1764,6 +1764,7 @@ class BlockFactory(T) {
             if(isOverrided(relobj.getObject.id)) return null;
         }
 
+        blank = false;
         return relobj;
     }
 
@@ -1779,7 +1780,7 @@ class BlockFactory(T) {
 
     bool prepare() {
         if(data.serverCount != -1){
-            if(backiter == -1) backiter = data.serverCount + backBlock.length;
+            if(backiter == -1) backiter = data.serverCount;
             return true;
         }
         getblk(0).downloadBlock();
@@ -1787,7 +1788,7 @@ class BlockFactory(T) {
     }
 
     bool empty() {
-        return iter >= backiter;
+        return iter >= (backiter + backBlock.length);
     }
 
     T front() {
