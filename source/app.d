@@ -1069,7 +1069,13 @@ ListElement[] GenerateSettings() {
 
 ListElement[] GetDialogs() {
   ListElement[] list;
-  string newMsg;
+  string
+    newMsg,
+    unreadText,
+    lastMsg;
+  uint space;
+  
+  win.activeBuffer = Buffers.dialogs;
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   
   if (api.dialogsFactory.getBlockObject(win.scrollOffset) !is null && dialogs.length != LINES-2 && activeBufferMaxLen > LINES-2) 
@@ -1078,22 +1084,18 @@ ListElement[] GetDialogs() {
   foreach(e; dialogs) {
     newMsg = e.unread ? getChar("unread") : "  ";
     if (e.outbox) newMsg = "  ";
-    string
-      unreadText,
-      lastMsg = e.lastMessage.replace("\n", " ");
-    if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length) {
+    lastMsg = e.lastMessage.replace("\n", " ");
+    if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length)
       lastMsg = lastMsg.toUTF16wrepl[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].toUTF8wrepl;
-    }
     if (e.unread) {
       if (e.outbox) unreadText ~= getChar("outbox");
       else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ getChar("inbox");
-      uint space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
+      space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
       if (space < COLS) unreadText = " ".replicate(space) ~ unreadText;
       else unreadText = "   " ~ unreadText;
     }
     list ~= ListElement(newMsg ~ e.name, ": " ~ lastMsg ~ unreadText, &chat, &GetChat, e.online, e.id, e.isChat);
   }
-  win.activeBuffer = Buffers.dialogs;
   return list;
 }
 
