@@ -46,13 +46,6 @@ struct ListElement {
   bool isConference;
 }
 
-struct Notify {
-  string text;
-  TimeOfDay
-    currentTime,
-    clearTime;
-}
-
 uint utfLength(string inp) {
   auto wstrInput = inp.toUTF16wrepl;
   auto s = wstrInput.length.to!uint;
@@ -69,7 +62,9 @@ uint utfLength(string inp) {
 }
 
 void Exit(string msg = "", int ecode = 0) {
-  stop;
+  dbmclose;
+  endwin;
+  mplayer.exitPlayer;
   if (msg != "") {
     writeln("FAIL");
     writeln(msg);
@@ -77,23 +72,21 @@ void Exit(string msg = "", int ecode = 0) {
   exit(ecode);
 }
 
-vkAudio[] getShuffledOrServerMusic(int count, int offset) {
-  if (mplayer.shuffleMode) {
-    if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
-    if (!win.shuffleLoadingIsOver) {
-      win.workaroundCounter++;
-      win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
-      auto step = (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real) * 20;
-      ("[" ~ "=".replicate(floor(step).to!int) ~ "|" ~ "=".replicate(20 - floor(step).to!int) ~ "]").SetStatusbar;
-    } else {
-      if (!win.shuffled) {
-        SetStatusbar;
-        randomShuffle(win.shuffledMusic);
-        win.shuffled = true;
-        win.savedShuffledLen = win.shuffledMusic.length.to!int;
-      } else 
-        return win.shuffledMusic[offset..offset+count];
-    }
+vkAudio[] getShuffledMusic(int count, int offset) {
+  if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
+  if (!win.shuffleLoadingIsOver) {
+    win.workaroundCounter++;
+    win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
+    auto step = (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real) * 20;
+    ("[" ~ "=".replicate(floor(step).to!int) ~ "|" ~ "=".replicate(20 - floor(step).to!int) ~ "]").SetStatusbar;
+  } else {
+    if (!win.shuffled) {
+      SetStatusbar;
+      randomShuffle(win.shuffledMusic);
+      win.shuffled = true;
+      win.savedShuffledLen = win.shuffledMusic.length.to!int;
+    } else 
+      return win.shuffledMusic[offset..offset+count];
   }
   return api.getBufferedMusic(count, offset);
 }
@@ -220,6 +213,13 @@ string getChar(string charName) {
       default       : return charName;
     }
   }
+}
+
+struct Notify {
+  string text;
+  TimeOfDay
+    currentTime,
+    clearTime;
 }
 
 struct Cursor {
@@ -672,7 +672,7 @@ void forceRefresh() {
   }
 }
 
-void jumpToBeginning() {
+public void jumpToBeginning() {
   win.active = 0;
   win.scrollOffset = 0;
 }
@@ -1067,7 +1067,13 @@ ListElement[] GenerateSettings() {
 
 ListElement[] GetDialogs() {
   ListElement[] list;
-  string newMsg;
+  string
+    newMsg,
+    unreadText,
+    lastMsg;
+  uint space;
+
+  win.activeBuffer = Buffers.dialogs;
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   
   if (api.dialogsFactory.getBlockObject(win.scrollOffset) !is null && dialogs.length != LINES-2 && activeBufferMaxLen > LINES-2) 
@@ -1076,22 +1082,18 @@ ListElement[] GetDialogs() {
   foreach(e; dialogs) {
     newMsg = e.unread ? getChar("unread") : "  ";
     if (e.outbox) newMsg = "  ";
-    string
-      unreadText,
-      lastMsg = e.lastMessage.replace("\n", " ");
-    if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length) {
+    lastMsg = e.lastMessage.replace("\n", " ");
+    if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length)
       lastMsg = lastMsg.toUTF16wrepl[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].toUTF8wrepl;
-    }
     if (e.unread) {
       if (e.outbox) unreadText ~= getChar("outbox");
       else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ getChar("inbox");
-      uint space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
+      space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
       if (space < COLS) unreadText = " ".replicate(space) ~ unreadText;
       else unreadText = "   " ~ unreadText;
     }
     list ~= ListElement(newMsg ~ e.name, ": " ~ lastMsg ~ unreadText, &chat, &GetChat, e.online, e.id, e.isChat);
   }
-  win.activeBuffer = Buffers.dialogs;
   return list;
 }
 
@@ -1138,11 +1140,11 @@ ListElement[] GetMusic() {
   vkAudio[] music;
 
   win.activeBuffer = Buffers.music;
-  music = getShuffledOrServerMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
+  if (mplayer.shuffleMode)
+    music = getShuffledMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
+  else
+    music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
   win.playerUI = mplayer.getMplayerUI(COLS);
-
-  //if (api.musicFactory.getBlockObject(win.scrollOffset) !is null && music.length != LINES-2-win.isMusicPlaying*4 && activeBufferMaxLen > LINES-2) 
-    //music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset-(LINES-2-music.length-win.isMusicPlaying*5).to!int);
 
   foreach(e; music) {
     string indicator = (mplayer.currentTrack.id == e.id.to!string) ? mplayer.musicState ? getChar("play") : getChar("pause") : "    ";
@@ -1214,12 +1216,6 @@ void test() {
     }*/
 }
 
-void stop() {
-  dbmclose;
-  endwin;
-  mplayer.exitPlayer;
-}
-
 void main(string[] args) {
   foreach(e; args) {
     if (e == "-v" || e == "-version") {
@@ -1228,25 +1224,23 @@ void main(string[] args) {
     }
   }
 
-  initdbm;
   //test;
+  initdbm;
   init;
   color;
   curs_set(0);
   noecho;
-  scope(exit)    endwin;
-  scope(failure) endwin;
+  
+  scope(exit) Exit;
+  scope(failure) Exit;
 
   storage = load;
   storage.parse;
 
-  try {
+  try 
     api = "token" in storage ? new VkMan(storage["token"]) : storage.get_token;
-  } catch (BackendException e) {
-    stop;
-    writeln(e.msg);
-    exit(0);
-  }
+  catch
+    (BackendException e) Exit(e.msg);
 
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
@@ -1262,6 +1256,4 @@ void main(string[] args) {
     refresh;
     controller;
   }
-
-  Exit;
 }
