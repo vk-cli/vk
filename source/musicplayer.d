@@ -23,7 +23,7 @@ import std.process, std.stdio, std.string,
        std.socket, std.json;
 import core.thread;
 import app, utils;
-import vkapi: VkMan;
+import vkapi: VkMan, blockType, vkAudio;
 
 struct Track {
   string artist, title, duration, playtime, id;
@@ -83,7 +83,13 @@ class MusicPlayer {
   void play(int position) {
     trackOverStateCatched = true;
     trackNum = position;
-    auto track = getShuffledOrServerMusic(1, position)[0];
+
+    vkAudio track;
+    if (mplayer.shuffleMode)
+      track = getShuffledMusic(1, position)[0];
+    else
+      track = api.getBufferedMusic(1, position)[0];
+
     currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string, track.duration_sec);
     loadFile(track.url);
   }
@@ -138,7 +144,19 @@ class MusicPlayer {
       dbm("catched trackOver");
       trackOverStateCatched = true;
       if (!repeatMode) trackNum++;
-      auto track = getShuffledOrServerMusic(1, trackNum)[0];
+      int amountOfTracks = mplayer.shuffleMode ? win.savedShuffledLen : api.getServerCount(blockType.music);
+      if (trackNum == amountOfTracks) {
+        jumpToBeginning;
+        mplayer.trackNum = win.active;
+        mplayer.offset = win.scrollOffset;
+      }
+
+      vkAudio track;
+      if (mplayer.shuffleMode)
+        track = getShuffledMusic(1, trackNum)[0];
+      else
+        track = api.getBufferedMusic(1, trackNum)[0];
+
       loadFile(track.url);
       currentTrack = Track(track.artist, track.title, track.duration_str, "", track.id.to!string, track.duration_sec);
     }
@@ -165,7 +183,11 @@ class MusicPlayer {
   }
 
   bool sameTrack(int position) {
-    auto track = getShuffledOrServerMusic(1, position)[0];
+    vkAudio track;
+    if (mplayer.shuffleMode)
+      track = getShuffledMusic(1, position)[0];
+    else
+      track = api.getBufferedMusic(1, position)[0];
     return currentTrack.id == track.id.to!string;
   }
 }

@@ -79,23 +79,21 @@ void Exit(string msg = "", int ecode = 0) {
   exit(ecode);
 }
 
-vkAudio[] getShuffledOrServerMusic(int count, int offset) {
-  if (mplayer.shuffleMode) {
-    if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
-    if (!win.shuffleLoadingIsOver) {
-      win.workaroundCounter++;
-      win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
-      auto step = (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real) * 20;
-      ("[" ~ "=".replicate(floor(step).to!int) ~ "|" ~ "=".replicate(20 - floor(step).to!int) ~ "]").SetStatusbar;
-    } else {
-      if (!win.shuffled) {
-        SetStatusbar;
-        randomShuffle(win.shuffledMusic);
-        win.shuffled = true;
-        win.savedShuffledLen = win.shuffledMusic.length.to!int;
-      } else 
-        return win.shuffledMusic[offset..offset+count];
-    }
+vkAudio[] getShuffledMusic(int count, int offset) {
+  if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
+  if (!win.shuffleLoadingIsOver) {
+    win.workaroundCounter++;
+    win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
+    auto step = (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real) * 20;
+    ("[" ~ "=".replicate(floor(step).to!int) ~ "|" ~ "=".replicate(20 - floor(step).to!int) ~ "]").SetStatusbar;
+  } else {
+    if (!win.shuffled) {
+      SetStatusbar;
+      randomShuffle(win.shuffledMusic);
+      win.shuffled = true;
+      win.savedShuffledLen = win.shuffledMusic.length.to!int;
+    } else 
+      return win.shuffledMusic[offset..offset+count];
   }
   return api.getBufferedMusic(count, offset);
 }
@@ -674,7 +672,7 @@ void forceRefresh() {
   }
 }
 
-void jumpToBeginning() {
+public void jumpToBeginning() {
   win.active = 0;
   win.scrollOffset = 0;
 }
@@ -1074,7 +1072,7 @@ ListElement[] GetDialogs() {
     unreadText,
     lastMsg;
   uint space;
-  
+
   win.activeBuffer = Buffers.dialogs;
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
   
@@ -1142,11 +1140,11 @@ ListElement[] GetMusic() {
   vkAudio[] music;
 
   win.activeBuffer = Buffers.music;
-  music = getShuffledOrServerMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
+  if (mplayer.shuffleMode)
+    music = getShuffledMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
+  else
+    music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset);
   win.playerUI = mplayer.getMplayerUI(COLS);
-
-  //if (api.musicFactory.getBlockObject(win.scrollOffset) !is null && music.length != LINES-2-win.isMusicPlaying*4 && activeBufferMaxLen > LINES-2) 
-    //music = api.getBufferedMusic(LINES-2-win.isMusicPlaying*4, win.scrollOffset-(LINES-2-music.length-win.isMusicPlaying*5).to!int);
 
   foreach(e; music) {
     string indicator = (mplayer.currentTrack.id == e.id.to!string) ? mplayer.musicState ? getChar("play") : getChar("pause") : "    ";
