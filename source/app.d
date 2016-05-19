@@ -1080,6 +1080,7 @@ ListElement[] GetDialogs() {
     dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset-(LINES-2-dialogs.length).to!int);
 
   foreach(e; dialogs) {
+    unreadText = "";
     newMsg = e.unread ? getChar("unread") : "  ";
     if (e.outbox) newMsg = "  ";
     lastMsg = e.lastMessage.replace("\n", " ");
