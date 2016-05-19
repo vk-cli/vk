@@ -1127,10 +1127,11 @@ ListElement[] setCurrentTrack() {
 
 void toggleShuffleMode() {
   mplayer.shuffleMode = !mplayer.shuffleMode;
-  randomShuffle(win.shuffledMusic);
-  jumpToBeginning;
-  mplayer.trackNum = win.active;
-  mplayer.offset = win.scrollOffset;
+  if (mplayer.shuffleMode) {
+    randomShuffle(win.shuffledMusic);
+    jumpToBeginning;
+    mplayer.offset = win.scrollOffset;
+  }
 }
 
 ListElement[] GetMusic() {
