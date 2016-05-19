@@ -73,7 +73,7 @@ void Exit(string msg = "", int ecode = 0) {
 }
 
 vkAudio[] getShuffledMusic(int count, int offset) {
-  if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+6) win.shuffleLoadingIsOver = true;
+  if (win.workaroundCounter == floor(api.getServerCount(blockType.music)/100.0)+4) win.shuffleLoadingIsOver = true;
   if (!win.shuffleLoadingIsOver) {
     win.workaroundCounter++;
     win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
