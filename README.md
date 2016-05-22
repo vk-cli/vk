@@ -74,12 +74,6 @@ Optional:
 
 ### Our GPG keys
 
-```
-C990 689C 7692 B5E0 2057  6092 67DB 7D5C 3457 ECED 
-vk-cli developers team <vk-cli.dev@ya.ru>
-https://pgp.mit.edu/
-```
-
 To verify signed files, first you need to import keys:
 
 ` $ gpg  --keyserver pgp.mit.edu --recv-keys 0x3457ECED `
