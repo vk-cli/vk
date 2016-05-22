@@ -6,7 +6,7 @@ A console (ncurses) client for vk.com written in D
 + **master** - current upstream 
 
 ### Stable Version
-+ **0.7.1a** - [latest release](https://vk.com/wall-69278962_1157)
++ **0.7.2** - [latest release](https://github.com/HaCk3Dq/vk/releases/)
 
 # Screenshots
 
@@ -69,7 +69,7 @@ Optional:
 
 + libncursesw5-dev
 + libssl-dev
-+ mplayer
++ mpv >= 0.9.0 (ppa:mc3man/mpv-tests)
 + curl
 
 ### Our GPG keys
