@@ -42,6 +42,8 @@ execute.accountInit {
     sc.friends = API.friends.get().count;
     sc.audio = API.audio.get().count;
 
+    API.stats.trackVisitor();
+
     return {"me": me[0], "counters": c, "sc": sc};
 }
 
