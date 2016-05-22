@@ -1035,10 +1035,10 @@ ListElement[] GenerateHelp() {
     ListElement("help_homend".getLocal),
     ListElement("help_exit".getLocal),
     ListElement("help_refr".getLocal),
+    ListElement("help_123".getLocal),
     ListElement("help_pause".getLocal),
     ListElement("help_loop".getLocal),
     ListElement("help_mix".getLocal),
-    ListElement("help_123".getLocal),
     ListElement("help_rewind".getLocal),
   ];
 }
