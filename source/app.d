@@ -1221,7 +1221,7 @@ void test() {
 void main(string[] args) {
   foreach(e; args) {
     if (e == "-v" || e == "-version") {
-      writefln("vk-cli v%s", currentVersion);
+      writefln("vk-cli %s", currentVersion);
       exit(0);
     }
   }
