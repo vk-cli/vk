@@ -789,6 +789,7 @@ class AsyncOrder : Thread {
     }
 
     private void procOrder() {
+        dbm("procOrder start");
         while(true) {
             if(order.length != 0) {
                 for (int i; i < order.length; ++i) {
@@ -958,6 +959,9 @@ class Longpoll : Thread {
             }
             catch(Exception e) {
                 dbm("longpoll exception: " ~ e.msg);
+            }
+            catch(Error e) {
+                dbm("longpoll error exception: " ~ e.msg);
             }
             dbm("longpoll is restarting...");
         }
@@ -1294,6 +1298,7 @@ class VkMan {
     private void accountInit() {
         api.isTokenValid = false;
         ps.countermsg = -1;
+        dbm("asyncLongpoll called");
         asyncLongpoll();
 
         nc = new nameCache(api);
