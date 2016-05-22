@@ -6,7 +6,7 @@ A console (ncurses) client for vk.com written in D
 + **master** - current upstream 
 
 ### Stable Version
-+ **0.7.2** - [latest release](https://github.com/HaCk3Dq/vk/releases/)
++ **0.7.2** - [latest release](https://vk.com/hack3d_home?w=wall-69278962_1446/)
 
 # Screenshots
 
