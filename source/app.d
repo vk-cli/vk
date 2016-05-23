@@ -28,7 +28,7 @@ import vkapi, cfg, localization, utils, namecache, musicplayer, vkversion;
 
 // INIT VARS
 enum Sections { left, right }
-enum Buffers { none, friends, dialogs, music, chat }
+enum Buffers { none, friends, dialogs, music, chat, help, settings }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
 __gshared string[string] storage;
@@ -496,6 +496,8 @@ void bodyToBuffer() {
     case Buffers.dialogs: win.mbody = GetDialogs; break;
     case Buffers.friends: win.mbody = GetFriends; break;
     case Buffers.music: win.mbody = GetMusic; break;
+    case Buffers.help: win.mbody = GenerateHelp; break;
+    case Buffers.settings: win.mbody = GenerateSettings; break;
     default: break;
   }
   if (LINES-2 < win.mbody.length) win.buffer = win.mbody[0..LINES-2].dup;
@@ -594,14 +596,13 @@ void drawBuffer() {
     case Buffers.friends: drawFriendsList; break;
     case Buffers.music: drawMusicList; break;
     case Buffers.chat: drawChat; break;
-    case Buffers.none: {
+    default: {
       foreach(i, e; win.buffer) {
         wmove(stdscr, 2+i.to!int, win.menuOffset+1);
         i.to!int == win.active ? e.name.selected : e.name.regular;
       }
       break;
     }
-    default: break;
   }
 }
 
@@ -1027,6 +1028,7 @@ void toggleSeekPercentOrValue(ref ListElement le) {
 }
 
 ListElement[] GenerateHelp() {
+  win.activeBuffer = Buffers.help;
   return [
     ListElement(center("general_navig".getLocal, COLS-16, ' ')),
     ListElement("help_move".getLocal),
@@ -1044,6 +1046,7 @@ ListElement[] GenerateHelp() {
 }
 
 ListElement[] GenerateSettings() {
+  win.activeBuffer = Buffers.settings;
   ListElement[] list;
   list ~= [
     ListElement(center("display_settings".getLocal, COLS-16, ' ')),
