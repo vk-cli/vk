@@ -1218,6 +1218,14 @@ void test() {
     }*/
 }
 
+void clear() {
+  for (int y = 0; y < LINES; y++) {
+    wmove(stdscr, y, 0);
+    print(" ".replicate(COLS));
+  }
+  wmove(stdscr, 0, 0);
+}
+
 void main(string[] args) {
   foreach(e; args) {
     if (e == "-v" || e == "-version") {
