@@ -300,11 +300,11 @@ const Repldchar repl = Repldchar.yes;
 
 wstring toUTF16wrepl(in char[] s) {
     wchar[] r;
-    size_t slen = s.length;
+    ulong slen = s.length;
 
-    r.length = slen;
-    r.length = 0;
-    for (size_t i = 0; i < slen; )
+    //r.length = slen;
+    //r.length = 0;
+    for (ulong i = 0; i < slen; )
     {
         dchar c = s[i];
         if (c <= 0x7F)
