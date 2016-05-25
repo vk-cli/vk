@@ -22,6 +22,18 @@ yaourt -S vk-cli
 vk
 ```
 
+## Ubuntu 
+
+```
+sudo apt-add-repository ppa:mc3man/mpv-tests
+sudo apt-get update
+sudo apt-get install libncursesw5-dev libssl-dev curl mpv
+```
+
+then `Build` 
+OR
+install deb package from releases page `sudo dpkg -i vk-cli.deb` 
+
 ## MacOS
 
 ```
@@ -45,7 +57,7 @@ then `Build`
 ```
 git clone https://github.com/HaCk3Dq/vk
 cd vk
-git checkout 0.7.1a
+git checkout 0.7.2
 dub
 ```
 builds `vk` binary for your platform.
@@ -64,13 +76,6 @@ Make dependencies:
 Optional:
 
 + mpv >= 0.9.0: for music playback
-
-### EXCLUSIVE UBUNTU DEPENDENCIES
-
-+ libncursesw5-dev
-+ libssl-dev
-+ mpv >= 0.9.0 (ppa:mc3man/mpv-tests)
-+ curl
 
 ### Our GPG keys
 
