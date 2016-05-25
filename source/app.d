@@ -78,7 +78,7 @@ vkAudio[] getShuffledMusic(int count, int offset) {
     win.workaroundCounter++;
     win.shuffledMusic = api.getBufferedMusic(api.getServerCount(blockType.music), 0);
     auto step = (win.shuffledMusic.length.to!real / api.getServerCount(blockType.music).to!real) * 20;
-    ("[" ~ "=".replicate(floor(step).to!int) ~ "|" ~ "=".replicate(20 - floor(step).to!int) ~ "]").SetStatusbar;
+    ("[" ~ "=".replicatestr(floor(step).to!int) ~ "|" ~ "=".replicatestr(20 - floor(step).to!int) ~ "]").SetStatusbar;
   } else {
     if (!win.shuffled) {
       SetStatusbar;
@@ -466,7 +466,7 @@ void statusbar() {
   auto counterStrLen = counterStr.utfLength + (counterStr.utfLength == 7) * 2;
   if (win.notify.text != "") center(win.notify.text, COLS-counterStr.utfLength, ' ').selected;
   else center(win.statusbarText, COLS-counterStrLen, ' ').selected;
-  " ".replicate((counterStr.utfLength == 7) * 2).selected;
+  " ".replicatestr((counterStr.utfLength == 7) * 2).selected;
   "\n".print;
 }
 
@@ -476,7 +476,7 @@ void SetStatusbar(string s = "") {
 
 void drawMenu() {
   foreach(i, le; win.menu) {
-    auto space = (le.name.walkLength < win.menuOffset) ? " ".replicate(win.menuOffset-le.name.walkLength) : "";
+    auto space = (le.name.walkLength < win.menuOffset) ? " ".replicatestr(win.menuOffset-le.name.walkLength) : "";
     auto name = le.name ~ space ~ "\n";
     if (win.section == Sections.left) i == win.active ? name.selected : name.regular;
     else i == win.menuActive ? name.selected : name.regular;
@@ -507,7 +507,7 @@ void bodyToBuffer() {
       if (e.name.utfLength.to!int + win.menuOffset+1 > COLS)
         win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-1].to!string;
       else
-        win.buffer[i].name ~= " ".replicate(COLS - e.name.utfLength - win.menuOffset-1);
+        win.buffer[i].name ~= " ".replicatestr(COLS - e.name.utfLength - win.menuOffset-1);
     }
   }
 }
@@ -625,7 +625,7 @@ void drawChat() {
     if (e.flag) {
       if (e.id == -1) {
         e.name.renderColoredOrRegularText;
-        " ".replicate(COLS-e.name.utfLength-e.text.length-2).regular;
+        " ".replicatestr(COLS-e.name.utfLength-e.text.length-2).regular;
         e.text.secondColor;
       } else {
         e.name[0..e.id].regularWhite;
@@ -1093,7 +1093,7 @@ ListElement[] GetDialogs() {
       if (e.outbox) unreadText ~= getChar("outbox");
       else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ getChar("inbox");
       space = COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-lastMsg.utfLength-unreadText.utfLength-4;
-      if (space < COLS) unreadText = " ".replicate(space) ~ unreadText;
+      if (space < COLS) unreadText = " ".replicatestr(space) ~ unreadText;
       else unreadText = "   " ~ unreadText;
     }
     list ~= ListElement(newMsg ~ e.name, ": " ~ lastMsg ~ unreadText, &chat, &GetChat, e.online, e.id, e.isChat);
@@ -1161,7 +1161,7 @@ ListElement[] GetMusic() {
       amount = COLS-6-win.menuOffset-artistAndSong.utfLength.to!int;
     } else amount = COLS-9-win.menuOffset-e.artist.utfLength.to!int-e.title.utfLength.to!int-e.duration_str.length.to!int;
 
-    space = " ".replicate(amount);
+    space = " ".replicatestr(amount);
     list ~= ListElement(artistAndSong ~ space ~ e.duration_str, e.url, &run, &setCurrentTrack);
   }
   return list;
@@ -1177,7 +1177,7 @@ ListElement[] GetChat() {
   auto chat = api.getBufferedChatLines(LINES-4-verticalOffset, win.scrollOffset, win.chatID, COLS-12);
   foreach(e; chat) {
     if (e.isFwd) {
-      ListElement line = {"    " ~ "| ".replicate(e.fwdDepth)};
+      ListElement line = {"    " ~ "| ".replicatestr(e.fwdDepth)};
       if (e.isName && !e.isSpacing) {
         line.flag = true;
         line.id = line.name.length.to!int + 4;
@@ -1224,7 +1224,7 @@ void test() {
 void clear() {
   for (int y = 0; y < LINES; y++) {
     wmove(stdscr, y, 0);
-    print(" ".replicate(COLS));
+    print(" ".replicatestr(COLS));
   }
   wmove(stdscr, 0, 0);
 }

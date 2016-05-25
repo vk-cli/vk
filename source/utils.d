@@ -324,8 +324,8 @@ wstring toUTF16wrepl(in char[] s) {
 
 string toUTF8wrepl(in wchar[] s) {
     char[] r;
-    size_t i;
-    size_t slen = s.length;
+    ulong i;
+    ulong slen = s.length;
 
     r.length = slen;
     for (i = 0; i < slen; i++)
@@ -344,6 +344,14 @@ string toUTF8wrepl(in wchar[] s) {
     }
 
     return cast(string)r;
+}
+
+S replicatestr(S)(S str, ulong n) {
+    S outstr = "";
+    for(ulong i = 0; i < n; ++i) {
+        outstr ~= str;
+    }
+    return outstr;
 }
 
 
