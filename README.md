@@ -31,7 +31,9 @@ sudo apt-get install libncursesw5-dev libssl-dev curl mpv
 ```
 
 then `Build` 
+
 OR
+
 install deb package from releases page `sudo dpkg -i vk-cli.deb` 
 
 ## MacOS
