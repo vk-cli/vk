@@ -1209,9 +1209,9 @@ class Longpoll : Thread {
 
         if(exit) {
             nc.setOnline(uid, false);
-            auto uct = ct.toUnixTime();
-            lsc[uid].last_seen_utime = uct;
-            lsc[uid].last_seen_str = vktime(ct, uct);
+            //auto uct = ct.toUnixTime();
+            //lsc[uid].last_seen_utime = uct; //todo check! Range Violation (override last seen)
+            //lsc[uid].last_seen_str = vktime(ct, uct);
         }
         else nc.setOnline(uid, true);
 
