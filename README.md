@@ -39,7 +39,7 @@ install deb package from releases page `sudo dpkg -i vk-cli.deb`
 ## MacOS
 
 ```
-brew install dub dmd curl openssl mplayer
+brew install dub dmd curl openssl mpv
 brew install homebrew/dupes/ncurses
 brew doctor
 brew link ncurses —force
