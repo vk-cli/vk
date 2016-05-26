@@ -42,7 +42,7 @@ install deb package from releases page `sudo dpkg -i vk-cli.deb`
 brew install dub dmd curl openssl mpv
 brew install homebrew/dupes/ncurses
 brew doctor
-brew link ncurses —force
+brew link ncurses -force
 brew install libxslt xmlto
 export XML_CATALOG_FILES="/usr/local/etc/xml/catalog"
 git clone git://anongit.freedesktop.org/xdg/xdg-utils
