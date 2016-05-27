@@ -46,21 +46,6 @@ struct ListElement {
   bool isConference;
 }
 
-uint utfLength(string inp) {
-  auto wstrInput = inp.toUTF16wrepl;
-  auto s = wstrInput.length.to!uint;
-  foreach (w; wstrInput) {
-    auto c = (cast(ulong)w);
-    foreach (r; utfranges) {
-      if (c >= r.start && c <= r.end) {
-        s += r.spaces;
-        break;
-      }
-    }
-  }
-  return s;
-}
-
 void Exit(string msg = "", int ecode = 0) {
   dbmclose;
   endwin;
@@ -166,21 +151,6 @@ const int[]
   kg_rewind_backward = [kg_rew_bck, kg_rew_bck_rus],
   kg_rewind_forward  = [kg_rew_fwd, kg_rew_fwd_rus];
 
-const utfranges = [
-  utf(19968, 40959, 1),
-  utf(12288, 12351, 1),
-  utf(11904, 12031, 1),
-  utf(13312, 19903, 1),
-  utf(63744, 64255, 1),
-  utf(12800, 13055, 1),
-  utf(13056, 13311, 1),
-  utf(12736, 12783, 1),
-  utf(12448, 12543, 1),
-  utf(12352, 12447, 1),
-  utf(110592, 110847, 1),
-  utf(65280, 65519, 1)
-  ];
-
 string getChar(string charName) {
   if (win.unicodeChars) {
     switch (charName) {
@@ -224,12 +194,6 @@ struct Notify {
 
 struct Cursor {
   int x, y;
-}
-
-struct utf {
-  ulong
-    start, end;
-  int spaces;
 }
 
 struct Track {

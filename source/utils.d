@@ -302,15 +302,15 @@ wstring toUTF16wrepl(in char[] s) {
     wchar[] r;
     ulong slen = s.length;
 
-    //r.length = slen;
-    //r.length = 0;
+    r.length = slen;
+    r.length = 0;
     for (ulong i = 0; i < slen; )
     {
         dchar c = s[i];
         if (c <= 0x7F)
         {
             i++;
-            r ~= cast(wchar)c;
+            r ~= cast(wchar)c; //todo check gc mark* here
         }
         else
         {
@@ -344,6 +344,54 @@ string toUTF8wrepl(in wchar[] s) {
     }
 
     return cast(string)r;
+}
+
+struct utf {
+  ulong
+    start, end;
+  int spaces;
+}
+
+const utfranges = [
+  utf(19968, 40959, 1),
+  utf(12288, 12351, 1),
+  utf(11904, 12031, 1),
+  utf(13312, 19903, 1),
+  utf(63744, 64255, 1),
+  utf(12800, 13055, 1),
+  utf(13056, 13311, 1),
+  utf(12736, 12783, 1),
+  utf(12448, 12543, 1),
+  utf(12352, 12447, 1),
+  utf(110592, 110847, 1),
+  utf(65280, 65519, 1)
+  ];
+
+uint utfLength(string inp) {
+    uint s = 0;
+    ulong inplen = inp.length;
+
+    for (ulong i = 0; i < inplen; ) {
+        auto ic = inp[i];
+        ulong c;
+        ++s;
+
+        if(ic <= 0x7F) {
+            c = cast(ulong)ic;
+            ++i;
+        }
+        else {
+            c = cast(ulong)(decode!repl(inp, i));
+        }
+
+        foreach (r; utfranges) {
+            if (c >= r.start && c <= r.end) {
+                s += r.spaces;
+                break;
+            }
+        }
+    }
+    return s;
 }
 
 S replicatestr(S)(S str, ulong n) {
