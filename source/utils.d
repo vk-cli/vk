@@ -21,6 +21,7 @@ module utils;
 
 import std.stdio, std.array, std.range, std.string, std.file;
 import core.thread, core.sync.mutex, core.exception;
+import core.sys.posix.signal;
 import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
 import localization, app, vkversion;
 
@@ -293,6 +294,31 @@ if (isInputRange!R)
 
 auto inputRetro(R)(R range) {
     return new InputRetroResult!R(range);
+}
+
+void logThread(string thrname = "") {
+    if(thrname != "") dbm("thread started for: " ~ thrname);
+}
+
+void setPosixSignals() {
+    //sigset(SIGRTMIN, (a){});
+    //sigset(SIGRTMIN+1, (a){});
+}
+
+int gcSuspendSignal;
+int gcResumeSignal;
+
+void updateGcSignals() {
+    gcSuspendSignal = SIGRTMIN;
+    gcResumeSignal = SIGRTMIN+1;
+
+    thread_term();
+    thread_setGCSignals(gcSuspendSignal, gcResumeSignal);
+    thread_init();
+}
+
+void usedSignalsNotify() {
+    dbm("GC signals: " ~ gcSuspendSignal.to!string ~ " " ~ gcResumeSignal.to!string);
 }
 
 alias Repldchar = std.typecons.Flag!"useReplacementDchar";

@@ -789,6 +789,7 @@ class AsyncOrder : Thread {
     }
 
     private void procOrder() {
+        logThread("async_order " ~ title);
         dbm("procOrder start");
         while(true) {
             if(order.length != 0) {
@@ -838,6 +839,7 @@ class AsyncSingle : Thread {
     }
 
     private void func() {
+        logThread("async_single " ~ title);
         try {
             if(dg) dg();
         }
@@ -932,7 +934,12 @@ class Longpoll : Thread {
     this(VkMan vkman) {
         man = vkman;
         api = man.api;
-        super(&startSync);
+        super(&startSyncAsyncWrapper);
+    }
+
+    private void startSyncAsyncWrapper() {
+        logThread("longpoll");
+        startSync();
     }
 
     void startSync() {
@@ -1256,6 +1263,7 @@ class OnlineNotifier : Thread {
     }
 
     private void onlineRoutine() {
+        logThread("online_notifier");
         while(true) {
             if(enabled) {
                 api.accountSetOnline();

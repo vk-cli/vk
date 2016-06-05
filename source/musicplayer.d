@@ -332,6 +332,7 @@ class mpv: Thread {
   }
 
   private void checkEnd() {
+    logThread("check_end watchdog");
     while(!playerExit) {
       Thread.sleep(dur!"msecs"(500));
       if(musicState) req(checkEndCmd().toString());
@@ -362,6 +363,7 @@ class mpv: Thread {
   }
 
   void runPlayer() {
+    logThread("runplayer");
     dbm("mpv - starting");
     auto pipe = pipeProcess("sh", Redirect.stdin);
     pipe.stdin.writeln(playerExec);

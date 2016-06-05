@@ -19,6 +19,7 @@ limitations under the License.
 
 import deimos.ncurses.ncurses;
 import core.stdc.locale, core.thread, core.stdc.stdlib:exit;
+import core.sys.posix.signal;
 import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm, std.concurrency,
@@ -1194,6 +1195,10 @@ void clear() {
 }
 
 void main(string[] args) {
+
+  updateGcSignals();
+  setPosixSignals();
+
   foreach(e; args) {
     if (e == "-v" || e == "-version") {
       writefln("vk-cli %s", currentVersion);
@@ -1203,6 +1208,7 @@ void main(string[] args) {
 
   //test;
   initdbm;
+  usedSignalsNotify;
   init;
   color;
   curs_set(0);
