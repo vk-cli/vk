@@ -88,9 +88,9 @@ void initdbm() {
         dbgff.write(logIntro);
         dbgff.close();
 
-        dbgff = File(logLatPath, "w");
-        dbgff.write(logIntro);
-        dbgff.close();
+        dbglat = File(logLatPath, "w");
+        dbglat.write(logIntro);
+        dbglat.close();
     }
 }
 
