@@ -1932,19 +1932,6 @@ ldFuncResult apiCheck(VkApi api) {
     return ldFuncResult(api.isTokenValid);
 }
 
-const uint maxuint = 4_294_967_295;
-const uint maxint = 2_147_483_647;
-const uint ridstart = 1;
-
-int genId() {
-    long rnd = uniform(ridstart, maxuint);
-    if(rnd > maxint) {
-        rnd = -(rnd-maxint);
-    }
-    dbm("rid: " ~ rnd.to!string);
-    return rnd.to!int;
-}
-
 void enterLoading() {
     ++ps.loadingiter;
     gltoggleUpdate();

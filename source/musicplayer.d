@@ -208,10 +208,10 @@ class mpv: Thread {
     real realargument;
   }
 
-  const
-    socketPath = "/tmp/vkmpv",
+  string
     socketArgument = "--input-unix-socket=", //compatibility with older versions, changed to "--input-ipc-server=" in mpv 0.17.0
-    playerExec = "mpv --idle --no-audio-display " ~ socketArgument ~ socketPath ~ " > /dev/null 2> /dev/null";
+    socketPath,
+    playerExec;
 
   const
     int
@@ -241,6 +241,10 @@ class mpv: Thread {
   this(posCallback pos, endCallback end) {
     posChanged = pos;
     endReached = end;
+
+    socketPath = getPlayerSocketName();
+    playerExec = "mpv --idle --no-audio-display " ~ socketArgument ~ socketPath ~ " > /dev/null 2> /dev/null";
+
     super(&runPlayer);
   }
 
@@ -371,7 +375,16 @@ class mpv: Thread {
     Thread.sleep(dur!"msecs"(500)); //wait for init
     dbm("mpv - running");
 
-    assert(exists(socketPath));
+    uint spawntry;
+    while(!exists(socketPath)) {
+        dbm("mpv - waiting for socket spawn...");
+        Thread.sleep(dur!"msecs"(300));
+
+        ++spawntry;
+        if(spawntry >= 3) {
+            dbm("mpv - socket connection failed");
+        }
+    }
     commAddr = new UnixAddress(socketPath);
     comm = new Socket(AddressFamily.UNIX, SocketType.STREAM);
     comm.connect(commAddr);
@@ -421,6 +434,13 @@ class mpv: Thread {
   void exit() {
     auto c = ipcCmdParams(ipcCmd.exit);
     mpvsend(c);
+    Thread.sleep(dur!"msecs"(100));
+    try {
+        remove(socketPath);
+    }
+    catch(FileException e) {
+        //dbm("socket not found")
+    }
   }
 
   void loadfile(string p) {

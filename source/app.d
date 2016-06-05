@@ -48,7 +48,6 @@ struct ListElement {
 }
 
 void Exit(string msg = "", int ecode = 0) {
-  dbmclose;
   endwin;
   mplayer.exitPlayer;
   if (msg != "") {

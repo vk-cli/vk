@@ -19,7 +19,7 @@ limitations under the License.
 
 module utils;
 
-import std.stdio, std.array, std.range, std.string, std.file;
+import std.stdio, std.array, std.range, std.string, std.file, std.random;
 import core.thread, core.sync.mutex, core.exception;
 import core.sys.posix.signal;
 import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
@@ -30,27 +30,68 @@ const bool
     dbmfe = true,
     showTokenInLog = false;
 
-File dbgff;
-__gshared string dbmlog = "";
-__gshared dbgfname = "/tmp/vkdbg";
-__gshared Mutex dbgmutex;
+__gshared {
+    File dbgff;
+    File dbglat;
+    string dbmlog = "";
+    string vkcliTmpDir = "/tmp/vkcli-tmp";
+    string vkcliLogDir = "/tmp/vkcli-log";
+    string dbgfname = "vklog";
+    string dbglatest = "-latest";
+    string mpvsck = "vkmpv-socket-";
+    string mpvsocketName;
+    string logName;
+    string logPath;
+    string logLatPath;
+    Mutex dbgmutex;
+}
 
 private void appendDbg(string app) {
     synchronized(dbgmutex) {
-        dbgfname.append(app);
+        append(logPath, app);
+        append(logLatPath, app);
     }
 }
 
-void initdbm() {
-    if(!dbmfe) return;
-    dbgmutex = new Mutex();
-    dbgff = File(dbgfname, "w");
-    dbgff.write("vk-cli " ~ currentVersion ~ " log\n");
-    dbgff.close();
+string toTmpDateString(SysTime t) {
+    return t.day().to!string
+            ~ t.month().to!string
+            ~ t.year().to!string
+            ~ "-"
+            ~ t.hour().tzr ~ ":"
+            ~ t.minute().tzr ~ ":"
+            ~ t.second().tzr
+            ~ "-"
+            ~ t.timezone().stdName();
 }
 
-void dbmclose() {
-    if(!dbmfe) return;
+string getPlayerSocketName() {
+    if(mpvsocketName == "") throw new Exception("bad player socket name");
+    return vkcliTmpDir ~ "/" ~ mpvsocketName;
+}
+
+void initdbm() {
+    auto ctime = Clock.currTime();
+    dbgmutex = new Mutex();
+    logName = dbgfname ~ "_" ~ ctime.toTmpDateString();
+    logPath = vkcliLogDir ~ "/" ~ logName;
+    logLatPath = vkcliLogDir ~ "/" ~ dbgfname ~ dbglatest;
+    mpvsocketName = mpvsck ~ genStr(8);
+
+    if(!exists(vkcliTmpDir)) mkdir(vkcliTmpDir);
+    if(!exists(vkcliLogDir)) mkdir(vkcliLogDir);
+
+    if(dbmfe) {
+        string logIntro = "vk-cli " ~ currentVersion ~ " log\n" ~ ctime.toSimpleString() ~ "\n";
+
+        dbgff = File(logPath, "w");
+        dbgff.write(logIntro);
+        dbgff.close();
+
+        dbgff = File(logLatPath, "w");
+        dbgff.write(logIntro);
+        dbgff.close();
+    }
 }
 
 void dbm(string msg) {
@@ -319,6 +360,31 @@ void updateGcSignals() {
 
 void usedSignalsNotify() {
     dbm("GC signals: " ~ gcSuspendSignal.to!string ~ " " ~ gcResumeSignal.to!string);
+}
+
+
+const uint maxuint = 4_294_967_295;
+const uint maxint = 2_147_483_647;
+const uint ridstart = 1;
+
+int genId() {
+    long rnd = uniform(ridstart, maxuint);
+    if(rnd > maxint) {
+        rnd = -(rnd-maxint);
+    }
+    dbm("rid: " ~ rnd.to!string);
+    return rnd.to!int;
+}
+
+string genStrDict = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567890";
+
+string genStr(uint strln) {
+    string output;
+    for(uint i; i < strln; ++i) {
+        ulong rnd = uniform!"[)"(0, genStrDict.length);
+        output ~= genStrDict[rnd];
+    }
+    return output;
 }
 
 alias Repldchar = std.typecons.Flag!"useReplacementDchar";
