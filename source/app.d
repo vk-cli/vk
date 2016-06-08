@@ -276,6 +276,9 @@ void update(ref string[string] storage) {
 }
 
 void init() {
+  updateGcSignals();
+  setPosixSignals();
+  usedSignalsNotify;
   setlocale(LC_CTYPE,"");
   win.lastBuffer = Buffers.none;
   setEnvLanguage;
@@ -1194,10 +1197,6 @@ void clear() {
 }
 
 void main(string[] args) {
-
-  updateGcSignals();
-  setPosixSignals();
-
   foreach(e; args) {
     if (e == "-v" || e == "-version") {
       writefln("vk-cli %s", currentVersion);
@@ -1207,7 +1206,6 @@ void main(string[] args) {
 
   //test;
   initdbm;
-  usedSignalsNotify;
   init;
   color;
   curs_set(0);
