@@ -3,10 +3,28 @@
   "description": "Terminal client for vk.com",
   "authors": ["HaCk3D", "substanceof"],
   "homepage": "https://github.com/HaCk3Dq/vk",
+  "license": "Apache-2.0",
   "dependencies": {
-    "ncurses": "~master",
+    "ncurses": "*",
     "dcrypto": "~>1.2.2"
   },
-  "buildRequirements": ["allowWarnings"],
-  "preGenerateCommands": ["rdmd generateVersion.d"]
+  "targetType": "executable",
+  "mainSourceFile": "source/app.d",
+  "platfroms": ["posix"],
+  "preGenerateCommands": ["rdmd generateVersion.d"],
+  "configurations": [
+    {
+      "name": "debug",
+      "buildRequirements": ["allowWarnings"],
+    },
+    {
+      "name": "release-shared",
+      "buildRequirements": ["silenceDeprecations"],
+    },
+    {
+      "name": "release-static",
+      "buildRequirements": ["silenceDeprecations"],
+      "lflags": ["-Bstatic"]
+    }
+  ]
 }
