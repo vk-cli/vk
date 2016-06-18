@@ -383,6 +383,7 @@ class mpv: Thread {
         ++spawntry;
         if(spawntry >= 3) {
             dbm("mpv - socket connection failed");
+            return;
         }
     }
     commAddr = new UnixAddress(socketPath);
