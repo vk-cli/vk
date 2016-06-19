@@ -47,6 +47,7 @@ const int connectionAttempts = 10;
 const int mssleepBeforeAttempt = 600;
 const int vkgetCurlTimeout = 3;
 const int longpollCurlTimeout = 27;
+const int longpollCurlAttempts = 5;
 const string timeoutFormat = "seconds";
 
 // ===== API objects =====
@@ -958,6 +959,7 @@ class Longpoll : Thread {
                 if(e.ecode == e.E_LPRESTART) {
                     dbm("Network error in longpoll, lp shutdown");
                     man.asyncAccountInit();
+                    man.forceUpdateAll(false);
                     return;
                 }
                 else {
@@ -969,6 +971,8 @@ class Longpoll : Thread {
             }
             catch(Error e) {
                 dbm("longpoll error exception: " ~ e.msg);
+                dbm("longpoll exit");
+                return;
             }
             dbm("longpoll is restarting...");
         }
@@ -977,7 +981,6 @@ class Longpoll : Thread {
 
     vkLongpoll getLongpollServer() {
         auto resp = api.vkget("messages.getLongPollServer", [ "use_ssl": "1", "need_pts": "1" ]);
-        dbm("longpoll server: \n" ~ resp.toPrettyString() ~ "\n");
         vkLongpoll rt = {
             server: resp["server"].str,
             key: resp["key"].str,
@@ -1000,13 +1003,28 @@ class Longpoll : Thread {
                 if(cts < 1) break;
                 string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string
                                                                                             ~ "&wait=25&mode=" ~ mode;
-                auto resp = AsyncMan.httpget(url, tm, 0);
+                auto resp = AsyncMan.httpget(url, tm, longpollCurlAttempts);
                 immutable auto next = parseLongpoll(resp);
-                if(next.failed == 2 || next.failed == 3) ok = false; //get new server
+                if(next.failed != -1) {
+                    dbm("longpoll got 'failed " ~ next.failed.to!string ~ "'");
+                    if(next.failed == 1) {
+                        dbm("requesting force update");
+                        man.forceUpdateAll();
+                    }
+                    else if (next.failed == 4) {
+                        dbm("unknown longpoll versoion\nTHEY'RE PURGED V0?");
+                        throw new ApiErrorException("invalid longpoll version", -1);
+                    }
+                    else {
+                        dbm("'key' expired or something");
+                        dbm("requestiong new lonpoll server");
+                        ok = false;
+                    }
+                }
                 cts = next.ts;
-
             }
             catch(NetworkException e) {
+                dbm("longpoll can't get new events");
                 throw new InternalException(InternalException.E_LPRESTART);
             }
         }
@@ -1310,6 +1328,11 @@ class VkMan {
         asyncLongpoll();
 
         nc = new nameCache(api);
+
+        selfResolve();
+    }
+
+    private void selfResolve(){
         api.resolveMe();
         if(!api.isTokenValid) {
             //todo warn about token
@@ -1328,8 +1351,16 @@ class VkMan {
         toggleUpdate();
     }
 
-    private void connectionProblems() {
-        //asyncAccountInit();
+    void connectionProblems() {
+
+    }
+
+    private void forceUpdateAll(bool selfresolve = true) {
+        if(selfresolve) a.singleAsync(a.S_SELF_RESOLVE, () => selfResolve());
+        toggleForceUpdate(blockType.music);
+        toggleForceUpdate(blockType.dialogs);
+        toggleForceUpdate(blockType.friends);
+        chatFactory.values.each!(q => q.data.forceUpdate = true);
     }
 
     void asyncAccountInit() {
