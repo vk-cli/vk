@@ -181,6 +181,8 @@ struct apiState {
     uint countermsg = -1;
     sentMsg[long] sent; //by rid
     bool[int] unreadCountReview; //by peer
+    bool shedForceUpdateFlag;
+    bool shedForceUpdateSelfResolve;
 }
 
 struct ldFuncResult {
@@ -959,7 +961,7 @@ class Longpoll : Thread {
                 if(e.ecode == e.E_LPRESTART) {
                     dbm("Network error in longpoll, lp shutdown");
                     man.asyncAccountInit();
-                    man.forceUpdateAll(false);
+                    man.sheduleForceUpdate(false);
                     return;
                 }
                 else {
@@ -1000,6 +1002,7 @@ class Longpoll : Thread {
         dbm("longpoll works");
         while(ok) {
             try {
+                man.doShedForceUpdate();
                 if(cts < 1) break;
                 string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string
                                                                                             ~ "&wait=25&mode=" ~ mode;
@@ -1355,12 +1358,24 @@ class VkMan {
 
     }
 
-    private void forceUpdateAll(bool selfresolve = true) {
+    void forceUpdateAll(bool selfresolve = true) {
         if(selfresolve) a.singleAsync(a.S_SELF_RESOLVE, () => selfResolve());
         toggleForceUpdate(blockType.music);
         toggleForceUpdate(blockType.dialogs);
         toggleForceUpdate(blockType.friends);
         chatFactory.values.each!(q => q.data.forceUpdate = true);
+    }
+
+    void sheduleForceUpdate(bool selfresolve) {
+        ps.shedForceUpdateFlag = true;
+        ps.shedForceUpdateSelfResolve = selfresolve;
+    }
+
+    void doShedForceUpdate() {
+        if(ps.shedForceUpdateFlag) {
+            ps.shedForceUpdateFlag = false;
+            forceUpdateAll(ps.shedForceUpdateSelfResolve);
+        }
     }
 
     void asyncAccountInit() {
