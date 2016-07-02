@@ -21,6 +21,7 @@ import std.process, std.stdio, std.string,
        std.array, std.algorithm, std.conv,
        std.math, std.file, std.ascii,
        std.socket, std.json;
+import core.sys.posix.signal;
 import core.thread;
 import app, utils;
 import vkapi: VkMan, blockType, vkAudio;
@@ -230,6 +231,7 @@ class mpv: Thread {
     Thread endChecker;
     Socket comm;
     Address commAddr;
+    Pid pid = null;
     bool
       isInit,
       playerExit,
@@ -366,12 +368,20 @@ class mpv: Thread {
     endChecker.start();
   }
 
+  void killPlayer() {
+    int code = -1;
+    if(pid !is null){
+      code = kill(pid.processID + 1 , SIGTERM);
+    }
+  }
+
   void runPlayer() {
     logThread("runplayer");
     dbm("mpv - starting");
     auto pipe = pipeProcess("sh", Redirect.stdin);
     pipe.stdin.writeln(playerExec);
     pipe.stdin.flush;
+    pid = pipe.pid;
     Thread.sleep(dur!"msecs"(500)); //wait for init
     dbm("mpv - running");
 

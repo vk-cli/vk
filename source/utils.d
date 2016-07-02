@@ -23,7 +23,7 @@ import std.stdio, std.array, std.range, std.string, std.file, std.random;
 import core.thread, core.sync.mutex, core.exception;
 import core.sys.posix.signal;
 import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
-import localization, app, vkversion;
+import localization, app, vkversion, musicplayer;
 
 const bool
     debugMessagesEnabled = false,
@@ -341,9 +341,14 @@ void logThread(string thrname = "") {
     if(thrname != "") dbm("thread started for: " ~ thrname);
 }
 
+void unwantedExit(int sig) {
+    mplayer.player.killPlayer();
+    writeln("killed by signal " ~ sig.to!string);
+    exit(2);
+}
+
 void setPosixSignals() {
-    //sigset(SIGRTMIN, (a){});
-    //sigset(SIGRTMIN+1, (a){});
+    sigset(SIGSEGV, a => unwantedExit(a));
 }
 
 int gcSuspendSignal;
