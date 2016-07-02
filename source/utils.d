@@ -381,7 +381,7 @@ string genStrDict = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567
 string genStr(uint strln) {
     string output;
     for(uint i; i < strln; ++i) {
-        ulong rnd = uniform!"[)"(0, genStrDict.length);
+        size_t rnd = uniform!"[)"(0, genStrDict.length);
         output ~= genStrDict[rnd];
     }
     return output;
@@ -392,17 +392,17 @@ const Repldchar repl = Repldchar.yes;
 
 wstring toUTF16wrepl(in char[] s) {
     wchar[] r;
-    ulong slen = s.length;
+    size_t slen = s.length;
 
     r.length = slen;
     r.length = 0;
-    for (ulong i = 0; i < slen; )
+    for (size_t i = 0; i < slen; )
     {
         dchar c = s[i];
         if (c <= 0x7F)
         {
             i++;
-            r ~= cast(wchar)c; //todo check gc mark* here
+            r ~= cast(wchar)c;
         }
         else
         {
@@ -416,8 +416,8 @@ wstring toUTF16wrepl(in char[] s) {
 
 string toUTF8wrepl(in wchar[] s) {
     char[] r;
-    ulong i;
-    ulong slen = s.length;
+    size_t i;
+    size_t slen = s.length;
 
     r.length = slen;
     for (i = 0; i < slen; i++)
@@ -461,9 +461,9 @@ const utfranges = [
 
 uint utfLength(string inp) {
     uint s = 0;
-    ulong inplen = inp.length;
+    size_t inplen = inp.length;
 
-    for (ulong i = 0; i < inplen; ) {
+    for (size_t i = 0; i < inplen; ) {
         auto ic = inp[i];
         ulong c;
         ++s;
