@@ -934,6 +934,8 @@ class Longpoll : Thread {
         VkApi api;
     }
 
+    int longpollWait = 25;
+
     this(VkMan vkman) {
         man = vkman;
         api = man.api;
@@ -998,6 +1000,7 @@ class Longpoll : Thread {
         auto tm = dur!timeoutFormat(longpollCurlTimeout);
         int cts = start.ts;
         auto mode = (2 + 128).to!string; //attaches + random_id
+        auto wait = longpollWait.to!string;
         bool ok = true;
         dbm("longpoll works");
         while(ok) {
@@ -1005,7 +1008,8 @@ class Longpoll : Thread {
                 man.doShedForceUpdate();
                 if(cts < 1) break;
                 string url = "https://" ~ start.server ~ "?act=a_check&key=" ~ start.key ~ "&ts=" ~ cts.to!string
-                                                                                            ~ "&wait=25&mode=" ~ mode;
+                                                                                            ~ "&wait=" ~ wait
+                                                                                            ~ "&mode=" ~ mode;
                 auto resp = AsyncMan.httpget(url, tm, longpollCurlAttempts);
                 immutable auto next = parseLongpoll(resp);
                 if(next.failed != -1) {
@@ -1352,6 +1356,10 @@ class VkMan {
         ps.countermsg = api.initdata.c_messages;
 
         toggleUpdate();
+    }
+
+    void setLongpollWait(int wait) {
+        longpollThread.longpollWait = wait;
     }
 
     void connectionProblems() {

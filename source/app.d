@@ -258,6 +258,11 @@ void parse(ref string[string] storage) {
   if ("seek_percent_or_value" in storage) win.seekPercentFlag = storage["seek_percent_or_value"].to!bool;
 
   relocale;
+
+  if("longpoll_wait" !in storage) {
+    storage["longpoll_wait"] = "25";
+    storage.save;
+  }
 }
 
 void update(ref string[string] storage) {
@@ -1224,6 +1229,7 @@ void main(string[] args) {
 
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
+  api.setLongpollWait(storage["longpoll_wait"].to!int);
   api.showConvNotifications(win.showConvNotifications);
   api.sendOnline(win.sendOnline);
 
