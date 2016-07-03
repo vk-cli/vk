@@ -32,9 +32,12 @@ enum Sections { left, right }
 enum Buffers { none, friends, dialogs, music, chat, help, settings }
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 enum DrawSetting { allMessages, onlySelectedMessage, onlySelectedMessageAndUnread }
-__gshared string[string] storage;
-Win win;
-VkMan api;
+
+__gshared {
+  string[string] storage;
+  Win win;
+  VkMan api;
+}
 
 public:
 
