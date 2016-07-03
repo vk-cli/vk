@@ -379,7 +379,8 @@ class mpv: Thread {
     logThread("runplayer");
     dbm("mpv - starting");
     auto pipe = pipeProcess("sh", Redirect.stdin);
-    pipe.stdin.writeln(playerExec);
+    auto shExec = "set -o monitor;" ~ playerExec ~ "& read dummy; kill %1";
+    pipe.stdin.writeln(shExec);
     pipe.stdin.flush;
     pid = pipe.pid;
     Thread.sleep(dur!"msecs"(500)); //wait for init
