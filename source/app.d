@@ -51,7 +51,7 @@ void Exit(string msg = "", int ecode = 0) {
   endwin;
   mplayer.player.killPlayer();
   if (msg != "") {
-    writeln("FAIL");
+    //writeln("FAIL");
     writeln(msg);
   }
   exit(ecode);
@@ -208,7 +208,7 @@ struct Win {
     {callback:&open, getter: &GetMusic},
     {callback:&open, getter: &GenerateHelp},
     {callback:&open, getter: &GenerateSettings},
-    {callback:&exit}
+    {callback:&exitkey}
   ],
   buffer, mbody, playerUI;
   vkAudio[] shuffledMusic;
@@ -913,7 +913,7 @@ wstring[] run(string[] args) {
   return output;
 }
 
-void exit(ref ListElement le) {
+void exitkey(ref ListElement le) {
   win.key = k_q;
 }
 

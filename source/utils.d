@@ -342,13 +342,12 @@ void logThread(string thrname = "") {
 }
 
 void unwantedExit(int sig) {
-    mplayer.player.killPlayer();
-    writeln("killed by signal " ~ sig.to!string);
-    exit(2);
+    Exit("killed by signal " ~ sig.to!string, 2);
 }
 
 void setPosixSignals() {
     sigset(SIGSEGV, a => unwantedExit(a));
+    sigset(SIGTERM, a => unwantedExit(a));
 }
 
 int gcSuspendSignal;
