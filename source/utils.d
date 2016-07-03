@@ -347,7 +347,6 @@ void unwantedExit(int sig) {
 
 void setPosixSignals() {
     sigset(SIGSEGV, a => unwantedExit(a));
-    sigset(SIGTERM, a => unwantedExit(a));
 }
 
 int gcSuspendSignal;

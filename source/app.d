@@ -52,7 +52,7 @@ struct ListElement {
 
 void Exit(string msg = "", int ecode = 0) {
   endwin;
-  mplayer.player.killPlayer();
+  //mplayer.player.killPlayer();
   if (msg != "") {
     //writeln("FAIL");
     writeln(msg);
