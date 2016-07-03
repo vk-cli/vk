@@ -211,7 +211,7 @@ struct Win {
     {callback:&open, getter: &GetMusic},
     {callback:&open, getter: &GenerateHelp},
     {callback:&open, getter: &GenerateSettings},
-    {callback:&exitkey}
+    {callback:&exit}
   ],
   buffer, mbody, playerUI;
   vkAudio[] shuffledMusic;
@@ -916,7 +916,7 @@ wstring[] run(string[] args) {
   return output;
 }
 
-void exitkey(ref ListElement le) {
+void exit(ref ListElement le) {
   win.key = k_q;
 }
 
