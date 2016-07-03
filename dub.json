@@ -5,8 +5,7 @@
   "homepage": "https://github.com/HaCk3Dq/vk",
   "license": "Apache-2.0",
   "dependencies": {
-    "ncurses": "*",
-    "dcrypto": "~>1.2.2"
+    "ncurses": "*"
   },
   "targetType": "executable",
   "mainSourceFile": "source/app.d",
