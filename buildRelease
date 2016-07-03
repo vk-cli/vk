@@ -22,4 +22,4 @@ echo "config: $dubconf"
 echo "build: $dubtype"
 echo "arch: $dubarch"
 echo ""
-dub build --config=$dubconf --build=$dubtype --arch=$dubarch
+dub build --config=$dubconf --build=$dubtype --arch=$dubarch --force
