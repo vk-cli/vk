@@ -50,9 +50,17 @@ struct ListElement {
   bool isConference;
 }
 
-void Exit(string msg = "", int ecode = 0) {
+void Exit(string msg = "", int ecode = 0, bool normalExit = false) {
   endwin;
-  mplayer.player.killPlayer();
+
+  if (normalExit) {
+    mplayer.exitPlayer();
+  }
+  else if (mplayer !is null && mplayer.player !is null) {
+    mplayer.player.killPlayer();
+    writeln("player killed");
+  }
+
   if (msg != "") {
     //writeln("FAIL");
     writeln(msg);
@@ -1219,7 +1227,7 @@ void main(string[] args) {
   curs_set(0);
   noecho;
   
-  scope(exit) Exit;
+  scope(exit) Exit("", 0, true);
   scope(failure) Exit;
 
   storage = load;
@@ -1245,4 +1253,5 @@ void main(string[] args) {
     refresh;
     controller;
   }
+
 }
