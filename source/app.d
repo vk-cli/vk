@@ -1233,8 +1233,12 @@ void main(string[] args) {
   storage = load;
   storage.parse;
 
-  try 
-    api = "token" in storage ? new VkMan(storage["token"]) : storage.get_token;
+  try
+    if("token" !in storage) {
+      api = storage.get_token;
+      storage.save;
+    }
+    else new VkMan(storage["token"]);
   catch
     (BackendException e) Exit(e.msg);
 
