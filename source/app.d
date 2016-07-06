@@ -1238,7 +1238,7 @@ void main(string[] args) {
       api = storage.get_token;
       storage.save;
     }
-    else new VkMan(storage["token"]);
+    else api = new VkMan(storage["token"]);
   catch
     (BackendException e) Exit(e.msg);
 
