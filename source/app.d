@@ -1244,7 +1244,10 @@ void main(string[] args) {
 
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
-  api.setLongpollWait(storage["longpoll_wait"].to!int);
+  try
+    api.setLongpollWait(storage["longpoll_wait"].to!int);
+  catch
+    dbm("failed set longpoll_wait from config");
   api.showConvNotifications(win.showConvNotifications);
   api.sendOnline(win.sendOnline);
 
