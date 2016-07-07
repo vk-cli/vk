@@ -26,6 +26,39 @@ import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, namecache, localization;
 
+class User {
+    int id;
+    string firstName, lastName;
+    bool online;
+    SysTime lastSeen = null;
+
+    private {
+        bool hasName;
+    }
+
+    this(int p_id, string p_fname, string p_lname, bool p_online) {
+        id = p_id; firstName = p_fname; lastName = p_lname; online = p_online;
+    }
+
+    string getFullName() {
+        if(!hasName) return "id" ~ id;
+        return firstName ~ " " ~ lastName;
+    }
+
+    void setOnlineStatus(bool status) {
+        if (status != online) {
+            online = status;
+            if(!status) {
+                lastSeen = Clock.currTime();
+            }
+        }
+    }
+
+    string getFormattedLastSeen() {
+        return vktime(Clock.currTime, lastSeen);
+    }
+}
+
 class VkApi {
 
     private const string vkurl = "https://api.vk.com/method/";

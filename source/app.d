@@ -25,7 +25,7 @@ import std.string, std.stdio, std.process,
        std.range, std.algorithm, std.concurrency,
        std.datetime, std.utf, std.regex, std.random,
        std.math;
-import vkapi, cfg, localization, utils, namecache, musicplayer, vkversion;
+import vkapi, logic, cfg, localization, utils, namecache, musicplayer, vkversion;
 
 // INIT VARS
 enum Sections { left, right }
