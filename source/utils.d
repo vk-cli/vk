@@ -164,6 +164,37 @@ string longpollReplaces(string inp) {
         .replace("&amp;", "&");
 }
 
+class cachedValue(T) {
+    alias cachedFunc = T delegate();
+
+    private {
+        T cachedValue;
+        cachedFunc initializeValue;
+        bool cached;
+    }
+
+    this(cachedFunc initializer) {
+        initializeValue = initializer;
+    }
+
+    bool isCached() { return cached; }
+
+    void clear() {
+        cachedValue = null;
+        cached = false;
+    }
+
+    void valueInit() {
+        cachedValue = initializeValue();
+        cached = true;
+    }
+
+    T get() {
+        if(!cached) valueInit();
+        return cachedValue;
+    }
+}
+
 T[] slice(T)(ref T[] src, int count, int offset) {
     try {
         return src[offset..(offset+count)]; //.map!(d => &d).array;

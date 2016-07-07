@@ -33,7 +33,7 @@ class User {
     SysTime lastSeen;
 
     private {
-
+        auto cachedFullName = cachedValue!string(&getFullNameInit);
     }
 
     this(int p_id, string p_fname, string p_lname, bool p_friend = false, bool p_online = fals, SysTime p_lastseen = null) {
@@ -41,8 +41,12 @@ class User {
         isFriend = p_friend; online = p_online; p_lastseen = lastSeen;
     }
 
-    string getFullName() {
+    private string getFullNameInit() {
         return firstName ~ " " ~ lastName;
+    }
+
+    string getFullName() {
+        return cachedFullName.get();
     }
 
     void setOnlineStatus(bool status) {
@@ -65,13 +69,17 @@ class Audio {
     string artist, title, url;
 
     private {
-
+        auto cachedDurationString = cachedValue!string(&getDurationStringInit);
     }
 
-    string getDurationString() {
+    private string getDurationStringInit() {
         auto sec = duration % 60;
         auto min = (duration - sec) / 60;
         return min.to!string ~ ":" ~ tzr(min);
+    }
+
+    string getDurationString() {
+        return cachedDurationString.get();
     }
 }
 
