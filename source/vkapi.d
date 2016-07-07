@@ -72,6 +72,11 @@ class Audio {
         auto cachedDurationString = cachedValue!string(&getDurationStringInit);
     }
 
+    this(int p_id, int p_owner, int p_dur, string p_title, string p_artist, string p_url) {
+        id = p_id; owner = p_owner; duration = p_dur;
+        artist = p_artist; title = p_title; url = p_url;
+    }
+
     private string getDurationStringInit() {
         auto sec = duration % 60;
         auto min = (duration - sec) / 60;
