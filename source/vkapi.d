@@ -88,6 +88,83 @@ class Audio {
     }
 }
 
+struct MessageLine {
+    string text;
+    string time;
+    bool unread;
+    bool isName;
+    bool isSpacing;
+    bool isFwd;
+    int fwdDepth;
+}
+
+struct FwdMessage {
+    int authorId;
+    User author;
+    long time;
+    string text;
+    int fwdDepth;
+    //User[] authorsChain;
+
+    private auto cachedTimeString = cachedValue(() => vktime(Clock.currTime, time));
+    string getTimeString() { return cachedTimeString.get(); }
+}
+
+class Message {
+    alias MessageLines = MessageLine[];
+
+    int authorId, peerId, msgId;
+    string text;
+    long time;
+    bool outgoing, unread;
+
+    private auto cachedTimeString = cachedValue(() => vktime(Clock.currTime, time));
+    string getTimeString() { return cachedTimeString.get(); }
+
+    User author;
+    FwdMessage[] forwarded;
+    auto lines = cachedValue!MessageLines();
+
+    private MessageLine[] convertMessage(ref Message inp, int ww) {
+        immutable bool zombie = inp.isZombie || inp.msg_id < 1;
+
+        vkMessageLine[] rt;
+        rt ~= lspacing;
+        bool nofwd = (inp.fwd_depth == -1);
+
+        if(inp.needName) {
+            vkMessageLine name = {
+                text: inp.author_name,
+                time: inp.time_str,
+                isName: true
+            };
+            rt ~= name;
+            rt ~= lspacing;
+        }
+
+        if(inp.body_lines.length != 0) {
+            bool unrfl = inp.unread;
+            wstring[] wrapped;
+            inp.body_lines.map!(q => q.to!wstring.wordwrap(ww)).each!(q => wrapped ~= q);
+            foreach(l; wrapped) {
+                vkMessageLine msg = {
+                    text: l.to!string,
+                    unread: unrfl
+                };
+                rt ~= msg;
+                if(unrfl) unrfl = false;
+            }
+        } else if (nofwd) rt ~= lspacing;
+
+        if(!nofwd) {
+            rt ~= lspacing ~ renderFwd(inp.fwd, 0, ww);
+        }
+
+        return rt;
+    }
+
+}
+
 class VkApi {
 
     private const string vkurl = "https://api.vk.com/method/";
