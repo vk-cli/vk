@@ -30,14 +30,15 @@ class User {
     int id;
     string firstName, lastName;
     bool online;
-    SysTime lastSeen = null;
+    SysTime lastSeen;
 
     private {
         bool hasName;
     }
 
-    this(int p_id, string p_fname, string p_lname, bool p_online) {
-        id = p_id; firstName = p_fname; lastName = p_lname; online = p_online;
+    this(int p_id, string p_fname, string p_lname, bool p_online = fals, SysTime p_lastseen = null) {
+        id = p_id; firstName = p_fname; lastName = p_lname;
+        online = p_online; p_lastseen = lastSeen;
     }
 
     string getFullName() {
@@ -55,6 +56,7 @@ class User {
     }
 
     string getFormattedLastSeen() {
+        if(lastSeen is null) return "";
         return vktime(Clock.currTime, lastSeen);
     }
 }
