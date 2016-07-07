@@ -29,16 +29,16 @@ import utils, namecache, localization;
 class User {
     int id;
     string firstName, lastName;
-    bool online;
+    bool online, isFriend;
     SysTime lastSeen;
 
     private {
         bool hasName;
     }
 
-    this(int p_id, string p_fname, string p_lname, bool p_online = fals, SysTime p_lastseen = null) {
+    this(int p_id, string p_fname, string p_lname, bool p_friend = false, bool p_online = fals, SysTime p_lastseen = null) {
         id = p_id; firstName = p_fname; lastName = p_lname;
-        online = p_online; p_lastseen = lastSeen;
+        isFriend = p_friend; online = p_online; p_lastseen = lastSeen;
     }
 
     string getFullName() {
