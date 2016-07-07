@@ -33,7 +33,7 @@ class User {
     SysTime lastSeen;
 
     private {
-        bool hasName;
+
     }
 
     this(int p_id, string p_fname, string p_lname, bool p_friend = false, bool p_online = fals, SysTime p_lastseen = null) {
@@ -42,7 +42,6 @@ class User {
     }
 
     string getFullName() {
-        if(!hasName) return "id" ~ id;
         return firstName ~ " " ~ lastName;
     }
 
@@ -58,6 +57,21 @@ class User {
     string getFormattedLastSeen() {
         if(lastSeen is null) return "";
         return vktime(Clock.currTime, lastSeen);
+    }
+}
+
+class Audio {
+    int id, owner, duration;
+    string artist, title, url;
+
+    private {
+
+    }
+
+    string getDurationString() {
+        auto sec = duration % 60;
+        auto min = (duration - sec) / 60;
+        return min.to!string ~ ":" ~ tzr(min);
     }
 }
 
