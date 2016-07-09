@@ -1227,9 +1227,6 @@ void main(string[] args) {
   color;
   curs_set(0);
   noecho;
-  
-  scope(exit) Exit("", 0, true);
-  scope(failure) Exit;
 
   storage = load;
   storage.parse;
