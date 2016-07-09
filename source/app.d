@@ -1259,4 +1259,5 @@ void main(string[] args) {
     controller;
   }
 
+  Exit("", 0, true);
 }
