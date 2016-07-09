@@ -388,10 +388,10 @@ class mpv: Thread {
     uint spawntry;
     while(!exists(socketPath)) {
         dbm("mpv - waiting for socket spawn...");
-        Thread.sleep(dur!"msecs"(300));
+        Thread.sleep(dur!"msecs"(400));
 
         ++spawntry;
-        if(spawntry >= 3) {
+        if(spawntry >= 25) {
             dbm("mpv - socket connection failed");
             return;
         }
