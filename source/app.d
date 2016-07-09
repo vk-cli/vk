@@ -722,7 +722,7 @@ void controller() {
     else if (api.isSomethingUpdated) break;
     else if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
-  //if (win.key != -1) win.key.print;
+  if (win.key != -1) win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
@@ -1250,7 +1250,7 @@ void main(string[] args) {
   api.sendOnline(win.sendOnline);
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
-    clear;
+    //clear;
     statusbar;
     if (win.activeBuffer != Buffers.chat) drawMenu;
     bodyToBuffer;
