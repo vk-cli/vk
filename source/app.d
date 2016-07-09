@@ -321,11 +321,12 @@ VkMan get_token(ref string[string] storage) {
   noecho;
   auto strstart_browser = (cast(char*)&start_browser).to!string;
   string token_link = "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
+  "\n".print;
   "e_token_info".getLocal.print;
   "\n".print;
   if (strstart_browser == "N" || strstart_browser == "n"){
     "e_token_link".getLocal.print;
-    "\n".print;
+    "\n\n".print;
     token_link.print;
     "\n\n".print;
   } else {
