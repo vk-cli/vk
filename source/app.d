@@ -675,9 +675,14 @@ void jumpToEnd() {
 
 int _getch() {
   int key = getch;
+  if (key != -1) {
+    key.print;
+    " ".print;
+  }
   if (key == 27) {
     if (getch == -1) return k_esc;
     else {
+      getch.print;
       switch (getch) {
         case 65: return -2;         // Up
         case 66: return -3;         // Down
