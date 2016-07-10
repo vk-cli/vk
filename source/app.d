@@ -675,23 +675,20 @@ void jumpToEnd() {
 
 int _getch() {
   int key = getch;
-  if (key != -1) {
-    key.print;
-    " ".print;
-  }
   if (key == 27) {
     if (getch == -1) return k_esc;
     else {
-      getch.print;
       switch (getch) {
         case 65: return -2;         // Up
         case 66: return -3;         // Down
         case 67: return -4;         // Right
         case 68: return -5;         // Left
         case 49: getch; return -6;  // Home
+        case 72: getch; return -6;  // Home
         case 50: getch; return -7;  // Ins
         case 51: getch; return -8;  // Del
         case 52: getch; return -9;  // End
+        case 70: getch; return -9;  // End
         case 53: getch; return -10; // Pg Up
         case 54: getch; return -11; // Pg Down
         default: return -1;
@@ -727,7 +724,7 @@ void controller() {
     else if (api.isSomethingUpdated) break;
     else if (win.activeBuffer == Buffers.music && mplayer.musicState && mplayer.playtimeUpdated) break;
   }
-  if (win.key != -1) win.key.print;
+  //if (win.key != -1) win.key.print;
   if (win.isMessageWriting) msgBufferEvents;
   else if (canFind(kg_left, win.key)) backEvent;
   else if (activeBufferEventsAllowed) {
@@ -1255,7 +1252,7 @@ void main(string[] args) {
   api.sendOnline(win.sendOnline);
 
   while (!canFind(kg_esc, win.key) || win.isMessageWriting) {
-    //clear;
+    clear;
     statusbar;
     if (win.activeBuffer != Buffers.chat) drawMenu;
     bodyToBuffer;
