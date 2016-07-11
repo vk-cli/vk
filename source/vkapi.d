@@ -66,30 +66,25 @@ class User {
 
 class Audio {
     int id, owner, duration;
-    string artist, title, url;
-
-    private {
-        auto cachedDurationString = cachedValue!string(&getDurationStringInit);
-    }
+    string artist, title, url, durationString;
 
     this(int p_id, int p_owner, int p_dur, string p_title, string p_artist, string p_url) {
         id = p_id; owner = p_owner; duration = p_dur;
         artist = p_artist; title = p_title; url = p_url;
+        init();
     }
 
-    private string getDurationStringInit() {
+    private void init() {
+        // durationString
         auto sec = duration % 60;
         auto min = (duration - sec) / 60;
-        return min.to!string ~ ":" ~ tzr(min);
+        durationString = min.to!string ~ ":" ~ tzr(min);
     }
 
-    string getDurationString() {
-        return cachedDurationString.get();
-    }
 }
 
 struct MessageLine {
-    string text;
+    wstring text;
     string time;
     bool unread;
     bool isName;
@@ -100,67 +95,127 @@ struct MessageLine {
 
 struct FwdMessage {
     int authorId;
-    User author;
     long time;
-    string text;
+    wstring text;
     int fwdDepth;
     //User[] authorsChain;
 
     private auto cachedTimeString = cachedValue(() => vktime(Clock.currTime, time));
     string getTimeString() { return cachedTimeString.get(); }
+
+    private auto cachedAuthor = cahcedValue();
+    User getAuthor() { return cachedAuthor.get(); }
 }
 
 class Message {
     alias MessageLines = MessageLine[];
 
+    const int wwstep = 3;
+    const long needNameMaxDelta = 180; //seconds, 3 min
+
     int authorId, peerId, msgId;
-    string text;
+    string text, timeString;
     long time;
-    bool outgoing, unread;
-
-    private auto cachedTimeString = cachedValue(() => vktime(Clock.currTime, time));
-    string getTimeString() { return cachedTimeString.get(); }
-
-    User author;
+    bool outgoing, unread, needName = true;
     FwdMessage[] forwarded;
-    auto lines = cachedValue!MessageLines();
 
-    private MessageLine[] convertMessage(ref Message inp, int ww) {
-        immutable bool zombie = inp.isZombie || inp.msg_id < 1;
+    private {
+        auto cachedAuthor = cachedValue();
+        MessageLine[] lineCache;
+        int lineCacheWidth;
+    }
 
-        vkMessageLine[] rt;
-        rt ~= lspacing;
-        bool nofwd = (inp.fwd_depth == -1);
+    User getAuthor() { return cachedAuthor.get(); }
 
-        if(inp.needName) {
-            vkMessageLine name = {
-                text: inp.author_name,
-                time: inp.time_str,
+    this(int aid, int pid, int mid, long ut, string txt, FwdMessage[] fwds, bool outg, bool unr) {
+        authorId = aid; peerId = pid; msgId = mid;
+        text = txt; forwarded = fwds; time = ut;
+        outgoing = outg; unread = unr;
+        init();
+    }
+
+    private void init() {
+        //timeString
+        timeString = vktime(Clock.currTime, time);
+    }
+
+    void setNeedName(long reltime) {
+        needName = (time-reltime) > needNameMaxDelta;
+    }
+
+    void invalidateLineCache() {
+        lineCache = [];
+    }
+
+    MessageLine[] getLines() {
+        immutable auto w = stateViewWidth.width;
+        if(lineCache.length == 0 || lineCacheWidth != w) convertMessage(w);
+        return lineCache;
+    }
+
+    MessageLine lspacing = {
+        text: "", isSpacing: true
+    };
+
+    private void convertMessage(int ww) {
+        lineCache = [];
+        lineCache ~= lspacing;
+
+        if(needName) {
+            MessageLine name = {
+                text: getAuthor().getFullName(),
+                time: getTimeString(),
                 isName: true
             };
-            rt ~= name;
-            rt ~= lspacing;
+            lineCache ~= name;
+            lineCache ~= lspacing;
         }
 
-        if(inp.body_lines.length != 0) {
-            bool unrfl = inp.unread;
-            wstring[] wrapped;
-            inp.body_lines.map!(q => q.to!wstring.wordwrap(ww)).each!(q => wrapped ~= q);
-            foreach(l; wrapped) {
-                vkMessageLine msg = {
-                    text: l.to!string,
-                    unread: unrfl
+        auto nomsg = text.length == 0;
+        auto nofwd = forwarded.length == 0;
+        if(nomsg && nofwd) lineCache ~= lspacing;
+
+        if(!nomsg) {
+            bool firstLineUnread = unread;
+            foreach(line; text.wordwrap(ww).split('\n')) {
+                MessageLine msg = {
+                    text: line,
+                    unread: firstLineUnread
                 };
-                rt ~= msg;
-                if(unrfl) unrfl = false;
+                lineCache ~= msg;
+                firstLineUnread = false;
             }
-        } else if (nofwd) rt ~= lspacing;
+        }
 
         if(!nofwd) {
-            rt ~= lspacing ~ renderFwd(inp.fwd, 0, ww);
-        }
+            foreach(fwd; forwarded) {
+                immutable auto depth = fwd.fwdDepth;
+                auto fwdww = ww - ( * wwstep);
+                if (fwdww < 1) fwdww = 1;
 
-        return rt;
+                MessageLine fwdname = {
+                    text: fwd.getAuthor().getFullName(),
+                    fwdDepth: depth,
+                    isFwd: true,
+                    isName: true
+                };
+                lineCache ~= fwdname;
+
+                foreach(line; text.wordwrap(fwdww).split('\n')) {
+                    MessageLine msg = {
+                        text: line,
+                        fwdDepth: depth,
+                        isFwd: true
+                    };
+                    lineCache ~= msg;
+                }
+
+                auto fwdspacing = lspacing;
+                fwdspacing.isFwd = true;
+                fwdspacing.fwdDepth = depth;
+                lineCache ~= fwdspacing;
+            }
+        }
     }
 
 }

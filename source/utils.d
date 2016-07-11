@@ -205,7 +205,7 @@ T[] slice(T)(ref T[] src, int count, int offset) {
     }
 }
 
-S[] wordwrap(S)(S s, size_t mln) {
+S[] oldwordwrap(S)(S s, size_t mln) {
     auto wrplines = s.wrap(mln).split("\n");
     S[] lines;
     foreach(ln; wrplines) {
@@ -216,6 +216,44 @@ S[] wordwrap(S)(S s, size_t mln) {
         }
     }
     return lines[0..$-1];
+}
+
+wstring wordwrap(wstring inputString, size_t maxlength) {
+    const wchar lf = '\n';
+
+    auto s = cast(wchar[])inputString;
+    size_t chLine, chWord;
+    int lastSpace = -1;
+
+    for(int i; i < s.length; ++i) {
+        immutable auto c = s[i];
+        if(c.isSpace) {
+            chLine += chWord + 1;
+            chWord = 0;
+            lastSpace = i;
+        }
+        else if (c == lf) {
+            chWord = 0;
+            chLine = 0;
+            lastSpace = -1;
+        }
+        else {
+            ++chWord;
+            if((chLine+chWord) >= maxlength) {
+                if(lastSpace >= 0) {
+                    s[lastSpace] = lf;
+                }
+                else {
+                    s.insertInPlace(i, lf);
+                    chWord = 0;
+                }
+                chLine = 0;
+                lastSpace = -1;
+            }
+        }
+    }
+
+    return cast(wstring)s;
 }
 
 private S[] cropstr(S)(S s, size_t mln) {
