@@ -17,7 +17,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-module namecache;
+module cache;
 
 import std.stdio, std.conv, std.algorithm, std.array;
 import vkapi, utils;

@@ -24,7 +24,7 @@ import std.exception, core.exception, std.process;
 import std.net.curl, std.uri, std.json;
 import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
-import utils, namecache, localization;
+import utils, cache, localization;
 
 class User {
     int id;
