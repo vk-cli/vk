@@ -1,13 +1,6 @@
 # vk
 A console (ncurses) client for vk.com written in D
 
-
-### Unstable branch
-+ **master** - current upstream 
-
-### Stable Version
-+ **0.7.2** - [latest release](https://vk.com/hack3d_home?w=wall-69278962_1446/)
-
 # Screenshots
 
 ![alt tag](http://cs630123.vk.me/v630123942/25fc7/YOqfnerj4bE.jpg)
