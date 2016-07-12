@@ -17,6 +17,8 @@ elif [[ "$1" == 'debug' ]]; then
   dubtype="debug"
 fi
 
+dubtype="debug" # for remove optimizations
+
 echo "Building with:"
 echo "config: $dubconf"
 echo "build: $dubtype"
