@@ -22,35 +22,21 @@ module cache;
 import std.stdio, std.conv, std.algorithm, std.array;
 import vkapi, utils;
 
-struct cachedName {
-    string first_name;
-    string last_name;
-    bool online;
+__gshared {
+    auto sharedapi = cachesApi();
+    auto users = userCache();
 }
 
-struct nameCacheStorage {
-    cachedName[int] cache;
-}
-
-string strName(cachedName inp) {
-    auto ln = inp.last_name;
-    auto rt = inp.first_name;
-    if(ln.length != 0) rt ~= " " ~ ln;
-    return rt;
-}
-
-__gshared auto nc = nameCacheStorage();
-
-class nameCache {
+struct cachesApi {
     VkApi api;
-    int[] order;
+}
 
-    this(VkApi api) {
-        this.api = api;
-    }
+class userCache {
+    int[] order;
+    User[int] cache;
 
     static void defeatNameCache() {
-        nc = nameCacheStorage();
+        cache.clear();
     }
 
     void requestId(int[] ids) {
@@ -62,27 +48,13 @@ class nameCache {
         order ~= id;
     }
 
-    void addToCache(int id, cachedName name){
-        nc.cache[id] = name;
+    void addToCache(int id, User u){
+        cache[id] = u;
     }
 
-    void setOnline(int id, bool online) {
-        auto c = id in nc.cache;
-        if(c) {
-            c.online = online;
-        }
-    }
-
-    bool getOnline(int id, bool forced = false) {
-        auto c = id in nc.cache;
-        if(c) return c.online;
-        else if (forced) return getName(id).online;
-        else return false;
-    }
-
-    cachedName getName(int id) {
-        if(id in nc.cache) {
-            return nc.cache[id];
+    User getUser(int id) {
+        if(id in cache) {
+            return cache[id];
         }
         dbm("got non-cached name!");
         try {
