@@ -22,7 +22,7 @@ import std.process, std.stdio, std.string, std.algorithm,
 
 void main() {
   const versionNum = "0.7.4";
-  const releaseFlag = false;
+  const releaseFlag = true;
   string
     lastCommitHash,
     currentBranch;
