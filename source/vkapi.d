@@ -26,6 +26,17 @@ import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, cache, localization;
 
+const int convStartId = 2000000000;
+const int mailStartId = convStartId*-1;
+const int longpollGimStartId = 1000000000;
+const bool return80mc = true;
+const long needNameMaxDelta = 180; //seconds, 3 min
+const int typingTimeout = 4;
+
+const uint defaultBlock = 100;
+const int chatBlock = 100;
+const int chatUpd = 50;
+
 class User {
     int id;
     string firstName, lastName;
@@ -120,7 +131,7 @@ class Message {
     FwdMessage[] forwarded;
 
     private {
-        auto cachedAuthor = cachedValue();
+        auto cachedAuthor = cachedValue(); // todo get from cache
         MessageLine[] lineCache;
         int lineCacheWidth;
     }
@@ -161,7 +172,7 @@ class Message {
         lineCache = [];
         lineCache ~= lspacing;
 
-        if(needName) {
+        if(needName || true) { // todo needName resolve
             MessageLine name = {
                 text: getAuthor().getFullName(),
                 time: getTimeString(),
@@ -187,7 +198,7 @@ class Message {
             }
         }
 
-        if(!nofwd) {
+        if(!nofwd) { // todo fix digfwd in api
             foreach(fwd; forwarded) {
                 immutable auto depth = fwd.fwdDepth;
                 auto fwdww = ww - ( * wwstep);
@@ -218,6 +229,41 @@ class Message {
         }
     }
 
+}
+
+class Dialog {
+    string title;
+    int id, unreadCount;
+    bool unread, outbox;
+
+    private {
+        bool chat;
+        Message[] buffer; //todo storage
+    }
+
+    this(int peer) {
+        id = peer;
+        chat = id > convStartId;
+    }
+
+    private Message getLast() {
+        if(buffer.length == 0) return "";
+        return buffer[$-1];
+    }
+
+    bool isChat() { return chat; }
+
+    bool isOnline() {
+        return isChat ? true : false; // todo resolve non-chat online
+    }
+
+    string getLastMessage() {
+        return getLast().text;
+    }
+
+    int getLastmid() {
+        return getLast().msgId;
+    }
 }
 
 class VkApi {
