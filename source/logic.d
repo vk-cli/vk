@@ -158,6 +158,10 @@ class MergedChunks(T) {
         return lastempty;
     }
 
+    auto moveFront() {
+        return front();
+    }
+
 }
 
 unittest {
@@ -210,6 +214,10 @@ class View(T) : SuperView!T {
     private {
         storage buff;
         size_t position;
+    }
+
+    this(storage st) {
+        buff = st;
     }
 
     override auto getView(int height, int width) {
