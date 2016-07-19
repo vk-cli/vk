@@ -39,29 +39,22 @@ const int chatUpd = 50;
 
 class User {
     int id;
-    string firstName, lastName;
+    string firstName, lastName, fullName;
     bool online, isFriend;
     SysTime lastSeen;
 
-    private {
-        auto cachedFullName = cachedValue!string(&getFullNameInit);
-    }
-
     this() {
-
+        init();
     }
 
     this(int p_id, string p_fname, string p_lname, bool p_friend = false, bool p_online = fals, SysTime p_lastseen = null) {
         id = p_id; firstName = p_fname; lastName = p_lname;
         isFriend = p_friend; online = p_online; p_lastseen = lastSeen;
+        init();
     }
 
-    private string getFullNameInit() {
-        return firstName ~ " " ~ lastName;
-    }
-
-    string getFullName() {
-        return cachedFullName.get();
+    private void init() {
+        fullName = firstName ~ " " ~ lastName;
     }
 
     void setOnlineStatus(bool status) {
@@ -276,6 +269,12 @@ class Dialog {
 }
 
 class VkApi {
+    struct vkgetparams {
+        bool setloading = true;
+        int attempts = connectionAttempts;
+        bool thrownf = false;
+        bool notifynf = true;
+    }
 
     private const string vkurl = "https://api.vk.com/method/";
     const string vkver = "5.50";
@@ -285,14 +284,118 @@ class VkApi {
         vktoken = token;
     }
 
-    User[] friendsGet(int count, int offset, out int serverCount, int user_id = 0) {
+    string httpget(string addr, Duration timeout, uint attempts) {
+        string content = "";
+        auto client = HTTP();
+
+        int tries = 0;
+        bool ok = false;
+
+        while(!ok){
+            try{
+                client.method = HTTP.Method.get;
+                client.url = addr;
+
+                client.dataTimeout = timeout;
+                client.operationTimeout = timeout;
+                client.connectTimeout = timeout;
+
+                client.onReceive = (ubyte[] data) {
+                    auto sz = data.length;
+                    content ~= (cast(immutable(char)*)data)[0..sz];
+                    return sz;
+                };
+                client.perform();
+                ok = true;
+                //dbm("recv content: " ~ content);
+            } catch (CurlException e) {
+                ++tries;
+                dbm("[attempt " ~ (tries.to!string) ~ "] network error: " ~ e.msg);
+                if(tries >= attempts) {
+                    throw new NetworkException("httpget");
+                }
+                Thread.sleep( dur!"msecs"(mssleepBeforeAttempt) );
+            }
+        }
+        return content;
+    }
+
+    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false, vkgetparams gp = vkgetparams()) {
+        if(gp.setloading) {
+            enterLoading();
+        }
+        bool rmresp = !dontRemoveResponse;
+        auto url = vkurl ~ meth ~ "?"; //so blue
+        foreach(key; params.keys) {
+            auto val = params[key];
+            //dbm("up " ~ key ~ "=" ~ val);
+            auto cval = val.encode.replace("+", "%2B");
+            url ~= key ~ "=" ~ cval ~ "&";
+        }
+        url ~= "v=" ~ vkver ~ "&access_token=";
+        if(!showTokenInLog) dbm("request: " ~ url ~ "***");
+        url ~= vktoken;
+        if(showTokenInLog) dbm("request: " ~ url);
+        auto tm = dur!timeoutFormat(vkgetCurlTimeout);
+        string got;
+
+        bool htloop;
+        while(!htloop) {
+            try{
+                got = AsyncMan.httpget(url, tm, gp.attempts);
+                htloop = true;
+            } catch(NetworkException e) {
+                dbm(e.msg);
+                if(gp.notifynf) connectionProblems();
+                if(gp.thrownf) throw e;
+
+                if(gp.notifynf) {
+                    //dbm("vkget waits for api init..");
+                    do {
+                        Thread.sleep(dur!"msecs"(300));
+                    } while(!isTokenValid);
+                    //dbm("resume vkget");
+                }
+            }
+        }
+
+        JSONValue resp;
+        try{
+            resp = got.parseJSON;
+            //dbm("json: " ~ resp.toPrettyString);
+        }
+        catch(JSONException e) {
+            throw new ApiErrorException(resp.toPrettyString(), 0);
+        }
+
+        if(resp.type == JSON_TYPE.OBJECT) {
+            if("error" in resp){
+                try {
+                    auto eobj = resp["error"];
+                    immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
+                    immutable auto ecode = eobj["error_code"].integer.to!int;
+                    throw new ApiErrorException(emsg, ecode);
+                } catch (JSONException e) {
+                    throw new ApiErrorException(resp.toPrettyString(), 0);
+                }
+
+            } else if ("response" !in resp) {
+                rmresp = false;
+            }
+        } else rmresp = false;
+
+        if(gp.setloading) leaveLoading();
+        return rmresp ? resp["response"] : resp;
+    }
+
+    User[] friendsGet(int count, int offset,  int user_id = 0) {
         auto params = [ "fields": "online,last_seen", "order": "hints"];
         if(user_id != 0) params["user_id"] = user_id.to!string;
         if(count != 0) params["count"] = count.to!string;
         if(offset != 0) params["offset"] = offset.to!string;
 
         auto resp = vkget("friends.get", params);
-        serverCount = resp["count"].integer.to!int;
+        //serverCount = resp["count"].integer.to!int;
 
 
         auto ct = Clock.currTime();

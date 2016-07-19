@@ -164,11 +164,6 @@ class MergedChunks(T) {
 
 }
 
-unittest {
-    assert(Chunk!(int).init is null);
-    assert(isInputRange!(MergedChunks!int));
-}
-
 class Storage(T) {
     alias typedchunk = Chunk!T;
     alias typecoll = T[];
