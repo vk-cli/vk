@@ -147,9 +147,9 @@ class Message {
         lineCache = [];
     }
 
-    MessageLine[] getLines() {
-        immutable auto w = stateViewWidth.width;
-        if(lineCache.length == 0 || lineCacheWidth != w) convertMessage(w);
+    MessageLine[] getLines(int width) {
+
+        if(lineCache.length == 0 || lineCacheWidth != width) convertMessage(width);
         return lineCache;
     }
 
