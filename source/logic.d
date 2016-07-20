@@ -24,17 +24,20 @@ import std.exception, core.exception, std.process;
 import std.net.curl, std.uri, std.json;
 import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
-import utils, namecache, localization, vkapi;
+import utils, cache, localization, vkapi;
 
 const int defaultLoadCount = 100;
 
-auto async = new Async();
+immutable auto async = new Async();
 
 class Async {
     alias taskfunc = void delegate();
 
     struct task {
         this(taskfunc f) {
+            thread = new Thread(
+                () => func()
+            );
             func = f;
             thread.start();
         }
@@ -47,6 +50,14 @@ class Async {
 
     struct taskqueue {
         this(taskfunc f) {
+            thread = new Thread( {
+                while(true) {
+                    for(int i; i < queue.length; ++i) {
+                        this.queue[i]();
+                    }
+                    while(queue.length == 0) Thread.sleep(dur!"msecs"(300));
+                }
+            } );
             add(f);
             thread.start();
         }
@@ -56,14 +67,7 @@ class Async {
         }
 
         taskfunc[] queue;
-        auto thread = new Thread( {
-            while(true) {
-                for(int i; i < queue.length; ++i) {
-                    queue[i]();
-                }
-                while(queue.length == 0) sleep(300);
-            }
-        } );
+        Thread thread;
     }
 
     task[string] singles;

@@ -23,7 +23,7 @@ import std.stdio, std.array, std.range, std.string, std.file, std.random;
 import core.thread, core.sync.mutex, core.exception;
 import core.sys.posix.signal;
 import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
-import localization, app, vkversion, musicplayer;
+import localization, app, vkversion;
 
 const bool
     debugMessagesEnabled = false,

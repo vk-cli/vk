@@ -24,7 +24,7 @@ import std.exception, core.exception, std.process;
 import std.net.curl, std.uri, std.json;
 import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
-import utils, cache, localization;
+import utils, localization, logic;
 
 const int convStartId = 2000000000;
 const int mailStartId = convStartId*-1;
@@ -44,12 +44,6 @@ class User {
     SysTime lastSeen;
 
     this() {
-        init();
-    }
-
-    this(int p_id, string p_fname, string p_lname, bool p_friend = false, bool p_online = fals, SysTime p_lastseen = null) {
-        id = p_id; firstName = p_fname; lastName = p_lname;
-        isFriend = p_friend; online = p_online; p_lastseen = lastSeen;
         init();
     }
 
@@ -108,8 +102,7 @@ struct FwdMessage {
     int fwdDepth;
     //User[] authorsChain;
 
-    private auto cachedTimeString = cachedValue(() => vktime(Clock.currTime, time));
-    string getTimeString() { return cachedTimeString.get(); }
+    string getTimeString() { return vktime(Clock.currTime, this.time); }
 
     //private auto cachedAuthor = cahcedValue();
     //User getAuthor() { return cachedAuthor.get(); }
@@ -229,13 +222,15 @@ class Message {
 }
 
 class Dialog {
+    alias messagesStorage = Storage!Message;
+
     string title;
     int id, unreadCount;
     bool unread, outbox;
 
     private {
         bool chat;
-        Storage!Mesage messages;
+        messagesStorage messages;
     }
 
     this(int peer) {
@@ -271,7 +266,7 @@ class Dialog {
 class VkApi {
     struct vkgetparams {
         bool setloading = true;
-        int attempts = connectionAttempts;
+        int attempts = 10;
         bool thrownf = false;
         bool notifynf = true;
     }

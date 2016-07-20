@@ -22,7 +22,7 @@ module cache;
 import std.stdio, std.conv, std.algorithm, std.array;
 import vkapi, utils;
 
-__gshared {
+/*__gshared {
     auto sharedapi = cachesApi();
     auto users = userCache();
 }
@@ -122,6 +122,6 @@ class userCache {
         dbm("cached " ~ nc.cache.length.to!string ~ " names, order length: " ~ order.length.to!string);
     }
 
-}
+}*/
 
 

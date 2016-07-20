@@ -1,4 +1,3 @@
-module vkapi;
 
 import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
 import std.exception, core.exception, std.process;
