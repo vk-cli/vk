@@ -51,10 +51,10 @@ class User {
     SysTime lastSeen;
 
     this() {
-        init();
+        //init();
     }
 
-    private void init() {
+    void init() {
         fullName = firstName ~ " " ~ lastName;
     }
 
@@ -384,9 +384,8 @@ class VkApi {
         if(count != 0) params["count"] = count.to!string;
         if(offset != 0) params["offset"] = offset.to!string;
 
-        auto resp = vkget("friends.get", params);
+        JSONValue resp = vkget("friends.get", params);
         //serverCount = resp["count"].integer.to!int;
-
 
         auto ct = Clock.currTime();
         User[] rt;
@@ -405,9 +404,9 @@ class VkApi {
             fr.online = f["online"].integer.to!int == 1;
             fr.lastSeen = SysTime(unixTimeToStdTime(last));
             fr.isFriend = true;
+            fr.init();
 
             //nc.addToCache(friend.id, cachedName(friend.first_name, friend.last_name, friend.online));
-
             rt ~= fr;
         }
 
@@ -438,7 +437,7 @@ class ApiErrorException : Exception {
                                 size_t line = __LINE__,
                                 Throwable next = null) {
             errorCode = error_code;
-            super(message, file, line, next);
+            super("api error: " ~ message, file, line, next);
         }
     }
 }

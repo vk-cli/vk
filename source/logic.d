@@ -28,60 +28,88 @@ import utils, cache, localization, vkapi;
 
 const int defaultLoadCount = 100;
 
-Async async;
+__gshared {
+    Async async;
+}
 
 class Async {
     alias taskfunc = void delegate();
 
-    struct task {
-        this(taskfunc f) {
-            thread = new Thread(&thrfunc);
+    class task : Thread {
+        this(taskfunc f, string name) {
+            threadName = name;
             func = f;
-            thread.start();
+            super(&thrfunc);
+            this.start();
         }
 
         private void thrfunc() {
-            func();
+            try func();
+            catch (Exception e) {
+                dbm("Thread " ~ threadName ~ " exception: " ~
+                    typeof(e).stringof ~ " " ~ e.msg);
+            }
+            catch (Error r) {
+                dbm("Thread " ~ threadName ~ " error: " ~ r.msg);
+            }
         }
 
         taskfunc func;
-        Thread thread;
+        string threadName;
     }
 
-    struct taskqueue {
-        this(taskfunc f) {
-            thread = new Thread(&thrfunc);
-            add(f);
-            thread.start();
+    class taskqueue : Thread {
+        struct queuetask {
+            taskfunc func;
+            int rid;
+        }
+
+        this(string name) {
+            threadName = name;
+            super(&thrfunc);
         }
 
         private void thrfunc() {
             while(true) {
                 for(int i; i < queue.length; ++i) {
-                    this.queue[i]();
+                    auto ctask = queue[i];
+                    runningRid = ctask.rid;
+
+                    try ctask.func();
+                    catch (Exception e) {
+                        dbm("Thread " ~ threadName ~ " exception: " ~ e.msg);
+                    }
+                    catch (Error r) {
+                        dbm("Thread " ~ threadName ~ " error: " ~ r.msg);
+                    }
+
+                    runningRid = 0;
                 }
+                queue = []; // clear queue
+                dbm("async: queue cleared for " ~ threadName);
                 while(queue.length == 0) Thread.sleep(dur!"msecs"(300));
             }
         }
 
-        void add(taskfunc f) {
-            queue ~= f;
+        void add(taskfunc f, int rid) {
+            queue ~= queuetask(f, rid);
         }
 
-        taskfunc[] queue;
-        Thread thread;
+        queuetask[] queue;
+        int runningRid;
+        string threadName;
     }
 
     task[string] singles;
     taskqueue[string] queues;
 
     const string
-        q_loadChunk = "load_chunk";
+        q_loadChunk = "q_load_chunk";
 
     void single(string name, taskfunc f) {
         auto t = name in singles;
-        if( (t && !t.thread.isRunning) || !t ) {
-            singles[name] = task(f);
+        if( (t && !t.isRunning) || !t ) {
+            singles[name] = new task(f, name);
             dbm("async: thread started for " ~ name);
         }
         else {
@@ -89,13 +117,22 @@ class Async {
         }
     }
 
-    void queue(string name, taskfunc f) {
-        auto q = name in queues;
-        if(q) {
-            q.add(f);
+    void queue(string name, int rid, taskfunc f) {
+        auto e = name in queues;
+        if(e) {
+            auto query = e.queue.filter!(q => q.rid == rid);
+            if(query.empty || query.map!(q => q.rid != e.runningRid).all!"a") {
+                e.add(f, rid);
+            }
+            else {
+                dbm("async: already has task with this rid in query!!");
+            }
         }
         else {
-            queues[name] = taskqueue(f);
+            auto nq = new taskqueue(name);
+            nq.add(f, rid);
+            nq.start();
+            queues[name] = nq;
             dbm("async: thread started for " ~ name ~ " queue");
         }
     }
@@ -178,7 +215,6 @@ class Storage(T) {
     private {
         loader loadfunc;
         int asyncId;
-        string asyncLoaderKey;
     }
 
     typedchunk[] store;
@@ -186,7 +222,6 @@ class Storage(T) {
     this(loader loadf) {
         loadfunc = loadf;
         asyncId = genId();
-        asyncLoaderKey = async.q_loadChunk ~ " " ~ asyncId.to!string;
     }
 
     private void loadSync(int pos, int count) {
@@ -195,7 +230,7 @@ class Storage(T) {
     }
 
     void load(int pos, int count) {
-        async.queue(asyncLoaderKey, () => loadSync(pos, count));
+        async.queue(async.q_loadChunk, asyncId, () => loadSync(pos, count));
     }
 
     auto get(int pos, int count) {
