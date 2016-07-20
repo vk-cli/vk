@@ -37,6 +37,13 @@ const uint defaultBlock = 100;
 const int chatBlock = 100;
 const int chatUpd = 50;
 
+const int connectionAttempts = 10;
+const int mssleepBeforeAttempt = 600;
+const int vkgetCurlTimeout = 3;
+const int longpollCurlTimeout = 27;
+const int longpollCurlAttempts = 5;
+const string timeoutFormat = "seconds";
+
 class User {
     int id;
     string firstName, lastName, fullName;
@@ -61,8 +68,7 @@ class User {
     }
 
     string getFormattedLastSeen() {
-        if(lastSeen is null) return "";
-        return vktime(Clock.currTime, lastSeen);
+        return vktime(Clock.currTime, lastSeen.toUnixTime);
     }
 }
 
@@ -128,10 +134,7 @@ class Message {
 
     //User getAuthor() { return cachedAuthor.get(); }
 
-    this(int aid, int pid, int mid, long ut, string txt, FwdMessage[] fwds, bool outg, bool unr) {
-        authorId = aid; peerId = pid; msgId = mid;
-        text = txt; forwarded = fwds; time = ut;
-        outgoing = outg; unread = unr;
+    this() {
         init();
     }
 
@@ -164,8 +167,8 @@ class Message {
 
         if(needName || true) { // todo needName resolve
             MessageLine name = {
-                text: getAuthor().getFullName(),
-                time: getTimeString(),
+                //text: getAuthor().getFullName(),
+                time: timeString,
                 isName: true
             };
             lineCache ~= name;
@@ -178,7 +181,7 @@ class Message {
 
         if(!nomsg) {
             bool firstLineUnread = unread;
-            foreach(line; text.wordwrap(ww).split('\n')) {
+            foreach(line; text.toUTF16wrepl.wordwrap(ww).split('\n')) {
                 MessageLine msg = {
                     text: line,
                     unread: firstLineUnread
@@ -191,18 +194,18 @@ class Message {
         if(!nofwd) { // todo fix digfwd in api
             foreach(fwd; forwarded) {
                 immutable auto depth = fwd.fwdDepth;
-                auto fwdww = ww - ( * wwstep);
+                auto fwdww = ww - (depth * wwstep);
                 if (fwdww < 1) fwdww = 1;
 
                 MessageLine fwdname = {
-                    text: fwd.getAuthor().getFullName(),
+                    //text: fwd.getAuthor().getFullName(),
                     fwdDepth: depth,
                     isFwd: true,
                     isName: true
                 };
                 lineCache ~= fwdname;
 
-                foreach(line; text.wordwrap(fwdww).split('\n')) {
+                foreach(line; text.toUTF16wrepl.wordwrap(fwdww).split('\n')) {
                     MessageLine msg = {
                         text: line,
                         fwdDepth: depth,
@@ -266,7 +269,7 @@ class Dialog {
 class VkApi {
     struct vkgetparams {
         bool setloading = true;
-        int attempts = 10;
+        int attempts = connectionAttempts;
         bool thrownf = false;
         bool notifynf = true;
     }
@@ -317,7 +320,7 @@ class VkApi {
 
     JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false, vkgetparams gp = vkgetparams()) {
         if(gp.setloading) {
-            enterLoading();
+            //enterLoading();
         }
         bool rmresp = !dontRemoveResponse;
         auto url = vkurl ~ meth ~ "?"; //so blue
@@ -337,20 +340,12 @@ class VkApi {
         bool htloop;
         while(!htloop) {
             try{
-                got = AsyncMan.httpget(url, tm, gp.attempts);
+                got = httpget(url, tm, gp.attempts);
                 htloop = true;
             } catch(NetworkException e) {
                 dbm(e.msg);
-                if(gp.notifynf) connectionProblems();
+                //if(gp.notifynf) connectionProblems();
                 if(gp.thrownf) throw e;
-
-                if(gp.notifynf) {
-                    //dbm("vkget waits for api init..");
-                    do {
-                        Thread.sleep(dur!"msecs"(300));
-                    } while(!isTokenValid);
-                    //dbm("resume vkget");
-                }
             }
         }
 
@@ -379,7 +374,7 @@ class VkApi {
             }
         } else rmresp = false;
 
-        if(gp.setloading) leaveLoading();
+        //if(gp.setloading) leaveLoading();
         return rmresp ? resp["response"] : resp;
     }
 
@@ -403,19 +398,67 @@ class VkApi {
             //auto laststr = getLocal("lastseen") ~ vktime(ct, last);
             auto laststr = last > 0 ? vktime(ct, last) : getLocal("banned");
 
-            auto f = new User();
-            f.id = f["id"].integer.to!int;
-            f.firstName = f["first_name"].str;
-            f.lastName = f["last_name"].str;
-            f.online = f["online"].integer.to!int == 1;
-            f.lastSeen = SysTime(unixTimeToStdTime(last));
-            f.isFriend = true;
+            auto fr = new User();
+            fr.id = f["id"].integer.to!int;
+            fr.firstName = f["first_name"].str;
+            fr.lastName = f["last_name"].str;
+            fr.online = f["online"].integer.to!int == 1;
+            fr.lastSeen = SysTime(unixTimeToStdTime(last));
+            fr.isFriend = true;
 
             //nc.addToCache(friend.id, cachedName(friend.first_name, friend.last_name, friend.online));
 
-            rt ~= f;
+            rt ~= fr;
         }
 
         return rt;
+    }
+}
+
+class NetworkException : Exception {
+    public {
+        @safe pure nothrow this(string loc,
+                                string message = "Connection lost",
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null) {
+            message = message ~ ": " ~ loc;
+            super(message, file, line, next);
+        }
+    }
+}
+
+
+class ApiErrorException : Exception {
+    public {
+        int errorCode;
+        @safe pure nothrow this(string message,
+                                int error_code,
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null) {
+            errorCode = error_code;
+            super(message, file, line, next);
+        }
+    }
+}
+
+class InternalException : Exception {
+    public {
+
+        static const int E_NETWORKFAIL = 4;
+        static const int E_LPRESTART = 5;
+
+        string msg;
+        int ecode;
+        @safe pure nothrow this(int error,
+                                string appmsg = "",
+                                string file =__FILE__,
+                                size_t line = __LINE__,
+                                Throwable next = null) {
+            msg = "client failed - unresolved internal exception: err" ~ error.to!string ~ " " ~ appmsg;
+            ecode = error;
+            super(msg, file, line, next);
+        }
     }
 }

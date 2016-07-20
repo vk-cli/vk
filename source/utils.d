@@ -22,7 +22,7 @@ module utils;
 import std.stdio, std.array, std.range, std.string, std.file, std.random;
 import core.thread, core.sync.mutex, core.exception;
 import core.sys.posix.signal;
-import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
+import std.datetime, std.conv, std.algorithm, std.utf, std.uni, std.typecons;
 import localization, app, vkversion;
 
 const bool
@@ -100,7 +100,7 @@ void dbm(string msg) {
 }
 
 void dropClient(string msg) {
-    Exit(msg);
+    //Exit(msg);
 }
 
 string tzr(int inpt) {
@@ -411,7 +411,7 @@ void logThread(string thrname = "") {
 }
 
 void unwantedExit(int sig) {
-    Exit("killed by signal " ~ sig.to!string, 2);
+    //Exit("killed by signal " ~ sig.to!string, 2);
 }
 
 void setPosixSignals() {

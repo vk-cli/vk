@@ -8,21 +8,14 @@ import vkapi, logic, cfg;
 
 string[string] config;
 
-void test() {
-    assert(Chunk!(int).init is null);
-    assert(isInputRange!(MergedChunks!int));
-}
-
 void main(string[] args) {
-    test();
-
     config = load();
     auto token = config["token"];
 
     async = new Async();
     auto api = new VkApi(token);
-    auto str = new Storage((o, c) => api.friendsGet(c, o));
-    auto view = new View(str);
+    auto str = new Storage!User((o, c) => api.friendsGet(c, o));
+    auto view = new View!User(str);
 
     for(int i; i < 3; ++i) {
         view.getView(5, 228).each!(q => writeln(q.fullName));

@@ -109,8 +109,8 @@ class Chunk(T) {
 
     T[] objects;
     int offset;
-    int count() { return objects.length; }
-    int end() { return offset + count(); }
+    size_t count() { return objects.length; }
+    size_t end() { return offset + count(); }
 }
 
 class MergedChunks(T) {
@@ -142,7 +142,7 @@ class MergedChunks(T) {
         }
         else {
             lastempty = true;
-            meta.load(iter, defaultLoadCount);
+            meta.load(iter.to!int, defaultLoadCount);
         }
     }
 
@@ -153,7 +153,7 @@ class MergedChunks(T) {
 
     T front() {
         if(empty()) return null; // todo check need exception
-        return last[localiter];
+        return last.objects[localiter];
     }
 
     bool empty() {
@@ -191,7 +191,7 @@ class Storage(T) {
 
     private void loadSync(int pos, int count) {
         auto freshChunk = loadfunc(pos, count);
-        c ~= Chunk(freshChunk, offset);
+        store ~= new Chunk!T(freshChunk, pos);
     }
 
     void load(int pos, int count) {
@@ -199,12 +199,12 @@ class Storage(T) {
     }
 
     auto get(int pos, int count) {
-        return new MergedChunks(this, pos, count);
+        return new MergedChunks!T(this, pos, count);
     }
 }
 
 abstract class SuperView(T) {
-    T[] getView(int height, int width);
+    MergedChunks!T getView(int height, int width);
     void moveForward(int step = 1);
     void moveBackward(int step = 1);
 }
@@ -221,16 +221,16 @@ class View(T) : SuperView!T {
         buff = st;
     }
 
-    override auto getView(int height, int width) {
-        return buff.get(position, height);
+    override MergedChunks!T getView(int height, int width) {
+        return buff.get(position.to!int, height);
     }
 
-    override moveForward(int step = 1) {
+    override void moveForward(int step = 1) {
         position += step;
         // todo preload
     }
 
-    override moveBackward(int step = 1) {
+    override void moveBackward(int step = 1) {
         position -= step;
         if(position < 0) position = 0;
     }
