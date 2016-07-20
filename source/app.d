@@ -19,6 +19,7 @@ void main(string[] args) {
     config = load();
     auto token = config["token"];
 
+    async = new Async();
     auto api = new VkApi(token);
     auto str = new Storage((o, c) => api.friendsGet(c, o));
     auto view = new View(str);

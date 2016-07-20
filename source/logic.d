@@ -28,38 +28,40 @@ import utils, cache, localization, vkapi;
 
 const int defaultLoadCount = 100;
 
-immutable auto async = new Async();
+Async async;
 
 class Async {
     alias taskfunc = void delegate();
 
     struct task {
         this(taskfunc f) {
-            thread = new Thread(
-                () => func()
-            );
+            thread = new Thread(&thrfunc);
             func = f;
             thread.start();
         }
 
+        private void thrfunc() {
+            func();
+        }
+
         taskfunc func;
-        auto thread = new Thread(
-            () => func()
-        );
+        Thread thread;
     }
 
     struct taskqueue {
         this(taskfunc f) {
-            thread = new Thread( {
-                while(true) {
-                    for(int i; i < queue.length; ++i) {
-                        this.queue[i]();
-                    }
-                    while(queue.length == 0) Thread.sleep(dur!"msecs"(300));
-                }
-            } );
+            thread = new Thread(&thrfunc);
             add(f);
             thread.start();
+        }
+
+        private void thrfunc() {
+            while(true) {
+                for(int i; i < queue.length; ++i) {
+                    this.queue[i]();
+                }
+                while(queue.length == 0) Thread.sleep(dur!"msecs"(300));
+            }
         }
 
         void add(taskfunc f) {
