@@ -8,7 +8,7 @@ import vkapi, logic, cfg, utils, localization;
 
 string[string] config;
 
-int main(string[] args) {
+void main(string[] args) {
     updateGcSignals();
     localize();
     config = load();
@@ -20,7 +20,7 @@ int main(string[] args) {
     auto str = new Storage!User((o, c) => api.friendsGet(c, o));
     auto view = new View!User(str);
 
-    for(int i; i < 3; ++i) {
+    for(int i; i < 5; ++i) {
         auto lc = view.getView(5, 228);
         while(lc.empty) Thread.sleep(dur!"msecs"(485));
         lc.each!(q => writeln(q.fullName));
@@ -28,5 +28,5 @@ int main(string[] args) {
         writeln();
     }
 
-    return 0;
+    exit(0);
 }

@@ -159,6 +159,7 @@ class MergedChunks(T) {
         bool lastempty;
         size_t iter;
         size_t localiter;
+        size_t countiter;
         size_t max;
     }
 
@@ -175,7 +176,7 @@ class MergedChunks(T) {
         if(!query.empty) {
             last = query.front();
             lastempty = false;
-            localiter = 0;
+            localiter = iter - last.offset;
         }
         else {
             lastempty = true;
@@ -186,6 +187,7 @@ class MergedChunks(T) {
     void popFront() {
         ++iter;
         ++localiter;
+        ++countiter;
     }
 
     T front() {
@@ -194,7 +196,7 @@ class MergedChunks(T) {
     }
 
     bool empty() {
-        if(iter >= max) return true;
+        if(countiter >= max) return true;
         if(last is null || localiter >= last.count || lastempty) {
             findchunk();
         }
