@@ -274,12 +274,27 @@ class VkApi {
         bool notifynf = true;
     }
 
-    private const string vkurl = "https://api.vk.com/method/";
-    const string vkver = "5.50";
-    private string vktoken;
+    const string
+        vkurl = "https://api.vk.com/method/",
+        vkver = "5.50";
+
+    private {
+        string vktoken;
+        bool ready;
+    }
+
+    User me;
 
     this(string token) {
         vktoken = token;
+    }
+
+    void accountInit() {
+        // todo account init
+    }
+
+    bool isReady() {
+        return ready && me != null;
     }
 
     string httpget(string addr, Duration timeout, uint attempts) {

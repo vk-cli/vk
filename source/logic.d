@@ -186,7 +186,7 @@ class MergedChunks(T) {
 
     void popFront() {
         ++iter;
-        ++localiter;
+        ++localiter;2
         ++countiter;
     }
 
@@ -247,19 +247,20 @@ abstract class SuperView(T) {
 }
 
 class View(T) : SuperView!T {
-    alias storage = Storage!T;
+    alias storageType = Storage!T;
 
     private {
-        storage buff;
         size_t position;
     }
 
-    this(storage st) {
-        buff = st;
+    storageType storage;
+
+    this(storageType st) {
+        storage = st;
     }
 
     override MergedChunks!T getView(int height, int width) {
-        return buff.get(position.to!int, height);
+        return storage.get(position.to!int, height);
     }
 
     override void moveForward(int step = 1) {
@@ -271,5 +272,50 @@ class View(T) : SuperView!T {
         position -= step;
         if(position < 0) position = 0;
     }
+}
+
+enum list {
+    dialogs,
+    friends,
+    muic
+}
+
+class MainProvider {
+    VkApi api;
+
+    //define list views
+    View!User friendsList;
+    View!Audio musicList;
+    View!Dialog dialogList;
+
+    this(string token) {
+        api = VkApi(token);
+        init();
+    }
+
+    this(string token, int uid, string fname, string lname) {
+        api = VkApi(token);
+        describeMe(uid, fname, lname);
+        init();
+    }
+
+    private void init() {
+        async = new Async();
+        api.accountInit();
+
+        //init lists
+        friendsList = new View(new Storage!User((o, c) => api.friendsGet(c, o)));
+
+    }
+
+    private void describeMe(int uid, string fname, string lname) {
+        auto me = User();
+        me.id = uid;
+        me.firstName = fname;
+        me.lastName = lname;
+        me.init();
+        api.me = me;
+    }
+
 }
 
