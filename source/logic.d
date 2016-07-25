@@ -168,7 +168,7 @@ class MergedChunks(T) {
         iter = pos;
         max = count;
     }
-
+    
     private void findchunk() {
         auto query = meta.store
             .retro
