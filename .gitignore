@@ -12,3 +12,4 @@ out
 dbg
 dub.selections.json
 source/vkversion.d
+vk.sublime-*
