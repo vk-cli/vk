@@ -1,4 +1,5 @@
 .dub
+.project
 docs.json
 __dummy.html
 *.o

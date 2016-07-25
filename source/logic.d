@@ -186,7 +186,7 @@ class MergedChunks(T) {
 
     void popFront() {
         ++iter;
-        ++localiter;2
+        ++localiter;
         ++countiter;
     }
 
@@ -289,12 +289,12 @@ class MainProvider {
     View!Dialog dialogList;
 
     this(string token) {
-        api = VkApi(token);
+        api = new VkApi(token);
         init();
     }
 
     this(string token, int uid, string fname, string lname) {
-        api = VkApi(token);
+        api = new VkApi(token);
         describeMe(uid, fname, lname);
         init();
     }
@@ -304,12 +304,12 @@ class MainProvider {
         api.accountInit();
 
         //init lists
-        friendsList = new View(new Storage!User((o, c) => api.friendsGet(c, o)));
+        friendsList = new View!User(new Storage!User((o, c) => api.friendsGet(c, o)));
 
     }
 
     private void describeMe(int uid, string fname, string lname) {
-        auto me = User();
+        auto me = new User();
         me.id = uid;
         me.firstName = fname;
         me.lastName = lname;

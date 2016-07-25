@@ -294,7 +294,7 @@ class VkApi {
     }
 
     bool isReady() {
-        return ready && me != null;
+        return ready && me !is null;
     }
 
     string httpget(string addr, Duration timeout, uint attempts) {
