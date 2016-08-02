@@ -254,6 +254,7 @@ class View(T) : SuperView!T {
     }
 
     storageType storage;
+	ViewInfo info = new ViewInfo();
 
     this(storageType st) {
         storage = st;
@@ -280,6 +281,33 @@ enum list {
     muic
 }
 
+class ViewInfo {
+	private {
+		bool updated;
+		Mutex lock;
+	}
+
+	this() {
+		lock = new Mutex();
+	}
+
+	void setUpdated() {
+		synchronized(lock) {
+			updated = true;
+		}
+	}
+
+	void isUpdated() {
+		synchronized(lock) {
+			if(updated) {
+				updated = false;
+				return true;
+			}
+			else return false;
+		}
+	}
+}
+
 class MainProvider {
     VkApi api;
 
@@ -287,6 +315,8 @@ class MainProvider {
     View!User friendsList;
     View!Audio musicList;
     View!Dialog dialogList;
+
+	ViewInfo[list] infos;
 
     this(string token) {
         api = new VkApi(token);
@@ -305,10 +335,10 @@ class MainProvider {
 
         //init lists
         friendsList = new View!User(new Storage!User((o, c) => api.friendsGet(c, o)));
-
+		infos[list.friends] = friendsList.info;
     }
 
-    private void describeMe(int uid, string fname, string lname) {
+    private void describeMe(int uid, string fname, string lname) { 
         auto me = new User();
         me.id = uid;
         me.firstName = fname;
@@ -316,6 +346,10 @@ class MainProvider {
         me.init();
         api.me = me;
     }
+
+	ViewInfo getInfo(list ltype) {
+		return infos[ltype];
+	}
 
 }
 
