@@ -157,6 +157,7 @@ class MergedChunks(T) {
         Storage!T meta;
         typedchunk last;
         bool lastempty;
+		bool lastcache;
         size_t iter;
         size_t localiter;
         size_t countiter;
@@ -168,21 +169,13 @@ class MergedChunks(T) {
         iter = pos;
         max = count;
     }
-    
-    private void findchunk() {
-        auto query = meta.store
-            .retro
-            .filter!(q => q.offset <= iter);
-        if(!query.empty) {
-            last = query.front();
-            lastempty = false;
-            localiter = iter - last.offset;
-        }
-        else {
-            lastempty = true;
-            meta.load(iter.to!int, defaultLoadCount);
-        }
-    }
+
+	private void findchunk() {
+		auto fchunk = meta.getChunk(iter);
+		lastempty = fchunk.found is null;
+		lastcache = fchunk.isCache;
+		if(!lastempty) localiter = iter - last.offset;
+	}
 
     void popFront() {
         ++iter;
@@ -209,8 +202,14 @@ class MergedChunks(T) {
 
 }
 
+struct FoundChunk(T) {
+	Chunk!T found;
+	bool isCache;
+}
+
 class Storage(T) {
     alias typedchunk = Chunk!T;
+	alias typedfoundchunk = FoundChunk!T;
     alias typecoll = T[];
     alias loader = typecoll delegate(int offset, int count);
 
@@ -220,10 +219,12 @@ class Storage(T) {
     }
 
     typedchunk[] store;
+	ListInfo info;
 
     this(loader loadf) {
         loadfunc = loadf;
         asyncId = genId();
+		info = new ListInfo();
     }
 
     private void loadSync(int pos, int count) {
@@ -238,6 +239,19 @@ class Storage(T) {
     auto get(int pos, int count) {
         return new MergedChunks!T(this, pos, count);
     }
+
+	private typedfoundchunk getChunk(size_t fpos) {
+		auto query = store
+			.retro
+			.filter!(q => q.offset <= fpos);
+		if(!query.empty) {
+			return FoundChunk!T(query.front(), false);
+		}
+		else {
+			load(fpos.to!int, defaultLoadCount);
+			return FoundChunk!T(null, false);
+		}
+	}
 }
 
 abstract class SuperView(T) {
@@ -254,10 +268,11 @@ class View(T) : SuperView!T {
     }
 
     storageType storage;
-	ViewInfo info = new ViewInfo();
+	ListInfo info;
 
     this(storageType st) {
         storage = st;
+		info = st.info;
     }
 
     override MergedChunks!T getView(int height, int width) {
@@ -281,7 +296,7 @@ enum list {
     muic
 }
 
-class ViewInfo {
+class ListInfo {
 	private {
 		bool updated;
 		Mutex lock;
@@ -297,7 +312,7 @@ class ViewInfo {
 		}
 	}
 
-	void isUpdated() {
+	bool isUpdated() {
 		synchronized(lock) {
 			if(updated) {
 				updated = false;
@@ -316,7 +331,7 @@ class MainProvider {
     View!Audio musicList;
     View!Dialog dialogList;
 
-	ViewInfo[list] infos;
+	ListInfo[list] infos;
 
     this(string token) {
         api = new VkApi(token);
@@ -347,7 +362,7 @@ class MainProvider {
         api.me = me;
     }
 
-	ViewInfo getInfo(list ltype) {
+	ListInfo getInfo(list ltype) {
 		return infos[ltype];
 	}
 

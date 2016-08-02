@@ -22,3 +22,6 @@ module cache;
 import std.stdio, std.conv, std.algorithm, std.array;
 import vkapi, utils;
 
+class Cache(T) {
+
+}
