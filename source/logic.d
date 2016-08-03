@@ -373,10 +373,6 @@ class MainProvider {
         api.me = me;
     }
 
-	bool isReady() {
-		return api.isReady();
-	}
-
 	ListInfo getInfo(list ltype) {
 		return infos[ltype];
 	}
