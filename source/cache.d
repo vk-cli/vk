@@ -22,6 +22,21 @@ module cache;
 import std.stdio, std.conv, std.algorithm, std.array;
 import vkapi, utils;
 
-class Cache(T) {
+class Cache(T) { // test-impl for cache
+	immutable typestring = T.stringof;
 
+	T[] midcache;
+
+	bool hasCacheFor(int pos, int count) {
+		return (midcache.length >= pos+count);
+	}
+
+	T[] getCache(int pos, int count) {
+		if(!hasCacheFor(pos, count)) throw new InternalException(-1, "no cache found for this range " ~ pos.to!string ~ "(" ~ count.to!string ~ ")");
+		return midcache[pos..(pos+count)];
+	}
+
+	void addCache(T[] fobj, int pos) {
+		if(pos == midcache.length) midcache ~= fobj;
+	}
 }

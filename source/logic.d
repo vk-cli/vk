@@ -218,18 +218,25 @@ class Storage(T) {
         int asyncId;
     }
 
+	Mutex storelock;
     typedchunk[] store;
+	Cache!T cache;
 	ListInfo info;
 
     this(loader loadf) {
         loadfunc = loadf;
         asyncId = genId();
+		cache = new Cache!T();
 		info = new ListInfo();
+		storelock = new Mutex();
     }
 
     private void loadSync(int pos, int count) {
-        auto freshChunk = loadfunc(pos, count);
-        store ~= new Chunk!T(freshChunk, pos);
+		auto freshChunk = loadfunc(pos, count);
+		synchronized(storelock) {
+	        store ~= new Chunk!T(freshChunk, pos);
+			info.setUpdated();
+		}
     }
 
     void load(int pos, int count) {
@@ -249,9 +256,13 @@ class Storage(T) {
 		}
 		else {
 			load(fpos.to!int, defaultLoadCount);
-			return FoundChunk!T(null, false);
+			if(!cache.hasCacheFor(fpos.to!int, 1)) return FoundChunk!T(null, false);
+
+			auto gotcache = cache.getCache(fpos.to!int, 1);
+			return FoundChunk!T(new Chunk!T(gotcache, fpos.to!int), true);
 		}
 	}
+
 }
 
 abstract class SuperView(T) {
