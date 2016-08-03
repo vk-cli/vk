@@ -219,7 +219,7 @@ class Storage(T) {
     }
 
 	Mutex storelock;
-    typedchunk[] store;
+    typedchunk[] store; // todo gc and flush-to-cache
 	Cache!T cache;
 	ListInfo info;
 
@@ -231,7 +231,7 @@ class Storage(T) {
 		storelock = new Mutex();
     }
 
-    private void loadSync(int pos, int count) {
+    private void loadSync(int pos, int count) { // todo end-checker
 		auto freshChunk = loadfunc(pos, count);
 		synchronized(storelock) {
 	        store ~= new Chunk!T(freshChunk, pos);

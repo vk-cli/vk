@@ -35,8 +35,4 @@ class Cache(T) { // test-impl for cache
 		if(!hasCacheFor(pos, count)) throw new InternalException(-1, "no cache found for this range " ~ pos.to!string ~ "(" ~ count.to!string ~ ")");
 		return midcache[pos..(pos+count)];
 	}
-
-	void addCache(T[] fobj, int pos) {
-		if(pos == midcache.length) midcache ~= fobj;
-	}
 }
