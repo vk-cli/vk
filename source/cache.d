@@ -36,3 +36,5 @@ class Cache(T) { // test-impl for cache
 		return midcache[pos..(pos+count)];
 	}
 }
+
+// todo usercache

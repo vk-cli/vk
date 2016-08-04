@@ -172,9 +172,13 @@ class MergedChunks(T) {
 
 	private void findchunk() {
 		auto fchunk = meta.getChunk(iter);
+		last = fchunk.found;
 		lastempty = fchunk.found is null;
 		lastcache = fchunk.isCache;
-		if(!lastempty) localiter = iter - last.offset;
+		if(!lastempty) {
+			long itertest = iter - last.offset;
+			localiter = itertest < 0 ? 0 : itertest;
+		}
 	}
 
     void popFront() {
