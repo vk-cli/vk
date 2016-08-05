@@ -9,28 +9,24 @@ import vkapi, logic, cfg, utils, localization;
 string[string] config;
 
 void main(string[] args) {
-    updateGcSignals();
-    initdbm();
-    localize();
+    updateGcSignals;
+    initdbm;
+    localize;
+    config = load;
 
-    config = load();
     auto token = config["token"];
-
     auto api = new MainProvider(token);
 
-    auto usersView = api.friendsList.getView(20, 80);
+    auto usersView = api.friendsList.getView(30, 80);
 
-    while (usersView.empty) {
-        writeln("...");
-        Thread.sleep(dur!"msecs"(500));
-    }
+    while (usersView.empty) Thread.sleep(dur!"msecs"(500));
 
     foreach (e; usersView) {
-        e.fullName.writeln();
+        e.fullName.writeln;
     }
 
     auto usersInfo = api.getInfo(list.friends);
-    writeln("== is users updated: " ~ usersInfo.isUpdated.to!string ~ " ==");
+    writeln("[ users are updated: " ~ usersInfo.isUpdated.to!string ~ " ]");
 
     exit(0);
 }
