@@ -212,7 +212,6 @@ class MergedChunks(T) {
     auto moveFront() {
         return front();
     }
-
 }
 
 struct FoundChunk(T) {
@@ -274,7 +273,6 @@ class Storage(T) {
             return FoundChunk!T(new Chunk!T(gotcache, fpos.to!int), true);
         }
     }
-
 }
 
 abstract class SuperView(T) {
@@ -390,5 +388,4 @@ class MainProvider {
     ListInfo getInfo(list ltype) {
         return infos[ltype];
     }
-
 }

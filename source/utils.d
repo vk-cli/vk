@@ -24,6 +24,7 @@ import core.thread, core.sync.mutex, core.exception;
 import core.sys.posix.signal;
 import std.datetime, std.conv, std.algorithm, std.utf, std.uni, std.typecons;
 import localization, app, vkversion;
+import deimos.ncurses.ncurses, core.sys.posix.stdlib;
 
 const bool debugMessagesEnabled = false, dbmfe = true, showTokenInLog = false;
 
@@ -48,6 +49,18 @@ private void appendDbg(string app) {
         append(logPath, app);
         append(logLatPath, app);
     }
+}
+
+void Exit(string msg = "") {
+  endwin;
+  if (msg != "") {
+    string
+      boldRed   = "\033[31m\x1b[1m",
+      boldWhite = "\033[39m\x1b[1m",
+      resetAttr = "\x1b[0m";
+    (boldRed ~ "Error: " ~ boldWhite ~ msg ~ resetAttr).writeln;
+  }
+  exit(0);
 }
 
 string toTmpDateString(SysTime t) {
