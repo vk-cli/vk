@@ -10,23 +10,27 @@ string[string] config;
 
 void main(string[] args) {
     updateGcSignals();
+	initdbm();
     localize();
+
     config = load();
     auto token = config["token"];
 
-    initdbm();
-    async = new Async();
-    auto api = new VkApi(token);
-    auto str = new Storage!User((o, c) => api.friendsGet(c, o));
-    auto view = new View!User(str);
+	auto api = new MainProvider(token);
 
-    for(int i; i < 5; ++i) {
-        auto lc = view.getView(5, 228);
-        while(lc.empty) Thread.sleep(dur!"msecs"(485));
-        lc.each!(q => writeln(q.fullName));
-        view.moveForward(i+1);
-        writeln();
-    }
+	auto usersView = api.friendsList.getView(20, 80);
+
+	while (usersView.empty) {
+		writeln("...");
+		Thread.sleep(dur!"msecs"(500));
+	}
+
+	foreach (e; usersView) {
+		e.fullName.writeln();
+	}
+
+	auto usersInfo = api.getInfo(list.friends);
+	writeln("== is users updated: " ~ usersInfo.isUpdated.to!string ~ " ==");
 
     exit(0);
 }
