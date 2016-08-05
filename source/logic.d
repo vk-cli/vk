@@ -19,7 +19,8 @@ limitations under the License.
 
 module logic;
 
-import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
+import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime,
+    std.random, core.time;
 import std.exception, core.exception, std.process;
 import std.net.curl, std.uri, std.json;
 import std.range, std.algorithm;
@@ -44,10 +45,10 @@ class Async {
         }
 
         private void thrfunc() {
-            try func();
+            try
+                func();
             catch (Exception e) {
-                dbm("Thread " ~ threadName ~ " exception: " ~
-                    typeof(e).stringof ~ " " ~ e.msg);
+                dbm("Thread " ~ threadName ~ " exception: " ~ typeof(e).stringof ~ " " ~ e.msg);
             }
             catch (Error r) {
                 dbm("Thread " ~ threadName ~ " error: " ~ r.msg);
@@ -70,12 +71,13 @@ class Async {
         }
 
         private void thrfunc() {
-            while(true) {
-                for(int i; i < queue.length; ++i) {
+            while (true) {
+                for (int i; i < queue.length; ++i) {
                     auto ctask = queue[i];
                     runningRid = ctask.rid;
 
-                    try ctask.func();
+                    try
+                        ctask.func();
                     catch (Exception e) {
                         dbm("Thread " ~ threadName ~ " exception: " ~ e.msg);
                     }
@@ -87,7 +89,8 @@ class Async {
                 }
                 queue = []; // clear queue
                 dbm("async: queue cleared for " ~ threadName);
-                while(queue.length == 0) Thread.sleep(dur!"msecs"(300));
+                while (queue.length == 0)
+                    Thread.sleep(dur!"msecs"(300));
             }
         }
 
@@ -103,12 +106,11 @@ class Async {
     task[string] singles;
     taskqueue[string] queues;
 
-    const string
-        q_loadChunk = "q_load_chunk";
+    const string q_loadChunk = "q_load_chunk";
 
     void single(string name, taskfunc f) {
         auto t = name in singles;
-        if( (t && !t.isRunning) || !t ) {
+        if ((t && !t.isRunning) || !t) {
             singles[name] = new task(f, name);
             dbm("async: thread started for " ~ name);
         }
@@ -119,9 +121,9 @@ class Async {
 
     void queue(string name, int rid, taskfunc f) {
         auto e = name in queues;
-        if(e) {
+        if (e) {
             auto query = e.queue.filter!(q => q.rid == rid);
-            if(query.empty || query.map!(q => q.rid != e.runningRid).all!"a") {
+            if (query.empty || query.map!(q => q.rid != e.runningRid).all!"a") {
                 e.add(f, rid);
             }
             else {
@@ -146,8 +148,13 @@ class Chunk(T) {
 
     T[] objects;
     int offset;
-    size_t count() { return objects.length; }
-    size_t end() { return offset + count(); }
+    size_t count() {
+        return objects.length;
+    }
+
+    size_t end() {
+        return offset + count();
+    }
 }
 
 class MergedChunks(T) {
@@ -157,7 +164,7 @@ class MergedChunks(T) {
         Storage!T meta;
         typedchunk last;
         bool lastempty;
-		bool lastcache;
+        bool lastcache;
         size_t iter;
         size_t localiter;
         size_t countiter;
@@ -170,16 +177,16 @@ class MergedChunks(T) {
         max = count;
     }
 
-	private void findchunk() {
-		auto fchunk = meta.getChunk(iter);
-		last = fchunk.found;
-		lastempty = fchunk.found is null;
-		lastcache = fchunk.isCache;
-		if(!lastempty) {
-			long itertest = iter - last.offset;
-			localiter = itertest < 0 ? 0 : itertest;
-		}
-	}
+    private void findchunk() {
+        auto fchunk = meta.getChunk(iter);
+        last = fchunk.found;
+        lastempty = fchunk.found is null;
+        lastcache = fchunk.isCache;
+        if (!lastempty) {
+            long itertest = iter - last.offset;
+            localiter = itertest < 0 ? 0 : itertest;
+        }
+    }
 
     void popFront() {
         ++iter;
@@ -188,13 +195,15 @@ class MergedChunks(T) {
     }
 
     T front() {
-        if(empty()) return null; // todo check need exception
+        if (empty())
+            return null; // todo check need exception
         return last.objects[localiter];
     }
 
     bool empty() {
-        if(countiter >= max) return true;
-        if(last is null || localiter >= last.count || lastempty) {
+        if (countiter >= max)
+            return true;
+        if (last is null || localiter >= last.count || lastempty) {
             findchunk();
         }
         return lastempty;
@@ -207,13 +216,13 @@ class MergedChunks(T) {
 }
 
 struct FoundChunk(T) {
-	Chunk!T found;
-	bool isCache;
+    Chunk!T found;
+    bool isCache;
 }
 
 class Storage(T) {
     alias typedchunk = Chunk!T;
-	alias typedfoundchunk = FoundChunk!T;
+    alias typedfoundchunk = FoundChunk!T;
     alias typecoll = T[];
     alias loader = typecoll delegate(int offset, int count);
 
@@ -222,25 +231,25 @@ class Storage(T) {
         int asyncId;
     }
 
-	Mutex storelock;
+    Mutex storelock;
     typedchunk[] store; // todo gc and flush-to-cache
-	Cache!T cache;
-	ListInfo info;
+    Cache!T cache;
+    ListInfo info;
 
     this(loader loadf) {
         loadfunc = loadf;
         asyncId = genId();
-		cache = new Cache!T();
-		info = new ListInfo();
-		storelock = new Mutex();
+        cache = new Cache!T();
+        info = new ListInfo();
+        storelock = new Mutex();
     }
 
     private void loadSync(int pos, int count) { // todo end-checker
-		auto freshChunk = loadfunc(pos, count);
-		synchronized(storelock) {
-	        store ~= new Chunk!T(freshChunk, pos);
-			info.setUpdated();
-		}
+        auto freshChunk = loadfunc(pos, count);
+        synchronized (storelock) {
+            store ~= new Chunk!T(freshChunk, pos);
+            info.setUpdated();
+        }
     }
 
     void load(int pos, int count) {
@@ -251,21 +260,20 @@ class Storage(T) {
         return new MergedChunks!T(this, pos, count);
     }
 
-	private typedfoundchunk getChunk(size_t fpos) {
-		auto query = store
-			.retro
-			.filter!(q => q.offset <= fpos);
-		if(!query.empty) {
-			return FoundChunk!T(query.front(), false);
-		}
-		else {
-			load(fpos.to!int, defaultLoadCount);
-			if(!cache.hasCacheFor(fpos.to!int, 1)) return FoundChunk!T(null, false);
+    private typedfoundchunk getChunk(size_t fpos) {
+        auto query = store.retro.filter!(q => q.offset <= fpos);
+        if (!query.empty) {
+            return FoundChunk!T(query.front(), false);
+        }
+        else {
+            load(fpos.to!int, defaultLoadCount);
+            if (!cache.hasCacheFor(fpos.to!int, 1))
+                return FoundChunk!T(null, false);
 
-			auto gotcache = cache.getCache(fpos.to!int, 1);
-			return FoundChunk!T(new Chunk!T(gotcache, fpos.to!int), true);
-		}
-	}
+            auto gotcache = cache.getCache(fpos.to!int, 1);
+            return FoundChunk!T(new Chunk!T(gotcache, fpos.to!int), true);
+        }
+    }
 
 }
 
@@ -283,11 +291,11 @@ class View(T) : SuperView!T {
     }
 
     storageType storage;
-	ListInfo info;
+    ListInfo info;
 
     this(storageType st) {
         storage = st;
-		info = st.info;
+        info = st.info;
     }
 
     override MergedChunks!T getView(int height, int width) {
@@ -301,7 +309,8 @@ class View(T) : SuperView!T {
 
     override void moveBackward(int step = 1) {
         position -= step;
-        if(position < 0) position = 0;
+        if (position < 0)
+            position = 0;
     }
 }
 
@@ -312,30 +321,31 @@ enum list {
 }
 
 class ListInfo {
-	private {
-		bool updated;
-		Mutex lock;
-	}
+    private {
+        bool updated;
+        Mutex lock;
+    }
 
-	this() {
-		lock = new Mutex();
-	}
+    this() {
+        lock = new Mutex();
+    }
 
-	void setUpdated() {
-		synchronized(lock) {
-			updated = true;
-		}
-	}
+    void setUpdated() {
+        synchronized (lock) {
+            updated = true;
+        }
+    }
 
-	bool isUpdated() {
-		synchronized(lock) {
-			if(updated) {
-				updated = false;
-				return true;
-			}
-			else return false;
-		}
-	}
+    bool isUpdated() {
+        synchronized (lock) {
+            if (updated) {
+                updated = false;
+                return true;
+            }
+            else
+                return false;
+        }
+    }
 }
 
 class MainProvider {
@@ -346,7 +356,7 @@ class MainProvider {
     View!Audio musicList;
     View!Dialog dialogList;
 
-	ListInfo[list] infos;
+    ListInfo[list] infos;
 
     this(string token) {
         api = new VkApi(token);
@@ -365,10 +375,10 @@ class MainProvider {
 
         //init lists
         friendsList = new View!User(new Storage!User((o, c) => api.friendsGet(c, o)));
-		infos[list.friends] = friendsList.info;
+        infos[list.friends] = friendsList.info;
     }
 
-    private void describeMe(int uid, string fname, string lname) { 
+    private void describeMe(int uid, string fname, string lname) {
         auto me = new User();
         me.id = uid;
         me.firstName = fname;
@@ -377,9 +387,8 @@ class MainProvider {
         api.me = me;
     }
 
-	ListInfo getInfo(list ltype) {
-		return infos[ltype];
-	}
+    ListInfo getInfo(list ltype) {
+        return infos[ltype];
+    }
 
 }
-

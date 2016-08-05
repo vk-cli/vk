@@ -19,7 +19,8 @@ limitations under the License.
 
 module vkapi;
 
-import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime, std.random, core.time;
+import std.stdio, std.conv, std.string, std.regex, std.array, std.datetime,
+    std.random, core.time;
 import std.exception, core.exception, std.process;
 import std.net.curl, std.uri, std.json;
 import std.range, std.algorithm;
@@ -27,7 +28,7 @@ import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, localization, logic;
 
 const int convStartId = 2000000000;
-const int mailStartId = convStartId*-1;
+const int mailStartId = convStartId * -1;
 const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
@@ -61,7 +62,7 @@ class User {
     void setOnlineStatus(bool status) {
         if (status != online) {
             online = status;
-            if(!status) {
+            if (!status) {
                 lastSeen = Clock.currTime();
             }
         }
@@ -77,8 +78,12 @@ class Audio {
     string artist, title, url, durationString;
 
     this(int p_id, int p_owner, int p_dur, string p_title, string p_artist, string p_url) {
-        id = p_id; owner = p_owner; duration = p_dur;
-        artist = p_artist; title = p_title; url = p_url;
+        id = p_id;
+        owner = p_owner;
+        duration = p_dur;
+        artist = p_artist;
+        title = p_title;
+        url = p_url;
         init();
     }
 
@@ -108,7 +113,9 @@ struct FwdMessage {
     int fwdDepth;
     //User[] authorsChain;
 
-    string getTimeString() { return vktime(Clock.currTime, this.time); }
+    string getTimeString() {
+        return vktime(Clock.currTime, this.time);
+    }
 
     //private auto cachedAuthor = cahcedValue();
     //User getAuthor() { return cachedAuthor.get(); }
@@ -144,7 +151,7 @@ class Message {
     }
 
     void setNeedName(long reltime) {
-        needName = (time-reltime) > needNameMaxDelta;
+        needName = (time - reltime) > needNameMaxDelta;
     }
 
     void invalidateLineCache() {
@@ -153,64 +160,56 @@ class Message {
 
     MessageLine[] getLines(int width) {
 
-        if(lineCache.length == 0 || lineCacheWidth != width) convertMessage(width);
+        if (lineCache.length == 0 || lineCacheWidth != width)
+            convertMessage(width);
         return lineCache;
     }
 
-    MessageLine lspacing = {
-        text: "", isSpacing: true
-    };
+    MessageLine lspacing = {text:
+    "", isSpacing : true};
 
     private void convertMessage(int ww) {
         lineCache = [];
         lineCache ~= lspacing;
 
-        if(needName || true) { // todo needName resolve
-            MessageLine name = {
-                //text: getAuthor().getFullName(),
-                time: timeString,
-                isName: true
-            };
+        if (needName || true) { // todo needName resolve
+            MessageLine name = {//text: getAuthor().getFullName(),
+        time:
+            timeString, isName : true};
             lineCache ~= name;
             lineCache ~= lspacing;
         }
 
         auto nomsg = text.length == 0;
         auto nofwd = forwarded.length == 0;
-        if(nomsg && nofwd) lineCache ~= lspacing;
+        if (nomsg && nofwd)
+            lineCache ~= lspacing;
 
-        if(!nomsg) {
+        if (!nomsg) {
             bool firstLineUnread = unread;
-            foreach(line; text.toUTF16wrepl.wordwrap(ww).split('\n')) {
-                MessageLine msg = {
-                    text: line,
-                    unread: firstLineUnread
-                };
+            foreach (line; text.toUTF16wrepl.wordwrap(ww).split('\n')) {
+                MessageLine msg = {text:
+                line, unread : firstLineUnread};
                 lineCache ~= msg;
                 firstLineUnread = false;
             }
         }
 
-        if(!nofwd) { // todo fix digfwd in api
-            foreach(fwd; forwarded) {
+        if (!nofwd) { // todo fix digfwd in api
+            foreach (fwd; forwarded) {
                 immutable auto depth = fwd.fwdDepth;
                 auto fwdww = ww - (depth * wwstep);
-                if (fwdww < 1) fwdww = 1;
+                if (fwdww < 1)
+                    fwdww = 1;
 
-                MessageLine fwdname = {
-                    //text: fwd.getAuthor().getFullName(),
-                    fwdDepth: depth,
-                    isFwd: true,
-                    isName: true
-                };
+                MessageLine fwdname = {//text: fwd.getAuthor().getFullName(),
+            fwdDepth:
+                depth, isFwd : true, isName : true};
                 lineCache ~= fwdname;
 
-                foreach(line; text.toUTF16wrepl.wordwrap(fwdww).split('\n')) {
-                    MessageLine msg = {
-                        text: line,
-                        fwdDepth: depth,
-                        isFwd: true
-                    };
+                foreach (line; text.toUTF16wrepl.wordwrap(fwdww).split('\n')) {
+                    MessageLine msg = {text:
+                    line, fwdDepth : depth, isFwd : true};
                     lineCache ~= msg;
                 }
 
@@ -243,11 +242,14 @@ class Dialog {
 
     private Message getLast() {
         auto query = messages.get(0, 1);
-        if(query.empty) return null;
+        if (query.empty)
+            return null;
         return query.front;
     }
 
-    bool isChat() { return chat; }
+    bool isChat() {
+        return chat;
+    }
 
     bool isOnline() {
         return isChat ? true : false; // todo resolve non-chat online
@@ -255,13 +257,15 @@ class Dialog {
 
     string getLastMessage() {
         auto l = getLast();
-        if(l is null) return "";
+        if (l is null)
+            return "";
         return l.text;
     }
 
     int getLastmid() {
         auto l = getLast();
-        if(l is null) return 0;
+        if (l is null)
+            return 0;
         return l.msgId;
     }
 }
@@ -274,9 +278,7 @@ class VkApi {
         bool notifynf = true;
     }
 
-    const string
-        vkurl = "https://api.vk.com/method/",
-        vkver = "5.50";
+    const string vkurl = "https://api.vk.com/method/", vkver = "5.50";
 
     private {
         string vktoken;
@@ -304,8 +306,8 @@ class VkApi {
         int tries = 0;
         bool ok = false;
 
-        while(!ok){
-            try{
+        while (!ok) {
+            try {
                 client.method = HTTP.Method.get;
                 client.url = addr;
 
@@ -315,89 +317,103 @@ class VkApi {
 
                 client.onReceive = (ubyte[] data) {
                     auto sz = data.length;
-                    content ~= (cast(immutable(char)*)data)[0..sz];
+                    content ~= (cast(immutable(char)*)data)[0 .. sz];
                     return sz;
                 };
                 client.perform();
                 ok = true;
                 //dbm("recv content: " ~ content);
-            } catch (CurlException e) {
+            }
+            catch (CurlException e) {
                 ++tries;
                 dbm("[attempt " ~ (tries.to!string) ~ "] network error: " ~ e.msg);
-                if(tries >= attempts) {
+                if (tries >= attempts) {
                     throw new NetworkException("httpget");
                 }
-                Thread.sleep( dur!"msecs"(mssleepBeforeAttempt) );
+                Thread.sleep(dur!"msecs"(mssleepBeforeAttempt));
             }
         }
         return content;
     }
 
-    JSONValue vkget(string meth, string[string] params, bool dontRemoveResponse = false, vkgetparams gp = vkgetparams()) {
-        if(gp.setloading) {
+    JSONValue vkget(string meth, string[string] params,
+        bool dontRemoveResponse = false, vkgetparams gp = vkgetparams()) {
+        if (gp.setloading) {
             //enterLoading();
         }
         bool rmresp = !dontRemoveResponse;
         auto url = vkurl ~ meth ~ "?"; //so blue
-        foreach(key; params.keys) {
+        foreach (key; params.keys) {
             auto val = params[key];
             //dbm("up " ~ key ~ "=" ~ val);
             auto cval = val.encode.replace("+", "%2B");
             url ~= key ~ "=" ~ cval ~ "&";
         }
         url ~= "v=" ~ vkver ~ "&access_token=";
-        if(!showTokenInLog) dbm("request: " ~ url ~ "***");
+        if (!showTokenInLog)
+            dbm("request: " ~ url ~ "***");
         url ~= vktoken;
-        if(showTokenInLog) dbm("request: " ~ url);
+        if (showTokenInLog)
+            dbm("request: " ~ url);
         auto tm = dur!timeoutFormat(vkgetCurlTimeout);
         string got;
 
         bool htloop;
-        while(!htloop) {
-            try{
+        while (!htloop) {
+            try {
                 got = httpget(url, tm, gp.attempts);
                 htloop = true;
-            } catch(NetworkException e) {
+            }
+            catch (NetworkException e) {
                 dbm(e.msg);
                 //if(gp.notifynf) connectionProblems();
-                if(gp.thrownf) throw e;
+                if (gp.thrownf)
+                    throw e;
             }
         }
 
         JSONValue resp;
-        try{
+        try {
             resp = got.parseJSON;
             //dbm("json: " ~ resp.toPrettyString);
         }
-        catch(JSONException e) {
+        catch (JSONException e) {
             throw new ApiErrorException(resp.toPrettyString(), 0);
         }
 
-        if(resp.type == JSON_TYPE.OBJECT) {
-            if("error" in resp){
+        if (resp.type == JSON_TYPE.OBJECT) {
+            if ("error" in resp) {
                 try {
                     auto eobj = resp["error"];
-                    immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str : eobj["error_msg"].str;
+                    immutable auto emsg = ("error_text" in eobj) ? eobj["error_text"].str
+                        : eobj["error_msg"].str;
                     immutable auto ecode = eobj["error_code"].integer.to!int;
                     throw new ApiErrorException(emsg, ecode);
-                } catch (JSONException e) {
+                }
+                catch (JSONException e) {
                     throw new ApiErrorException(resp.toPrettyString(), 0);
                 }
 
-            } else if ("response" !in resp) {
+            }
+            else if ("response" !in resp) {
                 rmresp = false;
             }
-        } else rmresp = false;
+        }
+        else
+            rmresp = false;
 
         //if(gp.setloading) leaveLoading();
         return rmresp ? resp["response"] : resp;
     }
 
-    User[] friendsGet(int count, int offset,  int user_id = 0) {
-        auto params = [ "fields": "online,last_seen", "order": "hints"];
-        if(user_id != 0) params["user_id"] = user_id.to!string;
-        if(count != 0) params["count"] = count.to!string;
-        if(offset != 0) params["offset"] = offset.to!string;
+    User[] friendsGet(int count, int offset, int user_id = 0) {
+        auto params = ["fields" : "online,last_seen", "order" : "hints"];
+        if (user_id != 0)
+            params["user_id"] = user_id.to!string;
+        if (count != 0)
+            params["count"] = count.to!string;
+        if (offset != 0)
+            params["offset"] = offset.to!string;
 
         JSONValue resp = vkget("friends.get", params);
         //serverCount = resp["count"].integer.to!int;
@@ -405,7 +421,7 @@ class VkApi {
         auto ct = Clock.currTime();
         User[] rt;
 
-        foreach(f; resp["items"].array) {
+        foreach (f; resp["items"].array) {
             auto last = "last_seen" in f ? f["last_seen"]["time"].integer.to!long : 0;
 
             //auto laststr = agotime(ct, last);
@@ -431,26 +447,19 @@ class VkApi {
 
 class NetworkException : Exception {
     public {
-        @safe pure nothrow this(string loc,
-                                string message = "Connection lost",
-                                string file =__FILE__,
-                                size_t line = __LINE__,
-                                Throwable next = null) {
+        @safe pure nothrow this(string loc, string message = "Connection lost",
+            string file = __FILE__, size_t line = __LINE__, Throwable next = null) {
             message = message ~ ": " ~ loc;
             super(message, file, line, next);
         }
     }
 }
 
-
 class ApiErrorException : Exception {
     public {
         int errorCode;
-        @safe pure nothrow this(string message,
-                                int error_code,
-                                string file =__FILE__,
-                                size_t line = __LINE__,
-                                Throwable next = null) {
+        @safe pure nothrow this(string message, int error_code,
+            string file = __FILE__, size_t line = __LINE__, Throwable next = null) {
             errorCode = error_code;
             super("api error: " ~ message, file, line, next);
         }
@@ -465,12 +474,10 @@ class InternalException : Exception {
 
         string msg;
         int ecode;
-        @safe pure nothrow this(int error,
-                                string appmsg = "",
-                                string file =__FILE__,
-                                size_t line = __LINE__,
-                                Throwable next = null) {
-            msg = "client failed - unresolved internal exception: err" ~ error.to!string ~ " " ~ appmsg;
+        @safe pure nothrow this(int error, string appmsg = "",
+            string file = __FILE__, size_t line = __LINE__, Throwable next = null) {
+            msg = "client failed - unresolved internal exception: err" ~ error.to!string
+                ~ " " ~ appmsg;
             ecode = error;
             super(msg, file, line, next);
         }

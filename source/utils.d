@@ -25,10 +25,7 @@ import core.sys.posix.signal;
 import std.datetime, std.conv, std.algorithm, std.utf, std.uni, std.typecons;
 import localization, app, vkversion;
 
-const bool
-    debugMessagesEnabled = false,
-    dbmfe = true,
-    showTokenInLog = false;
+const bool debugMessagesEnabled = false, dbmfe = true, showTokenInLog = false;
 
 __gshared {
     File dbgff;
@@ -47,26 +44,21 @@ __gshared {
 }
 
 private void appendDbg(string app) {
-    synchronized(dbgmutex) {
+    synchronized (dbgmutex) {
         append(logPath, app);
         append(logLatPath, app);
     }
 }
 
 string toTmpDateString(SysTime t) {
-    return t.day().to!string
-            ~ t.month().to!string
-            ~ t.year().to!string
-            ~ "-"
-            ~ t.hour().tzr ~ ":"
-            ~ t.minute().tzr ~ ":"
-            ~ t.second().tzr
-            ~ "-"
-            ~ t.timezone().stdName();
+    return t.day().to!string ~ t.month().to!string ~ t.year()
+        .to!string ~ "-" ~ t.hour().tzr ~ ":" ~ t.minute().tzr ~ ":" ~ t.second()
+        .tzr ~ "-" ~ t.timezone().stdName();
 }
 
 string getPlayerSocketName() {
-    if(mpvsocketName == "") throw new Exception("bad player socket name");
+    if (mpvsocketName == "")
+        throw new Exception("bad player socket name");
     return vkcliTmpDir ~ "/" ~ mpvsocketName;
 }
 
@@ -78,10 +70,12 @@ void initdbm() {
     logLatPath = vkcliLogDir ~ "/" ~ dbgfname ~ dbglatest;
     mpvsocketName = mpvsck ~ genStr(8);
 
-    if(!exists(vkcliTmpDir)) mkdir(vkcliTmpDir);
-    if(!exists(vkcliLogDir)) mkdir(vkcliLogDir);
+    if (!exists(vkcliTmpDir))
+        mkdir(vkcliTmpDir);
+    if (!exists(vkcliLogDir))
+        mkdir(vkcliLogDir);
 
-    if(dbmfe) {
+    if (dbmfe) {
         string logIntro = "vk-cli " ~ currentVersion ~ " log\n" ~ ctime.toSimpleString() ~ "\n";
 
         dbgff = File(logPath, "w");
@@ -95,8 +89,10 @@ void initdbm() {
 }
 
 void dbm(string msg) {
-    if(debugMessagesEnabled) writeln("[debug]" ~ msg);
-    if(dbmfe) appendDbg(msg ~ "\n");
+    if (debugMessagesEnabled)
+        writeln("[debug]" ~ msg);
+    if (dbmfe)
+        appendDbg(msg ~ "\n");
 }
 
 void dropClient(string msg) {
@@ -105,43 +101,46 @@ void dropClient(string msg) {
 
 string tzr(int inpt) {
     auto r = inpt.to!string;
-    if(inpt > -1 && inpt < 10) return ("0" ~ r);
-    else return r;
+    if (inpt > -1 && inpt < 10)
+        return ("0" ~ r);
+    else
+        return r;
 }
 
 string vktime(SysTime ct, long ut) {
     auto t = SysTime(unixTimeToStdTime(ut));
-    return (t.dayOfGregorianCal == ct.dayOfGregorianCal) ?
-            (tzr(t.hour) ~ ":" ~ tzr(t.minute)) :
-                (tzr(t.day) ~ "." ~ tzr(t.month) ~ ( t.year != ct.year ? "." ~ t.year.to!string[$-2..$] : "" ) );
+    return (t.dayOfGregorianCal == ct.dayOfGregorianCal) ? (tzr(t.hour) ~ ":" ~ tzr(t.minute)) : (
+        tzr(t.day) ~ "." ~ tzr(t.month) ~ (t.year != ct.year ? "." ~ t.year.to!string[$ - 2 .. $]
+        : ""));
 }
 
-string agotime (SysTime ct, long ut) { //not used
+string agotime(SysTime ct, long ut) { //not used
     auto pt = SysTime(ut.unixTimeToStdTime);
-    auto ctm = ct.hour*60 + ct.minute;
-    auto ptm = pt.hour*60 + pt.minute;
+    auto ctm = ct.hour * 60 + ct.minute;
+    auto ptm = pt.hour * 60 + pt.minute;
     auto tmdelta = ctm - ptm;
     const threshld = 240;
 
-    if(
-        pt.dayOfGregorianCal == ct.dayOfGregorianCal &&
-        tmdelta < threshld
-    ) {
+    if (pt.dayOfGregorianCal == ct.dayOfGregorianCal && tmdelta < threshld) {
         string rt;
-        if(tmdelta > 60) {
+        if (tmdelta > 60) {
             auto m = tmdelta % 60;
-            auto h = (tmdelta-m) / 60;
-            rt ~= h.to!string ~
-             ( h == 1 ? getLocal("time_hour") : ( h > 0 && h < 5 ? getLocal("time_hours_l5") : getLocal("time_hours") ) );
-            if(m != 0) rt ~= " " ~ m.to!string ~
-             ( m == 1 ? getLocal("time_minute") : ( m > 0 && m < 5 ? getLocal("time_minutes_l5") : getLocal("time_minutes") ) );
+            auto h = (tmdelta - m) / 60;
+            rt ~= h.to!string ~ (h == 1 ? getLocal("time_hour") : (h > 0
+                && h < 5 ? getLocal("time_hours_l5") : getLocal("time_hours")));
+            if (m != 0)
+                rt ~= " " ~ m.to!string ~ (m == 1 ? getLocal("time_minute") : (m > 0
+                    && m < 5 ? getLocal("time_minutes_l5") : getLocal("time_minutes")));
         }
-        else if(tmdelta == 1) rt = tmdelta.to!string ~ getLocal("time_minute");
-        else rt = tmdelta.to!string ~ getLocal("time_minutes");
+        else if (tmdelta == 1)
+            rt = tmdelta.to!string ~ getLocal("time_minute");
+        else
+            rt = tmdelta.to!string ~ getLocal("time_minutes");
 
         return rt ~ getLocal("time_ago");
     }
-    else return vktime(ct, ut);
+    else
+        return vktime(ct, ut);
 }
 
 /*
@@ -156,12 +155,8 @@ string agotime (SysTime ct, long ut) { //not used
   */
 
 string longpollReplaces(string inp) {
-    return inp
-        .replace("<br>", "\n")
-        .replace("&quot;", "\"")
-        .replace("&lt;", "<")
-        .replace("&gt;", ">")
-        .replace("&amp;", "&");
+    return inp.replace("<br>", "\n").replace("&quot;", "\"").replace("&lt;",
+        "<").replace("&gt;", ">").replace("&amp;", "&");
 }
 
 class cachedValue(T) {
@@ -177,7 +172,9 @@ class cachedValue(T) {
         initializeValue = initializer;
     }
 
-    bool isCached() { return cached; }
+    bool isCached() {
+        return cached;
+    }
 
     void clear() {
         cachedValue = null;
@@ -190,15 +187,17 @@ class cachedValue(T) {
     }
 
     T get() {
-        if(!cached) valueInit();
+        if (!cached)
+            valueInit();
         return cachedValue;
     }
 }
 
 T[] slice(T)(ref T[] src, int count, int offset) {
     try {
-        return src[offset..(offset+count)]; //.map!(d => &d).array;
-    } catch (RangeError e) {
+        return src[offset .. (offset + count)]; //.map!(d => &d).array;
+    }
+    catch (RangeError e) {
         dbm("utils slice count: " ~ count.to!string ~ ", offset: " ~ offset.to!string);
         dbm("catched slice ex: " ~ e.msg);
         return [];
@@ -208,14 +207,14 @@ T[] slice(T)(ref T[] src, int count, int offset) {
 S[] oldwordwrap(S)(S s, size_t mln) {
     auto wrplines = s.wrap(mln).split("\n");
     S[] lines;
-    foreach(ln; wrplines) {
+    foreach (ln; wrplines) {
         S[] crp = ["", ln];
-        while(crp.length > 1) {
-            crp = cropstr(crp[1] ,mln);
+        while (crp.length > 1) {
+            crp = cropstr(crp[1], mln);
             lines ~= crp[0];
         }
     }
-    return lines[0..$-1];
+    return lines[0 .. $ - 1];
 }
 
 wstring wordwrap(wstring inputString, size_t maxlength) {
@@ -225,9 +224,9 @@ wstring wordwrap(wstring inputString, size_t maxlength) {
     size_t chLine, chWord;
     int lastSpace = -1;
 
-    for(int i; i < s.length; ++i) {
+    for (int i; i < s.length; ++i) {
         immutable auto c = s[i];
-        if(c.isSpace) {
+        if (c.isSpace) {
             chLine += chWord + 1;
             chWord = 0;
             lastSpace = i;
@@ -239,8 +238,8 @@ wstring wordwrap(wstring inputString, size_t maxlength) {
         }
         else {
             ++chWord;
-            if((chLine+chWord) >= maxlength) {
-                if(lastSpace >= 0) {
+            if ((chLine + chWord) >= maxlength) {
+                if (lastSpace >= 0) {
                     s[lastSpace] = lf;
                 }
                 else {
@@ -257,41 +256,44 @@ wstring wordwrap(wstring inputString, size_t maxlength) {
 }
 
 private S[] cropstr(S)(S s, size_t mln) {
-    if(s.length > mln) return [ s[0..mln], s[mln..$] ];
-    else return [s];
+    if (s.length > mln)
+        return [s[0 .. mln], s[mln .. $]];
+    else
+        return [s];
 }
 
-class JoinerBidirectionalResult(RoR)
-if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
-{
+class JoinerBidirectionalResult(RoR) if (isBidirectionalRange!RoR
+        && isBidirectionalRange!(ElementType!RoR)) {
 
     alias rortype = ElementType!RoR;
 
     private {
         RoR range;
-        rortype
-            rfront = null,
-            rback = null;
-}
+        rortype rfront = null, rback = null;
+    }
 
     this(RoR r) {
         range = r;
     }
 
     private void prepareFront() {
-        if(range.empty) return;
-        while(range.front.empty) {
+        if (range.empty)
+            return;
+        while (range.front.empty) {
             range.popFront();
-            if(range.empty) return;
+            if (range.empty)
+                return;
         }
         rfront = range.front;
     }
 
     private void prepareBack() {
-        if(range.empty) return;
-        while(range.back.empty) {
+        if (range.empty)
+            return;
+        while (range.back.empty) {
             range.popBack();
-            if(range.empty) return;
+            if (range.empty)
+                return;
         }
         rback = range.back;
     }
@@ -301,25 +303,28 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
     }
 
     @property auto front() {
-        if(rfront is null) prepareFront();
+        if (rfront is null)
+            prepareFront();
         assert(!empty);
         assert(!rfront.empty);
         return rfront.front;
     }
 
     @property auto back() {
-        if(rback is null) prepareBack();
+        if (rback is null)
+            prepareBack();
         assert(!empty);
         assert(!rback.empty);
         return rback.back;
     }
 
     void popFront() {
-        if(rfront is null) prepareFront();
+        if (rfront is null)
+            prepareFront();
         else {
             rfront.popFront();
 
-            if(rfront.empty) {
+            if (rfront.empty) {
                 range.popFront();
                 prepareFront();
             }
@@ -327,10 +332,11 @@ if (isBidirectionalRange!RoR && isBidirectionalRange!(ElementType!RoR))
     }
 
     void popBack() {
-        if(rback is null) prepareBack();
+        if (rback is null)
+            prepareBack();
         else {
             rback.popBack();
-            if(rback.empty) {
+            if (rback.empty) {
                 range.popBack();
                 prepareBack();
             }
@@ -354,7 +360,7 @@ auto joinerBidirectional(RoR)(RoR range) {
 auto takeBackArray(R)(R range, size_t hm) {
     ElementType!R[] outr;
     size_t iter;
-    while(iter < hm && !range.empty) {
+    while (iter < hm && !range.empty) {
         outr ~= range.back();
         range.popBack();
         ++iter;
@@ -363,9 +369,7 @@ auto takeBackArray(R)(R range, size_t hm) {
     return outr;
 }
 
-class InputRetroResult(R)
-if (isInputRange!R)
-{
+class InputRetroResult(R) if (isInputRange!R) {
     private R rng;
 
     this(R range) {
@@ -407,7 +411,8 @@ auto inputRetro(R)(R range) {
 }
 
 void logThread(string thrname = "") {
-    if(thrname != "") dbm("thread started for: " ~ thrname);
+    if (thrname != "")
+        dbm("thread started for: " ~ thrname);
 }
 
 void unwantedExit(int sig) {
@@ -423,7 +428,7 @@ int gcResumeSignal;
 
 void updateGcSignals() {
     gcSuspendSignal = SIGRTMIN;
-    gcResumeSignal = SIGRTMIN+1;
+    gcResumeSignal = SIGRTMIN + 1;
 
     thread_term();
     thread_setGCSignals(gcSuspendSignal, gcResumeSignal);
@@ -434,15 +439,14 @@ void usedSignalsNotify() {
     dbm("GC signals: " ~ gcSuspendSignal.to!string ~ " " ~ gcResumeSignal.to!string);
 }
 
-
 const uint maxuint = 4_294_967_295;
 const uint maxint = 2_147_483_647;
 const uint ridstart = 1;
 
 int genId() {
     long rnd = uniform(ridstart, maxuint);
-    if(rnd > maxint) {
-        rnd = -(rnd-maxint);
+    if (rnd > maxint) {
+        rnd = -(rnd - maxint);
     }
     dbm("rid: " ~ rnd.to!string);
     return rnd.to!int;
@@ -452,7 +456,7 @@ string genStrDict = "qwertyuiopasdfghjklzxcvbnmQWERTYUIOPASDFGHJKLZXCVBNM1234567
 
 string genStr(uint strln) {
     string output;
-    for(uint i; i < strln; ++i) {
+    for (uint i; i < strln; ++i) {
         size_t rnd = uniform!"[)"(0, genStrDict.length);
         output ~= genStrDict[rnd];
     }
@@ -468,16 +472,13 @@ wstring toUTF16wrepl(in char[] s) {
 
     r.length = slen;
     r.length = 0;
-    for (size_t i = 0; i < slen; )
-    {
+    for (size_t i = 0; i < slen;) {
         dchar c = s[i];
-        if (c <= 0x7F)
-        {
+        if (c <= 0x7F) {
             i++;
             r ~= cast(wchar)c;
         }
-        else
-        {
+        else {
             c = decode!repl(s, i);
             encode(r, c);
         }
@@ -492,14 +493,12 @@ string toUTF8wrepl(in wchar[] s) {
     size_t slen = s.length;
 
     r.length = slen;
-    for (i = 0; i < slen; i++)
-    {
+    for (i = 0; i < slen; i++) {
         wchar c = s[i];
 
         if (c <= 0x7F)
-            r[i] = cast(char)c;     // fast path for ascii
-        else
-        {
+            r[i] = cast(char)c; // fast path for ascii
+        else {
             r.length = i;
             while (i < slen)
                 encode(r, decode!repl(s, i));
@@ -511,36 +510,25 @@ string toUTF8wrepl(in wchar[] s) {
 }
 
 struct utf {
-  ulong
-    start, end;
-  int spaces;
+    ulong start, end;
+    int spaces;
 }
 
-const utfranges = [
-  utf(19968, 40959, 1),
-  utf(12288, 12351, 1),
-  utf(11904, 12031, 1),
-  utf(13312, 19903, 1),
-  utf(63744, 64255, 1),
-  utf(12800, 13055, 1),
-  utf(13056, 13311, 1),
-  utf(12736, 12783, 1),
-  utf(12448, 12543, 1),
-  utf(12352, 12447, 1),
-  utf(110592, 110847, 1),
-  utf(65280, 65519, 1)
-  ];
+const utfranges = [utf(19968, 40959, 1), utf(12288, 12351, 1), utf(11904,
+    12031, 1), utf(13312, 19903, 1), utf(63744, 64255, 1), utf(12800, 13055,
+    1), utf(13056, 13311, 1), utf(12736, 12783, 1), utf(12448, 12543, 1),
+    utf(12352, 12447, 1), utf(110592, 110847, 1), utf(65280, 65519, 1)];
 
 uint utfLength(string inp) {
     uint s = 0;
     size_t inplen = inp.length;
 
-    for (size_t i = 0; i < inplen; ) {
+    for (size_t i = 0; i < inplen;) {
         auto ic = inp[i];
         ulong c;
         ++s;
 
-        if(ic <= 0x7F) {
+        if (ic <= 0x7F) {
             c = cast(ulong)ic;
             ++i;
         }
@@ -560,11 +548,8 @@ uint utfLength(string inp) {
 
 S replicatestr(S)(S str, ulong n) {
     S outstr = "";
-    for(ulong i = 0; i < n; ++i) {
+    for (ulong i = 0; i < n; ++i) {
         outstr ~= str;
     }
     return outstr;
 }
-
-
-
