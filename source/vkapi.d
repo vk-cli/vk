@@ -93,7 +93,6 @@ class Audio {
         auto min = (duration - sec) / 60;
         durationString = min.to!string ~ ":" ~ tzr(min);
     }
-
 }
 
 struct MessageLine {
@@ -220,7 +219,6 @@ class Message {
             }
         }
     }
-
 }
 
 class Dialog {
