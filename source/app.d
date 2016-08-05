@@ -337,9 +337,9 @@ VkMan get_token(ref string[string] storage) {
   getstr(&token);
   noecho;
   auto strtoken = (cast(char*)&token).to!string;
-  auto ctoken = regex(r"^\s*[0-9a-f]{85}\s*$");
+  auto ctoken = regex(r"^\s*[0-9a-f]+\s*$");
   if (matchFirst(strtoken, ctoken).empty) {
-    auto rtoken = regex(r"(?:.*access_token=)([0-9a-f]{85})");
+    auto rtoken = regex(r"(?:.*access_token=)([0-9a-f]+)(?:&)");
     auto cap = matchFirst(strtoken, rtoken);
     if(cap.length != 2) {
       endwin;

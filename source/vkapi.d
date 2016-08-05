@@ -268,7 +268,6 @@ class VkApi {
     }
 
     private bool checkToken(string token) {
-        if(token.length != 85) return false;
         try{
             initdata = executeAccountInit();
             me = vkUser(initdata.first_name, initdata.last_name, initdata.id);
