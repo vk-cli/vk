@@ -57,8 +57,6 @@ void open(string tab) {
 }
 
 void drawFriends() {
-  window.updateCounter.print;
-  "\n".print;
   auto view = friends.getView(window.height, window.width);
   if (view.empty) return;
   foreach (e; view) {

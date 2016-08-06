@@ -25,8 +25,6 @@ struct Window {
   int key, height, width;
   bool sizeChanged;
   string openedView;
-
-  int updateCounter;
 }
 
 void init() {
@@ -80,7 +78,6 @@ void main(string[] args) {
 
     if (isCurrentViewUpdated) {
       clearScr;
-      window.updateCounter++;
       tabMenu.selected = 2;
       tabMenu.tabs[tabMenu.selected].open;
     }
