@@ -20,11 +20,15 @@ limitations under the License.
 module ui;
 
 import deimos.ncurses.ncurses;
-import std.string, core.thread;
+import std.string, std.conv, core.thread;
 import app, utils;
 
 void print(string text) {
   text.toStringz.addstr;
+}
+
+void print(int i) {
+  i.to!string.toStringz.addstr;
 }
 
 void clearScr() {
@@ -37,13 +41,24 @@ void clearScr() {
 
 void open(string tab) {
   final switch (tab) {
-    case "dialogs": drawDialogs; break;
-    case "music": drawMusic; break;
-    case "friends": drawFriends; break;
+    case "dialogs": {
+      window.openedView = "dialogs";
+      drawDialogs; break;
+    }
+    case "music": {
+      window.openedView = "music";
+      drawMusic; break;
+    }
+    case "friends": {
+      window.openedView = "friends";
+      drawFriends; break;
+    }
   }
 }
 
 void drawFriends() {
+  window.updateCounter.print;
+  "\n".print;
   auto view = friends.getView(window.height, window.width);
   if (view.empty) return;
   foreach (e; view) {

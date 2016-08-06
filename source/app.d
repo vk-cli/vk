@@ -22,8 +22,11 @@ struct TabMenu {
 }
 
 struct Window {
-  int key;
-  int height, width;
+  int key, height, width;
+  bool sizeChanged;
+  string openedView;
+
+  int updateCounter;
 }
 
 void init() {
@@ -45,12 +48,20 @@ void init() {
 }
 
 void getWindowSize() {
-  window.height = LINES;
+  if (window.height != LINES-3 || window.width != COLS) window.sizeChanged = true;
+  else window.sizeChanged = false;
+  window.height = LINES-3;
   window.width = COLS;
 }
 
 bool isCurrentViewUpdated() {
-  return true;
+  if (window.key != -1) return true;
+  if (window.sizeChanged) return true;
+  final switch (window.openedView) {
+    case "dialogs": return dialogs.info.isUpdated;
+    case "music":   return music.info.isUpdated;
+    case "friends": return friends.info.isUpdated;
+  }
 }
 
 void main(string[] args) {
@@ -69,6 +80,7 @@ void main(string[] args) {
 
     if (isCurrentViewUpdated) {
       clearScr;
+      window.updateCounter++;
       tabMenu.selected = 2;
       tabMenu.tabs[tabMenu.selected].open;
     }
