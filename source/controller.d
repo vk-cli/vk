@@ -18,3 +18,30 @@ limitations under the License.
 */
 
 module controller;
+
+import deimos.ncurses.ncurses;
+
+int _getch() {
+  int key = getch;
+  if (key == 27) {
+    if (getch == -1) return 27;     // Esc
+    else {
+      switch (getch) {
+        case 65: return -2;         // Up
+        case 66: return -3;         // Down
+        case 67: return -4;         // Right
+        case 68: return -5;         // Left
+        case 49: getch; return -6;  // Home
+        case 72: getch; return -6;  // Home
+        case 50: getch; return -7;  // Ins
+        case 51: getch; return -8;  // Del
+        case 52: getch; return -9;  // End
+        case 70: getch; return -9;  // End
+        case 53: getch; return -10; // Pg Up
+        case 54: getch; return -11; // Pg Down
+        default: return -1;
+      }
+    }
+  }
+  return key;
+}

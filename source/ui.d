@@ -20,8 +20,36 @@ limitations under the License.
 module ui;
 
 import deimos.ncurses.ncurses;
-import std.string;
+import std.string, core.thread;
+import app, utils;
 
 void print(string text) {
   text.toStringz.addstr;
 }
+
+void clearScr() {
+  for (int y = 0; y < window.height; y++) {
+    wmove(stdscr, y, 0);
+    print(" ".replicatestr(window.width));
+  }
+  wmove(stdscr, 0, 0);
+}
+
+void open(string tab) {
+  final switch (tab) {
+    case "dialogs": drawDialogs; break;
+    case "music": drawMusic; break;
+    case "friends": drawFriends; break;
+  }
+}
+
+void drawFriends() {
+  auto view = friends.getView(window.height, window.width);
+  if (view.empty) return;
+  foreach (e; view) {
+    (e.fullName ~ "\n").print;
+  }
+}
+
+void drawMusic() {}
+void drawDialogs() {}
