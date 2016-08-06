@@ -161,7 +161,7 @@ class MergedChunks(T) {
     alias typedchunk = Chunk!T;
 
     private {
-        Storage!T meta;
+        ChunkStorage!T meta;
         typedchunk last;
         bool lastempty;
         bool lastcache;
@@ -171,7 +171,7 @@ class MergedChunks(T) {
         size_t max;
     }
 
-    this(Storage!T s, int pos, int count) {
+    this(ChunkStorage!T s, int pos, int count) {
         meta = s;
         iter = pos;
         max = count;
@@ -219,28 +219,40 @@ struct FoundChunk(T) {
     bool isCache;
 }
 
-class Storage(T) {
-    alias typedchunk = Chunk!T;
-    alias typedfoundchunk = FoundChunk!T;
+abstract class SuperStorage(T) {
     alias typecoll = T[];
     alias loader = typecoll delegate(int offset, int count);
 
     private {
         loader loadfunc;
         int asyncId;
+        Mutex storelock;
     }
 
-    Mutex storelock;
-    typedchunk[] store; // todo gc and flush-to-cache
-    Cache!T cache;
     ListInfo info;
 
     this(loader loadf) {
         loadfunc = loadf;
         asyncId = genId();
-        cache = new Cache!T();
-        info = new ListInfo();
         storelock = new Mutex();
+        info = new ListInfo();
+    }
+
+    void load(int pos, int count);
+}
+
+class ChunkStorage(T) : SuperStorage!T {
+    alias typedchunk = Chunk!T;
+    alias typedfoundchunk = FoundChunk!T;
+    alias typecoll = T[];
+    alias loader = typecoll delegate(int offset, int count);
+
+    typedchunk[] store; // todo gc and flush-to-cache
+    Cache!T cache;
+
+    this(loader loadf) {
+        super(loadf);
+        cache = new Cache!T();
     }
 
     private void loadSync(int pos, int count) { // todo end-checker
@@ -251,7 +263,7 @@ class Storage(T) {
         }
     }
 
-    void load(int pos, int count) {
+    override void load(int pos, int count) {
         async.queue(async.q_loadChunk, asyncId, () => loadSync(pos, count));
     }
 
@@ -282,7 +294,7 @@ abstract class SuperView(T) {
 }
 
 class View(T) : SuperView!T {
-    alias storageType = Storage!T;
+    alias storageType = ChunkStorage!T;
 
     private {
         size_t position;
@@ -372,7 +384,7 @@ class MainProvider {
         api.accountInit();
 
         //init lists
-        friendsList = new View!User(new Storage!User((o, c) => api.friendsGet(c, o)));
+        friendsList = new View!User(new ChunkStorage!User((o, c) => api.friendsGet(c, o)));
         infos[list.friends] = friendsList.info;
     }
 
