@@ -222,7 +222,7 @@ class Message {
 }
 
 class Dialog {
-    alias messagesStorage = Storage!Message;
+    alias messagesStorage = ChunkStorage!Message;
 
     string title;
     int id, unreadCount;
