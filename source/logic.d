@@ -241,6 +241,65 @@ abstract class SuperStorage(T) {
     void load(int pos, int count);
 }
 
+class ListStorage(T) : SuperStorage!T {
+    alias typecoll = T[];
+    alias loader = typecoll delegate(int offset, int count);
+    
+    T[] store;
+    
+    this(loader loadf) {
+        super(loadf);
+    }
+    
+    override void load(int pos, int count) {
+        async.queue(async.q_loadChunk, asyncId, () => loadSync(pos, count));
+    }
+    
+    private void loadSync(int pos, int count) { // todo end-checker
+        auto freshObjects = loadfunc(pos, count);
+        synchronized (storelock) {
+            store ~= freshObjects;
+            info.setUpdated();
+        }
+    }
+    
+    auto defaultGet(int pos, int count) {
+        class cachedGetResult {
+            private {
+                size_t iter;
+                size_t max;
+            }
+            
+            this() {
+                iter = pos;
+                max = pos+count;
+            }
+            
+            void popFront() {
+                ++iter;
+            }
+            
+            bool empty() {
+                return iter >= max || iter >= store.length;
+            }
+            
+            T front() {
+                return store[iter]; // dummy, todo cache
+            }
+            
+            T moveFront() {
+                return front();
+            }
+        }
+        return new cachedGetResult();
+    }
+    
+    override auto get(int pos, int count) {
+        return defaultGet(pos, count);
+    }
+    
+}
+
 class ChunkStorage(T) : SuperStorage!T {
     alias typedchunk = Chunk!T;
     alias typedfoundchunk = FoundChunk!T;
