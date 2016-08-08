@@ -25,6 +25,10 @@ import app, utils;
 
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 
+
+
+// ===== Basic Stuff =====
+
 void color() {
   if (!has_colors) Exit("Your terminal does not support color");
   start_color;
@@ -62,28 +66,46 @@ void clearScr() {
   wmove(stdscr, 0, 0);
 }
 
+// ===== Header =====
+
+void statusbar() {
+  center(window.statusbarText, COLS, ' ').selected;
+}
+
+void tabView() {
+  window.main_color = Colors.blue;
+  " 1:Friends ".selected;
+  window.main_color = Colors.gray;
+  " 2:VK [dev] ".replicatestr(6).selected;
+  window.main_color = Colors.blue;
+  "\n".print;
+  "\n".print;
+}
+
+// ===== Drawers =====
+
 void open(string tab) {
   final switch (tab) {
-    case "dialogs": {
-      window.openedView = "dialogs";
+    case "Dialogs": {
+      window.openedView = "Dialogs";
       drawDialogs; break;
     }
-    case "music": {
-      window.openedView = "music";
+    case "Music": {
+      window.openedView = "Music";
       drawMusic; break;
     }
-    case "friends": {
-      window.openedView = "friends";
+    case "Friends": {
+      window.openedView = "Friends";
       drawFriends; break;
     }
   }
 }
 
 void drawFriends() {
-  auto view = friends.getView(window.height, window.width);
+  auto view = friends.getView(window.height-3, window.width);
   if (view.empty) return;
   foreach (e; view) {
-    (e.fullName ~ "\n").regular;
+    (" " ~ e.fullName ~ "\n").regular;
   }
 }
 

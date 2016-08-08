@@ -25,7 +25,7 @@ struct Window {
   int key, height, width,
       main_color;
   bool sizeChanged;
-  string openedView;
+  string openedView, statusbarText;
 }
 
 void init() {
@@ -44,7 +44,7 @@ void init() {
   friends = api.friendsList;
   music   = api.musicList;
   dialogs = api.dialogList;
-  tabMenu.tabs = ["dialogs", "music", "friends", "id_123", "chat_321"];
+  tabMenu.tabs = ["Dialogs", "Music", "Friends", "id_123", "chat_321"];
 }
 
 void getWindowSize() {
@@ -59,9 +59,9 @@ bool isCurrentViewUpdated() {
   if (window.sizeChanged) return true;
   //if (notify) return true;
   switch (window.openedView) {
-    case "dialogs": return dialogs.info.isUpdated;
-    case "music":   return music.info.isUpdated;
-    case "friends": return friends.info.isUpdated;
+    case "Dialogs": return dialogs.info.isUpdated;
+    case "Music":   return music.info.isUpdated;
+    case "Friends": return friends.info.isUpdated;
     default: return false;
   }
 }
@@ -83,6 +83,8 @@ void main(string[] args) {
 
     if (isCurrentViewUpdated) {
       clearScr;
+      statusbar;
+      tabView;
       tabMenu.selected = 2;
       tabMenu.tabs[tabMenu.selected].open;
     }
