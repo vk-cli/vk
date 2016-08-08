@@ -40,13 +40,13 @@ void print(T)(T text) {
   text.to!string.toStringz.addstr;
 }
 
-void selected(string text) {
+void selected(T)(T text) {
   attron(A_REVERSE);
   text.regular;
   attroff(A_REVERSE);
 }
 
-void regular(string text) {
+void regular(T)(T text) {
   attron(A_BOLD);
   attron(COLOR_PAIR(window.main_color));
   text.print;

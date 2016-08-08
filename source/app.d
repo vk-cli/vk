@@ -1,5 +1,5 @@
 import deimos.ncurses.ncurses;
-import std.stdio, std.conv, std.string, std.array;
+import std.stdio, std.conv, std.string, std.array, std.algorithm;
 import core.sys.posix.stdlib, core.time; 
 import ui, controller, vkapi, logic, cfg, utils, localization, vkversion;
 
@@ -76,7 +76,7 @@ void main(string[] args) {
   init;
   scope(failure) endwin;
 
-  while (window.key != 27) {
+  while (!canFind(kg_esc, window.key)) {
     timeout(100);
     getWindowSize;
     window.key = _getch;
