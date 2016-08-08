@@ -23,12 +23,8 @@ import deimos.ncurses.ncurses;
 import std.string, std.conv, core.thread;
 import app, utils;
 
-void print(string text) {
-  text.toStringz.addstr;
-}
-
-void print(int i) {
-  i.to!string.toStringz.addstr;
+void print(T)(T t) {
+  t.to!string.toStringz.addstr;
 }
 
 void clearScr() {
