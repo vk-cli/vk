@@ -46,19 +46,21 @@ void init() {
 }
 
 void getWindowSize() {
-  if (window.height != LINES-3 || window.width != COLS) window.sizeChanged = true;
+  if (window.height != LINES || window.width != COLS) window.sizeChanged = true;
   else window.sizeChanged = false;
-  window.height = LINES-3;
+  window.height = LINES;
   window.width = COLS;
 }
 
 bool isCurrentViewUpdated() {
   if (window.key != -1) return true;
   if (window.sizeChanged) return true;
-  final switch (window.openedView) {
+  //if (notify) return true;
+  switch (window.openedView) {
     case "dialogs": return dialogs.info.isUpdated;
     case "music":   return music.info.isUpdated;
     case "friends": return friends.info.isUpdated;
+    default: return false;
   }
 }
 
@@ -70,6 +72,7 @@ void main(string[] args) {
     }
   }
   init;
+  scope(failure) endwin;
 
   while (window.key != 27) {
     timeout(100);
