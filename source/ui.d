@@ -23,8 +23,35 @@ import deimos.ncurses.ncurses;
 import std.string, std.conv, core.thread;
 import app, utils;
 
-void print(T)(T t) {
-  t.to!string.toStringz.addstr;
+enum Colors { white, red, green, yellow, blue, pink, mint, gray }
+
+void color() {
+  if (!has_colors) Exit("Your terminal does not support color");
+  start_color;
+  use_default_colors;
+  for (short i = 0; i < Colors.max; i++) init_pair(i, i, -1);
+  for (short i = 1; i < Colors.max+1; i++) init_pair((Colors.max+1+i).to!short, i, -1.to!short);
+  init_pair(Colors.max, 0, -1);
+  init_pair(Colors.max+1, -1, -1);
+  init_pair(Colors.max*2+1, 0, -1);
+}
+
+void print(T)(T text) {
+  text.to!string.toStringz.addstr;
+}
+
+void selected(string text) {
+  attron(A_REVERSE);
+  text.regular;
+  attroff(A_REVERSE);
+}
+
+void regular(string text) {
+  attron(A_BOLD);
+  attron(COLOR_PAIR(window.main_color));
+  text.print;
+  attroff(A_BOLD);
+  attroff(COLOR_PAIR(window.main_color));
 }
 
 void clearScr() {
@@ -56,7 +83,7 @@ void drawFriends() {
   auto view = friends.getView(window.height, window.width);
   if (view.empty) return;
   foreach (e; view) {
-    (e.fullName ~ "\n").print;
+    (e.fullName ~ "\n").regular;
   }
 }
 

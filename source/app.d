@@ -22,7 +22,8 @@ struct TabMenu {
 }
 
 struct Window {
-  int key, height, width;
+  int key, height, width,
+      main_color;
   bool sizeChanged;
   string openedView;
 }
@@ -35,6 +36,7 @@ void init() {
   initscr;
   curs_set(0);
   noecho;
+  color;
 
   config = load;
   api = new MainProvider(config["token"]);
