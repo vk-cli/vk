@@ -52,10 +52,18 @@ void selected(T)(T text) {
 
 void regular(T)(T text) {
   attron(A_BOLD);
-  attron(COLOR_PAIR(window.main_color));
+  attron(COLOR_PAIR(window.mainColor));
   text.print;
   attroff(A_BOLD);
-  attroff(COLOR_PAIR(window.main_color));
+  attroff(COLOR_PAIR(window.mainColor));
+}
+
+void secondColor(string text) {
+  attron(A_BOLD);
+  attron(COLOR_PAIR(window.secondColor+Colors.max+1));
+  text.print;
+  attroff(A_BOLD);
+  attroff(COLOR_PAIR(window.secondColor+Colors.max+1));
 }
 
 void clearScr() {
@@ -72,18 +80,13 @@ void statusbar() {
   center(window.statusbarText, COLS, ' ').selected;
 }
 
-void tabView() {
-  window.main_color = Colors.blue;
-
-  (" 1:" ~ tabMenu.tabs[0].name ~ " ").selected;
-  
-  window.main_color = Colors.gray;
-  
+void tabView() {  
   foreach(i, tab; tabMenu.tabs) {
-    (" " ~ i.to!string ~ ":" ~ tab.name ~ " ").regular;
+    if (tabMenu.selected == i) (" " ~ (i+1).to!string ~ ":" ~ tab.name ~ " ").selected;
+    else (" " ~ (i+1).to!string ~ ":" ~ tab.name ~ " ").secondColor;
   }
 
-  window.main_color = Colors.blue;
+  window.mainColor = Colors.blue;
   "\n".print;
   "\n".print;
 }

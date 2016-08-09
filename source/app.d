@@ -28,7 +28,7 @@ struct TabMenu {
 
 struct Window {
   int key, height, width,
-      main_color;
+      mainColor, secondColor;
   bool sizeChanged;
   string openedView, statusbarText;
 }
@@ -98,6 +98,9 @@ void main(string[] args) {
     timeout(100);
     getWindowSize;
     window.key = _getch;
+
+    window.mainColor = Colors.blue;
+    window.secondColor = Colors.gray;
 
     if (isCurrentViewUpdated) {
       clearScr;
