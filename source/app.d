@@ -9,15 +9,20 @@ View!User friends;
 View!Audio music;
 View!Dialog dialogs;
 Window window;
+TabMenu tabMenu;
 
 private:
 
 string[string] config;
-TabMenu tabMenu;
 MainProvider api;
 
+struct Tab {
+  string name;
+  bool locked;
+}
+
 struct TabMenu {
-  string[] tabs;
+  Tab[] tabs;
   byte selected;
 }
 
@@ -52,7 +57,12 @@ void init() {
   friends = api.friendsList;
   music   = api.musicList;
   dialogs = api.dialogList;
-  tabMenu.tabs = ["Dialogs", "Music", "Friends", "id_123", "chat_321"];
+  tabMenu.tabs = [Tab("Dialogs"),
+                  Tab("Music"),
+                  Tab("Friends"),
+                  Tab("id_123"),
+                  Tab("chat_321")
+                 ];
 }
 
 void getWindowSize() {

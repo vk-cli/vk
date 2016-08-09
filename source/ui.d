@@ -74,9 +74,15 @@ void statusbar() {
 
 void tabView() {
   window.main_color = Colors.blue;
-  " 1:Friends ".selected;
+
+  (" 1:" ~ tabMenu.tabs[0].name ~ " ").selected;
+  
   window.main_color = Colors.gray;
-  " 2:VK [dev] ".replicatestr(6).selected;
+  
+  foreach(i, tab; tabMenu.tabs) {
+    (" " ~ i.to!string ~ ":" ~ tab.name ~ " ").regular;
+  }
+
   window.main_color = Colors.blue;
   "\n".print;
   "\n".print;
@@ -84,8 +90,8 @@ void tabView() {
 
 // ===== Drawers =====
 
-void open(string tab) {
-  final switch (tab) {
+void open(Tab tab) {
+  final switch (tab.name) {
     case "Dialogs": {
       window.openedView = "Dialogs";
       drawDialogs; break;

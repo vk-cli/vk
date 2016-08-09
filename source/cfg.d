@@ -38,7 +38,6 @@ string get_token() {
   char token, start_browser;
   string
     token_link = "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
-  
   "e_start_browser".getLocal.regular;
   getstr(&start_browser);
   "e_token_info".getLocal.regular;
@@ -50,32 +49,30 @@ string get_token() {
     spawnShell(`xdg-open "`~token_link~`" &>/dev/null`);
     "\n".print;
   }
-  
   "e_input_token".getLocal.regular;
   getstr(&token);
-
   string strToken = (cast(char*)&token).to!string;
   return strToken.parseToken;
 }
 
 void load(ref string[string] storage) {
-    auto config = expandTilde("~/.vkrc");
-    if (config.exists) {
-        auto f = File(config, "r");
-        while (!f.eof) {
-            auto line = f.readln.strip;
-            if (line.length != 0)
-                storage[line[0 .. line.indexOf("=") - 1]] = line[line.indexOf("=") + 2 .. $];
-        }
-        f.close;
+  auto config = expandTilde("~/.vkrc");
+  if (config.exists) {
+    auto f = File(config, "r");
+    while (!f.eof) {
+      auto line = f.readln.strip;
+      if (line.length != 0)
+        storage[line[0 .. line.indexOf("=") - 1]] = line[line.indexOf("=") + 2 .. $];
     }
+    f.close;
+  }
 }
 
 void save(string[string] storage) {
-    auto config = expandTilde("~/.vkrc");
-    auto f = File(config, "w");
-    foreach (key, value; storage) {
-        f.write(key ~ " = " ~ value ~ "\n");
-    }
-    f.close;
+  auto config = expandTilde("~/.vkrc");
+  auto f = File(config, "w");
+  foreach (key, value; storage) {
+    f.write(key ~ " = " ~ value ~ "\n");
+  }
+  f.close;
 }
