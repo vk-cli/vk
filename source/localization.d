@@ -39,18 +39,19 @@ void setEnvLanguage() {
 }
 
 void localize() {
+    setEnvLanguage;
     local["e_start_browser"] = lang(
-        "You need to copy access token from your web browser. Would you like to launch it now? [Y/n]",
-        "Необходимо скопировать ваш access token из веб-браузера. Хотите запустить его сейчас? [Y/n]");
-    local["e_token_link"] = lang(
-        "Follow this link to get your access_token: ",
-        "Перейдите по следующей ссылке, чтобы получить ваш access_token: ");
+        "You need to copy access token from your web browser. Would you like to launch it now? [Y/n] ",
+        "Необходимо скопировать ваш access token из веб-браузера. Хотите запустить его сейчас? [Y/n] ");
     local["e_token_info"] = lang(
-        "Please allow access to your data and then copy link from the address bar.",
-        "Пожалуйста, разрешите приложению доступ к вашим данным, а затем скопируйте содержимое адресной строки.");
-    local["e_input_token"] = lang("Insert your link here: ",
-        "Вставьте адрес из браузера сюда:  ");
-    local["e_wrong_token"] = lang("Wrong token, try again\n",
+        "\n Please allow access to your data and then copy link from the address bar\n",
+        "\n Пожалуйста, разрешите приложению доступ к вашим данным, а затем скопируйте содержимое адресной строки\n");
+    local["e_follow_link"] = lang(
+        " Follow this link to get your access_token: \n\n",
+        " Перейдите по следующей ссылке, чтобы получить ваш access_token: \n\n");
+    local["e_input_token"] = lang("Insert your link or token here: ",
+        "Вставьте адрес или токен из браузера сюда:  ");
+    local["e_wrong_token"] = lang("Wrong token, try again",
         "Неверный access token, попробуйте еще раз");
     local["m_friends"] = lang("Friends", "Друзья");
     local["m_conversations"] = lang("Conversations", "Диалоги");

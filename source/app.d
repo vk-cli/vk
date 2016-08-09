@@ -1,6 +1,6 @@
 import deimos.ncurses.ncurses;
 import std.stdio, std.conv, std.string, std.array, std.algorithm;
-import core.sys.posix.stdlib, core.time; 
+import core.sys.posix.stdlib, core.time, core.stdc.locale; 
 import ui, controller, vkapi, logic, cfg, utils, localization, vkversion;
 
 public:
@@ -28,18 +28,26 @@ struct Window {
   string openedView, statusbarText;
 }
 
+void loadConfig() {
+  config.load;
+  if ("token" !in config) {
+    config["token"] = get_token;
+    config.save;
+  }
+  api = new MainProvider(config["token"]);
+}
+
 void init() {
   updateGcSignals;
   initdbm;
+  setlocale(LC_CTYPE,"");
   localize;
-
   initscr;
   curs_set(0);
-  noecho;
   color;
 
-  config = load;
-  api = new MainProvider(config["token"]);
+  loadConfig;
+  noecho;
 
   friends = api.friendsList;
   music   = api.musicList;
