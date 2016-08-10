@@ -86,7 +86,6 @@ void main(string[] args) {
   scope(failure) endwin;
 
   while (!canFind(kg_esc, window.key)) {
-    timeout(100);
     getWindowSize;
     getKey;
 

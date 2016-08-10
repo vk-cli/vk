@@ -122,6 +122,7 @@ int _getch() {
 
 void parsePressedKey() {
   if (window.key >= 49 && window.key <= 57) tabMenu.selected = window.key - 49;
+  //if (window.key == 58) settings.open;
 }
 
 void getKey() {
