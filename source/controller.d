@@ -20,6 +20,7 @@ limitations under the License.
 module controller;
 
 import deimos.ncurses.ncurses;
+import app;
 
 const int
   // func keys
@@ -117,4 +118,14 @@ int _getch() {
     }
   }
   return key;
+}
+
+void parsePressedKey() {
+  if (window.key >= 49 && window.key <= 57) tabMenu.selected = window.key - 49;
+}
+
+void getKey() {
+  timeout(100);
+  window.key = _getch;
+  parsePressedKey;
 }

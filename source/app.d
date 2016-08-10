@@ -16,20 +16,16 @@ private:
 string[string] config;
 MainProvider api;
 
-struct Tab {
-  string name;
-  bool locked;
-}
-
 struct TabMenu {
-  Tab[] tabs;
-  byte selected;
+  string[] tabs;
+  int selected;
 }
 
 struct Window {
   int key, height, width,
-      mainColor, secondColor;
-  bool sizeChanged;
+      mainColor, secondColor,
+      notifyCounter;
+  bool sizeChanged, unicodeChars = true;
   string openedView, statusbarText;
 }
 
@@ -57,12 +53,7 @@ void init() {
   friends = api.friendsList;
   music   = api.musicList;
   dialogs = api.dialogList;
-  tabMenu.tabs = [Tab("Dialogs"),
-                  Tab("Music"),
-                  Tab("Friends"),
-                  Tab("id_123"),
-                  Tab("chat_321")
-                 ];
+  tabMenu.tabs = ["Dialogs", "Music", "Friends", "+", "+", "+", "+", "+", "+"];
 }
 
 void getWindowSize() {
@@ -97,7 +88,7 @@ void main(string[] args) {
   while (!canFind(kg_esc, window.key)) {
     timeout(100);
     getWindowSize;
-    window.key = _getch;
+    getKey;
 
     window.mainColor = Colors.blue;
     window.secondColor = Colors.gray;
@@ -105,8 +96,7 @@ void main(string[] args) {
     if (isCurrentViewUpdated) {
       clearScr;
       statusbar;
-      tabView;
-      tabMenu.selected = 2;
+      tabPanel;
       tabMenu.tabs[tabMenu.selected].open;
     }
   }

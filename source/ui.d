@@ -74,38 +74,79 @@ void clearScr() {
   wmove(stdscr, 0, 0);
 }
 
+string getChar(string charName) {
+  if (window.unicodeChars) {
+    switch (charName) {
+      case "unread" : return "⚫ ";
+      case "fwd"    : return "➥ ";
+      case "play"   : return " ▶  ";
+      case "pause"  : return " ▮▮ ";
+      case "outbox" : return " ⇡ ";
+      case "inbox"  : return " ⇣ ";
+      case "cross"  : return " ✖ ";
+      case "mail"   : return " ✉ ";
+      case "refresh": return " ⟲";
+      case "repeat" : return "⟲ ";
+      case "shuffle": return "⤮";
+      default       : return charName;
+    }
+  } else {
+    switch(charName) {
+      case "unread" : return "! ";
+      case "fwd"    : return "fwd ";
+      case "play"   : return " >  ";
+      case "pause"  : return " || ";
+      case "outbox" : return " ^ ";
+      case "inbox"  : return " v ";
+      case "cross"  : return " X ";
+      case "mail"   : return " M ";
+      case "refresh": return " ?";
+      case "repeat" : return "o ";
+      case "shuffle": return "x";
+      default       : return charName;
+    }
+  }
+}
+
 // ===== Header =====
 
 void statusbar() {
-  center(window.statusbarText, COLS, ' ').selected;
+  string counterStr = " " ~ window.notifyCounter.to!string ~ getChar("mail");
+  counterStr.selected;
+  int counterStrLen = counterStr.utfLength + (counterStr.utfLength == 7) * 2;
+  center(window.statusbarText, COLS-counterStrLen, ' ').selected;
 }
 
-void tabView() {  
+void tabPanel() {  
   foreach(i, tab; tabMenu.tabs) {
-    if (tabMenu.selected == i) (" " ~ (i+1).to!string ~ ":" ~ tab.name ~ " ").selected;
-    else (" " ~ (i+1).to!string ~ ":" ~ tab.name ~ " ").secondColor;
+    if (tabMenu.selected == i) (" " ~ (i+1).to!string ~ ":" ~ tab ~ " ").selected;
+    else (" " ~ (i+1).to!string ~ ":" ~ tab ~ " ").secondColor;
   }
-
-  window.mainColor = Colors.blue;
   "\n".print;
   "\n".print;
 }
 
 // ===== Drawers =====
 
-void open(Tab tab) {
-  final switch (tab.name) {
+void open(string tab) {
+  final switch (tab) {
     case "Dialogs": {
-      window.openedView = "Dialogs";
-      drawDialogs; break;
+      //window.openedView = "Dialogs";
+      //drawDialogs;
+      break;
     }
     case "Music": {
-      window.openedView = "Music";
-      drawMusic; break;
+      //window.openedView = "Music";
+      //drawMusic;
+      break;
     }
     case "Friends": {
       window.openedView = "Friends";
       drawFriends; break;
+    }
+    case "+": {
+      "\n".print;
+      center("You can add a tab here", COLS, ' ').regular;
     }
   }
 }
