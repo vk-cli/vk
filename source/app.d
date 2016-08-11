@@ -57,8 +57,7 @@ void init() {
 }
 
 void getWindowSize() {
-  if (window.height != LINES || window.width != COLS) window.sizeChanged = true;
-  else window.sizeChanged = false;
+  window.sizeChanged = (window.height != LINES || window.width != COLS) ? true : false;
   window.height = LINES;
   window.width = COLS;
 }
