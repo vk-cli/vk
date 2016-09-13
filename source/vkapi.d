@@ -269,7 +269,7 @@ class Dialog {
 }
 
 template makeDownloader(T) {
-	alias dwFunc = T[] delegate(uint offset, uint count);
+	alias dwFunc = T[] delegate(int offset, int count);
 
 	class withApi {
 		private {
@@ -280,12 +280,16 @@ template makeDownloader(T) {
 			api = _api;
 		}
 
-		static if (T == User) {
+		static withApi opCall(VkApi _api) {
+			return new withApi(_api);
+		}
+
+		static if (is(T == User)) {
 			dwFunc forFriends() {
 				return (o, c) => api.friendsGet(c, o);
 			}
 		}
-		else static if (T == Dialog) {
+		else static if (is(T == Dialog)) {
 			dwFunc forDialog(int peer) {
 				return (o, c) => [];
 			}
