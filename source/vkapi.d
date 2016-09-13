@@ -268,6 +268,36 @@ class Dialog {
     }
 }
 
+template makeDownloader(T) {
+	alias dwFunc = T[] delegate(uint offset, uint count);
+
+	class withApi {
+		private {
+			VkApi api;
+		}
+
+		this(VkApi _api) {
+			api = _api;
+		}
+
+		static if (T == User) {
+			dwFunc forFriends() {
+				return (o, c) => api.friendsGet(c, o);
+			}
+		}
+		else static if (T == Dialog) {
+			dwFunc forDialog(int peer) {
+				return (o, c) => [];
+			}
+		}
+		else {
+			static assert(0, "No downloader for this type");
+		}
+	}
+
+	alias makeDownloader = withApi;
+}
+
 class VkApi {
     struct vkgetparams {
         bool setloading = true;
