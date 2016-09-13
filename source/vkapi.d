@@ -31,7 +31,7 @@ const int convStartId = 2000000000;
 const int mailStartId = convStartId * -1;
 const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
-const long needNameMaxDelta = 180; //seconds, 3 min
+const long needNameMaxDelta = 60 * 3; //seconds
 const int typingTimeout = 4;
 
 const uint defaultBlock = 100;
@@ -269,7 +269,8 @@ class Dialog {
 }
 
 template makeDownloader(T) {
-	alias dwFunc = T[] delegate(int offset, int count);
+	alias listDwFunc = T[] delegate(int offset, int count);
+    alias objectDwFunc = T[] delegate(int[] ids);
 
 	class withApi {
 		private {
@@ -285,12 +286,16 @@ template makeDownloader(T) {
 		}
 
 		static if (is(T == User)) {
-			dwFunc forFriends() {
+			listDwFunc forFriends() {
 				return (o, c) => api.friendsGet(c, o);
 			}
+
+            objectDwFunc forUsers() {
+                return ids => [];
+            }
 		}
 		else static if (is(T == Dialog)) {
-			dwFunc forDialog(int peer) {
+			listDwFunc forDialog(int peer) {
 				return (o, c) => [];
 			}
 		}
@@ -475,6 +480,9 @@ class VkApi {
 
         return rt;
     }
+
+
+
 }
 
 class NetworkException : Exception {
