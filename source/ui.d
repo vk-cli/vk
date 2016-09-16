@@ -144,7 +144,7 @@ void open(Tab tab) {
     }
     case "+": {
       "\n".print;
-      center("You can add a tab here", COLS, ' ').regular;
+      center("Press Enter to add a tab here", COLS, ' ').regular;
     }
   }
 }
