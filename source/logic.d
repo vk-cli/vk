@@ -443,7 +443,7 @@ class MainProvider {
         api.accountInit();
 
         //init lists
-        friendsList = new View!User(new ChunkStorage!User((o, c) => api.friendsGet(c, o)));
+        friendsList = new View!User(new ChunkStorage!User(makeDownloader!User(api).forFriends()));
         infos[list.friends] = friendsList.info;
     }
 

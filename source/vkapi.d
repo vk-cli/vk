@@ -31,7 +31,7 @@ const int convStartId = 2000000000;
 const int mailStartId = convStartId * -1;
 const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
-const long needNameMaxDelta = 180; //seconds, 3 min
+const long needNameMaxDelta = 60 * 3; //seconds
 const int typingTimeout = 4;
 
 const uint defaultBlock = 100;
@@ -268,6 +268,45 @@ class Dialog {
     }
 }
 
+template makeDownloader(T) {
+	alias listDwFunc = T[] delegate(int offset, int count);
+    alias objectDwFunc = T[] delegate(int[] ids);
+
+	class withApi {
+		private {
+			VkApi api;
+		}
+
+		this(VkApi _api) {
+			api = _api;
+		}
+
+		static withApi opCall(VkApi _api) {
+			return new withApi(_api);
+		}
+
+		static if (is(T == User)) {
+			listDwFunc forFriends() {
+				return (o, c) => api.friendsGet(c, o);
+			}
+
+            objectDwFunc forUsers() {
+                return ids => [];
+            }
+		}
+		else static if (is(T == Dialog)) {
+			listDwFunc forDialog(int peer) {
+				return (o, c) => [];
+			}
+		}
+		else {
+			static assert(0, "No downloader for this type");
+		}
+	}
+
+	alias makeDownloader = withApi;
+}
+
 class VkApi {
     struct vkgetparams {
         bool setloading = true;
@@ -441,6 +480,9 @@ class VkApi {
 
         return rt;
     }
+
+
+
 }
 
 class NetworkException : Exception {
