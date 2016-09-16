@@ -25,8 +25,6 @@ import app, utils;
 
 enum Colors { white, red, green, yellow, blue, pink, mint, gray }
 
-
-
 // ===== Basic Stuff =====
 
 void color() {
