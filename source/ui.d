@@ -117,8 +117,8 @@ void statusbar() {
 
 void tabPanel() {  
   foreach(i, tab; tabMenu.tabs) {
-    if (tabMenu.selected == i) (" " ~ (i+1).to!string ~ ":" ~ tab ~ " ").selected;
-    else (" " ~ (i+1).to!string ~ ":" ~ tab ~ " ").secondColor;
+    if (tabMenu.active == i) (" " ~ (i+1).to!string ~ ":" ~ tab.name ~ " ").selected;
+    else (" " ~ (i+1).to!string ~ ":" ~ tab.name ~ " ").secondColor;
   }
   "\n".print;
   "\n".print;
@@ -126,8 +126,8 @@ void tabPanel() {
 
 // ===== Drawers =====
 
-void open(string tab) {
-  final switch (tab) {
+void open(Tab tab) {
+  final switch (tab.name) {
     case "Dialogs": {
       //window.openedView = "Dialogs";
       //drawDialogs;
@@ -152,8 +152,13 @@ void open(string tab) {
 void drawFriends() {
   auto view = friends.getView(window.height-3, window.width);
   if (view.empty) return;
+  int counter = 0;
   foreach (e; view) {
-    (" " ~ e.fullName ~ "\n").regular;
+    if (counter == tabMenu.tabs[tabMenu.active].selected) 
+      (" " ~ e.fullName ~ " ".replicatestr(window.width-e.fullName.utfLength-2) ~ "\n").selected;
+    else
+      (" " ~ e.fullName ~ "\n").regular;
+    counter++;
   }
 }
 

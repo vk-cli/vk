@@ -16,9 +16,14 @@ private:
 string[string] config;
 MainProvider api;
 
+struct Tab {
+  string name = "+";
+  int selected, offset;
+}
+
 struct TabMenu {
-  string[] tabs;
-  int selected;
+  Tab[] tabs;
+  int active;
 }
 
 struct Window {
@@ -53,7 +58,7 @@ void init() {
   friends = api.friendsList;
   music   = api.musicList;
   dialogs = api.dialogList;
-  tabMenu.tabs = ["Dialogs", "Music", "Friends", "+", "+", "+", "+", "+", "+"];
+  tabMenu.tabs = [Tab("Dialogs"), Tab("Music"), Tab("Friends"), Tab()];
 }
 
 void getWindowSize() {
@@ -95,7 +100,7 @@ void main(string[] args) {
       clearScr;
       statusbar;
       tabPanel;
-      tabMenu.tabs[tabMenu.selected].open;
+      tabMenu.tabs[tabMenu.active].open;
     }
   }
 
