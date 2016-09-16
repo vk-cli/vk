@@ -23,6 +23,8 @@ import std.algorithm;
 import deimos.ncurses.ncurses;
 import app;
 
+import ui;
+
 const int
   // func keys
   k_up           = -2,
@@ -123,8 +125,14 @@ int _getch() {
 
 void parsePressedKey() {
   if (window.key >= 49 && window.key <= 57) tabMenu.active = window.key - 49;
-  else if (canFind(kg_down, window.key)) tabMenu.tabs[tabMenu.active].selected++;
-  else if (canFind(kg_up, window.key) && tabMenu.tabs[tabMenu.active].selected != 0) tabMenu.tabs[tabMenu.active].selected--;
+  else if (canFind(kg_down, window.key)) {
+    if (tabMenu.tabs[tabMenu.active].selected == window.height-4) friends.moveForward();
+    else tabMenu.tabs[tabMenu.active].selected++;
+  }
+  else if (canFind(kg_up, window.key)) { // check for -> && view.offset != 0
+    if (tabMenu.tabs[tabMenu.active].selected == 0) friends.moveBackward();
+    else tabMenu.tabs[tabMenu.active].selected--;
+  }
   //if (window.key == 58) settings.open;
 }
 
