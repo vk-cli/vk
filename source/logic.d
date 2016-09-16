@@ -346,10 +346,13 @@ class ChunkStorage(T) : SuperStorage!T {
     }
 }
 
-abstract class SuperView(T) {
-    MergedChunks!T getView(int height, int width);
+abstract class BaseView {
     void moveForward(int step = 1);
     void moveBackward(int step = 1);
+}
+
+abstract class SuperView(T) : BaseView {
+    MergedChunks!T getView(int height, int width);
 }
 
 class View(T) : SuperView!T {
@@ -445,6 +448,10 @@ class MainProvider {
         //init lists
         friendsList = new View!User(new ChunkStorage!User(makeDownloader!User(api).forFriends()));
         infos[list.friends] = friendsList.info;
+    }
+
+    @property auto makeFriendsView() {
+        return new View!User(new ChunkStorage!User(makeDownloader!User(api).forFriends()));
     }
 
     private void describeMe(int uid, string fname, string lname) {
