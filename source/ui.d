@@ -155,7 +155,7 @@ void drawFriends() {
   int counter = 0;
   foreach (e; view) {
     if (counter == tabMenu.tabs[tabMenu.active].selected) 
-      (" " ~ e.fullName ~ " ".replicatestr(window.width-e.fullName.utfLength-2) ~ "\n").selected;
+      (" " ~ e.fullName ~ " ".replicatestr(window.width-e.fullName.utfLength-1)).selected;
     else
       (" " ~ e.fullName ~ "\n").regular;
     counter++;
