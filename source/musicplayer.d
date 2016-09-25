@@ -19,8 +19,9 @@ limitations under the License.
 
 import std.process, std.stdio, std.string,
        std.array, std.algorithm, std.conv,
-       std.math, std.file, std.ascii,
+       std.math, std.ascii,
        std.socket, std.json;
+static import std.file;
 import core.sys.posix.signal;
 import core.thread;
 import app, utils;
@@ -386,7 +387,7 @@ class mpv: Thread {
     dbm("mpv - running");
 
     uint spawntry;
-    while(!exists(socketPath)) {
+    while(!std.file.exists(socketPath)) {
         dbm("mpv - waiting for socket spawn...");
         Thread.sleep(dur!"msecs"(400));
 
@@ -447,9 +448,9 @@ class mpv: Thread {
     mpvsend(c);
     Thread.sleep(dur!"msecs"(100));
     try {
-        remove(socketPath);
+        std.file.remove(socketPath);
     }
-    catch(FileException e) {
+    catch(std.file.FileException e) {
         //dbm("socket not found")
     }
   }

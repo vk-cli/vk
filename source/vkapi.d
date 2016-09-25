@@ -1089,7 +1089,8 @@ class Longpoll : Thread {
         if(midResolveOrder.length == 0) return;
         api.messagesGetById(midResolveOrder.keys)
                     .each!(q => midResolveOrder[q.msg_id](q));
-        midResolveOrder.clear();
+        //midResolveOrder.clear(); - bad for ldc
+        midResolveOrder = midResolveOrder.init;
         man.toggleUpdate();
     }
 
@@ -1863,7 +1864,8 @@ class BlockFactory(T) {
             data.serverCount = -1;
             static if(is(T == ClDialog)) clearOverrides();
             initBackBlock();
-            blockst.clear();
+            //blockst.clear(); - bad for ldc
+            blockst = blockst.init;
             prepare();
             return null;
         }
@@ -1942,7 +1944,8 @@ class BlockFactory(T) {
         }
 
         void clearOverrides() {
-            store.clear();
+            //store.clear(); - bad for ldc
+            store = store.init;
         }
 
         void overrideDialog(ClDialog dlg, long ut) {
