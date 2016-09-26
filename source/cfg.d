@@ -20,7 +20,7 @@ limitations under the License.
 module cfg;
 
 import deimos.ncurses.ncurses;
-import std.path, std.stdio, std.file, std.string, std.regex, std.process;
+import std.path, std.stdio, std.file, std.string, std.regex, std.process, std.conv;
 import localization, ui, utils;
 
 string parseToken(string token) {
