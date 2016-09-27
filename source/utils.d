@@ -345,8 +345,15 @@ void unwantedExit(int sig) {
     Exit("killed by signal " ~ sig.to!string, 2);
 }
 
+void writeCurrentTrack(int sig) {
+    auto file = File(vkcliTmpDir ~ "/current-track", "w");
+    auto track = mplayer.currentTrack;
+    file.write("[" ~ track.playtime ~ "/" ~ track.duration ~ "] " ~ track.artist ~ " - " ~ track.title);
+}
+
 void setPosixSignals() {
     sigset(SIGSEGV, a => unwantedExit(a));
+    sigset(SIGUSR1, a => writeCurrentTrack(a));
 }
 
 int gcSuspendSignal;
