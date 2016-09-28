@@ -347,7 +347,7 @@ void unwantedExit(int sig) {
 
 void writeCurrentTrack(int sig) {
     auto file = File(vkcliTmpDir ~ "/current-track", "w");
-    auto track = mplayer.currentTrack;
+    auto track = mplayer ? mplayer.currentTrack : Track();
     file.write("[" ~ track.playtime ~ "/" ~ track.duration ~ "] " ~ track.artist ~ " - " ~ track.title);
 }
 
