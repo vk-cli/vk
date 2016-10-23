@@ -659,40 +659,45 @@ class VkApi {
         inp.map!(q => q.fwd).filter!(q => q.length != 0).each!(q => resolveFwdRecv(q));
     }
 
-	private string[] getmbody(JSONValue m) {
-            string[] mbody = m["body"].str.split("\n");
-	    if("attachments" in m) {
-		foreach(att; m["attachments"].array) {
-			if (att["type"].str == "photo") {
-				int k = -1;
-				foreach(key; att["photo"].object.byKey()) {
-					if (key.startsWith("photo_")) {
-						if (to!int(key[6..$]) > k)
-							k = to!int(key[6..$]);
-					}
-				}
-				mbody ~= att["photo"].object["text"].str ~ " / " ~
-					SysTime.fromUnixTime(att["photo"].object["date"].integer).toSimpleString();
-				mbody ~= (att["photo"].object)["photo_" ~ to!string(k)].str;
-			} else if (att["type"].str == "audio") {
-				JSONValue obj = att["audio"].object;
-				mbody ~= obj["artist"].str ~ " - " ~ obj["title"].str ~ " (" ~ to!string(obj["duration"].integer / 60) ~ ":" ~ to!string(obj["duration"].integer % 60) ~ ")";
-			} else if (att["type"].str == "link") {
-				mbody ~= att["link"].object["title"].str ~ ": " ~ att["link"].object["url"].str;
-			} else if (att["type"].str == "doc") {
-				JSONValue o = att["doc"].object;
-				mbody ~= o["title"].str ~ " (" ~ o["ext"].str ~ ", " ~ to!string(o["size"].integer) ~ "): " ~ o["url"].str;
-                } else if (att["type"].str == "video") {
+    private string[] getmbody(JSONValue m) {
+        string[] mbody = m["body"].str.split("\n");
+        if("attachments" in m) {
+            foreach(att; m["attachments"].array) {
+                if (att["type"].str == "photo") {
+                    int k = -1;
+                    foreach(key; att["photo"].object.byKey()) {
+                        if (key.startsWith("photo_")) {
+                            if (to!int(key[6..$]) > k)
+                                k = to!int(key[6..$]);
+                        }
+                    }
+                    mbody ~= att["photo"].object["text"].str ~ " / " ~
+                        SysTime.fromUnixTime(att["photo"].object["date"].integer).toSimpleString();
+                    mbody ~= (att["photo"].object)["photo_" ~ to!string(k)].str;
+                }
+                else if (att["type"].str == "audio") {
+                    JSONValue obj = att["audio"].object;
+                    mbody ~= obj["artist"].str ~ " - " ~ obj["title"].str ~ " (" ~ to!string(obj["duration"].integer / 60) ~ ":" ~ to!string(obj["duration"].integer % 60) ~ ")";
+                }
+                else if (att["type"].str == "link") {
+                    mbody ~= att["link"].object["title"].str ~ ": " ~ att["link"].object["url"].str;
+                }
+                else if (att["type"].str == "doc") {
+                    JSONValue o = att["doc"].object;
+                    mbody ~= o["title"].str ~ " (" ~ o["ext"].str ~ ", " ~ to!string(o["size"].integer) ~ "): " ~ o["url"].str;
+                }
+                else if (att["type"].str == "video") {
                     JSONValue o = att["video"].object;
                     mbody ~= o["title"].str ~ " (video)";
-			} else {
-			mbody ~= "Unsupported attachment: " ~ att["type"].str;
-			}
-		}
-
-		}
-	    return mbody;
-	}
+                }
+                else {
+                    mbody ~= "Unsupported attachment: " ~ att["type"].str;
+                }
+            }
+            
+        }
+        return mbody;
+    }
 
     private vkMessage[] parseMessageObjects(JSONValue[] items, SysTime ct) {
         vkMessage[] rt;
