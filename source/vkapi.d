@@ -45,8 +45,8 @@ const int chatUpd = 50;
 
 const int connectionAttempts = 10;
 const int mssleepBeforeAttempt = 600;
-const int vkgetCurlTimeout = 3;
-const int longpollCurlTimeout = 27;
+const int vkgetCurlTimeout = 6;
+const int longpollCurlTimeout = 30;
 const int longpollCurlAttempts = 5;
 const string timeoutFormat = "seconds";
 
@@ -638,7 +638,7 @@ class VkApi {
             vkFwdMessage mm = {
                 author_id: fid,
                 utime: ut, time_str: vktime(ct, ut),
-                body_lines: j["body"].str.split("\n"),
+                body_lines: getmbody(j),
                 fwd: fw
             };
             rt ~= mm;
@@ -656,6 +656,57 @@ class VkApi {
     private void resolveFwdNames(ref vkMessage[] inp) {
         nc.resolveNames();
         inp.map!(q => q.fwd).filter!(q => q.length != 0).each!(q => resolveFwdRecv(q));
+    }
+
+    private string[] getmbody(JSONValue m) {
+        string[] mbody = m["body"].str.split("\n");
+        if("attachments" in m) {
+            foreach(att; m["attachments"].array) {
+                switch(att["type"].str) {
+                    case "photo":
+                        JSONValue o = att["photo"].object;
+                        int k = -1;
+                        foreach(size; [75, 130, 604, 807, 1280, 2560])
+                            if ("photo_" ~ to!string(size) in o)
+                                k = size;
+                        mbody ~= o["text"].str ~ " / " ~
+                            SysTime.fromUnixTime(o["date"].integer).toSimpleString();
+                        mbody ~= (o)["photo_" ~ to!string(k)].str;
+                        break;
+                    case "audio":
+                        JSONValue o = att["audio"].object;
+                        mbody ~= o["artist"].str ~ " - " ~ o["title"].str ~ 
+                            " (" ~ to!string(o["duration"].integer / 60) ~ ":" ~ to!string(o["duration"].integer % 60) ~ ")";
+                        break;
+                    case "doc":
+                        JSONValue o = att["doc"].object;
+                        mbody ~= o["title"].str ~ " (" ~ o["ext"].str ~ ", " ~ to!string(o["size"].integer) ~ "): " ~ o["url"].str;
+                        break;
+                    case "link":
+                        JSONValue o = att["link"].object;
+                        if (o["title"].str == o["url"].str)
+                            mbody ~= o["url"].str;
+                        else
+                            mbody ~= o["title"].str ~ ": " ~ o["url"].str;
+                        break;
+                    case "sticker":
+                        mbody ~= "Sticker: " ~ att["sticker"].object["photo_352"].str;
+                        break;
+                    case "video":
+                        JSONValue o = att["video"].object;
+                        mbody ~= o["title"].str ~ " (video): https://vk.com/video" ~ o["owner_id"].to!string ~ "_" ~ o["id"].to!string;
+                        break;
+                    case "wall":
+                        JSONValue o = att["wall"].object;
+                        mbody ~= o["text"].str ~ " (post): https://vk.com/wall" ~ o["from_id"].to!string ~ "_" ~ o["id"].to!string;
+                        break;
+                    default:
+                        mbody ~= "Unsupported attachment: " ~ att["type"].str;
+                        break;
+                }
+            }
+        }
+        return mbody;
     }
 
     private vkMessage[] parseMessageObjects(JSONValue[] items, SysTime ct) {
@@ -684,7 +735,7 @@ class VkApi {
                 }
             }
 
-            string[] mbody = m["body"].str.split("\n");
+            string[] mbody = getmbody(m);
             string st = vktime(ct, ut);
 
             int fwdp = -1;
