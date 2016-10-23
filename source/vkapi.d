@@ -639,7 +639,7 @@ class VkApi {
                 author_id: fid,
                 utime: ut, time_str: vktime(ct, ut),
 //                body_lines: j["body"].str.split("\n"),
-		body_lines: getmbody(j),
+                  body_lines: getmbody(j),
                 fwd: fw
             };
             rt ~= mm;
@@ -731,7 +731,7 @@ class VkApi {
                 }
             }
 
-	    string[] mbody = getmbody(m);
+            string[] mbody = getmbody(m);
             string st = vktime(ct, ut);
 
             int fwdp = -1;
