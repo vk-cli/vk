@@ -693,6 +693,14 @@ class VkApi {
                     case "sticker":
                         mbody ~= "Sticker: " ~ att["sticker"].object["photo_352"].str;
                         break;
+                    case "video":
+                        JSONValue o = att["video"].object;
+                        mbody ~= o["title"].str ~ " (video)";
+                        break;
+                    case "wall":
+                        JSONValue o = att["wall"].object;
+                        mbody ~= o["text"].str ~ " (post): https://vk.com/wall" ~ o["from_id"].to!string ~ "_" ~ o["id"].to!string;
+                        break;
                     default:
                         mbody ~= "Unsupported attachment: " ~ att["type"].str;
                         break;
