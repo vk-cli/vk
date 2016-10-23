@@ -695,7 +695,7 @@ class VkApi {
                         break;
                     case "video":
                         JSONValue o = att["video"].object;
-                        mbody ~= o["title"].str ~ " (video)";
+                        mbody ~= o["title"].str ~ " (video): https://vk.com/video" ~ o["owner_id"].to!string ~ "_" ~ o["id"].to!string;
                         break;
                     case "wall":
                         JSONValue o = att["wall"].object;
