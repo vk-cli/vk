@@ -664,6 +664,7 @@ class VkApi {
         if("attachments" in m) {
             foreach(att; m["attachments"].array) {
                 if (att["type"].str == "photo") {
+                    JSONValue o = att["photo"].object;
                     int k = -1;
                     foreach(key; att["photo"].object.byKey()) {
                         if (key.startsWith("photo_")) {
@@ -671,13 +672,13 @@ class VkApi {
                                 k = to!int(key[6..$]);
                         }
                     }
-                    mbody ~= att["photo"].object["text"].str ~ " / " ~
-                        SysTime.fromUnixTime(att["photo"].object["date"].integer).toSimpleString();
-                    mbody ~= (att["photo"].object)["photo_" ~ to!string(k)].str;
+                    mbody ~= o["text"].str ~ " / " ~
+                        SysTime.fromUnixTime(o["date"].integer).toSimpleString();
+                    mbody ~= o["photo_" ~ to!string(k)].str;
                 }
                 else if (att["type"].str == "audio") {
-                    JSONValue obj = att["audio"].object;
-                    mbody ~= obj["artist"].str ~ " - " ~ obj["title"].str ~ " (" ~ to!string(obj["duration"].integer / 60) ~ ":" ~ to!string(obj["duration"].integer % 60) ~ ")";
+                    JSONValue o = att["audio"].object;
+                    mbody ~= o["artist"].str ~ " - " ~ o["title"].str ~ " (" ~ to!string(o["duration"].integer / 60) ~ ":" ~ to!string(o["duration"].integer % 60) ~ ")";
                 }
                 else if (att["type"].str == "link") {
                     mbody ~= att["link"].object["title"].str ~ ": " ~ att["link"].object["url"].str;
