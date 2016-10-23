@@ -638,8 +638,7 @@ class VkApi {
             vkFwdMessage mm = {
                 author_id: fid,
                 utime: ut, time_str: vktime(ct, ut),
-//                body_lines: j["body"].str.split("\n"),
-                  body_lines: getmbody(j),
+                body_lines: getmbody(j),
                 fwd: fw
             };
             rt ~= mm;
