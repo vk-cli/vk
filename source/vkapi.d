@@ -681,7 +681,8 @@ class VkApi {
                     mbody ~= o["artist"].str ~ " - " ~ o["title"].str ~ " (" ~ to!string(o["duration"].integer / 60) ~ ":" ~ to!string(o["duration"].integer % 60) ~ ")";
                 }
                 else if (att["type"].str == "link") {
-                    mbody ~= att["link"].object["title"].str ~ ": " ~ att["link"].object["url"].str;
+                    JSONValue o = att["link"].object;
+                    mbody ~= o["title"].str ~ ": " ~ o["url"].str;
                 }
                 else if (att["type"].str == "doc") {
                     JSONValue o = att["doc"].object;
@@ -690,6 +691,10 @@ class VkApi {
                 else if (att["type"].str == "video") {
                     JSONValue o = att["video"].object;
                     mbody ~= o["title"].str ~ " (video)";
+                }
+                else if (att["type"].str == "wall") {
+                    JSONValue o = att["wall"].object;
+                    mbody ~= o["text"].str ~ " (post): https://vk.com/wall" ~ o["from_id"].to!string ~ "_" ~ o["id"].to!string;
                 }
                 else {
                     mbody ~= "Unsupported attachment: " ~ att["type"].str;
