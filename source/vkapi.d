@@ -682,6 +682,9 @@ class VkApi {
 			} else if (att["type"].str == "doc") {
 				JSONValue o = att["doc"].object;
 				mbody ~= o["title"].str ~ " (" ~ o["ext"].str ~ ", " ~ to!string(o["size"].integer) ~ "): " ~ o["url"].str;
+                } else if (att["type"].str == "video") {
+                    JSONValue o = att["video"].object;
+                    mbody ~= o["title"].str ~ " (video)";
 			} else {
 			mbody ~= "Unsupported attachment: " ~ att["type"].str;
 			}
