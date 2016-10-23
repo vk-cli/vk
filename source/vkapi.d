@@ -45,8 +45,8 @@ const int chatUpd = 50;
 
 const int connectionAttempts = 10;
 const int mssleepBeforeAttempt = 600;
-const int vkgetCurlTimeout = 3;
-const int longpollCurlTimeout = 27;
+const int vkgetCurlTimeout = 6;
+const int longpollCurlTimeout = 30;
 const int longpollCurlAttempts = 5;
 const string timeoutFormat = "seconds";
 
