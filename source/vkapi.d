@@ -726,7 +726,7 @@ class VkApi {
                       mbody ~= "* has returned";
                   else
                       mbody ~= "* Invited user: " ~
-                       nc.getName(to!int(m["action_id"].integer)).strName;
+                       nc.getName(to!int(m["action_mid"].integer)).strName;
                 } else {
                     mbody ~= "* Invited user: " ~ m["action_email"].str;
                 }
@@ -737,7 +737,7 @@ class VkApi {
                       mbody ~= "* has left";
                   else
                       mbody ~= "* Kicked user: " ~
-                       nc.getName(to!int(m["action_id"].integer)).strName;
+                       nc.getName(to!int(m["action_mid"].integer)).strName;
                 } else {
                     mbody ~= "* Kicked user: " ~ m["action_email"].str;
                 }
