@@ -706,43 +706,44 @@ class VkApi {
                 }
             }
         }
+
         if ("action" in m) {
             switch (m["action"].str) {
-            case "chat_create":
-                mbody ~= "* Created chat with topic " ~ m["action_text"].str;
-                break;
-            case "chat_title_update":
-                mbody ~= "* New topic: " ~ m["action_text"].str;
-                break;
-            case "chat_photo_update":
-                mbody ~= "* New chat photo: " ~ m["photo_200"].str;
-                break;
-            case "chat_photo_remove":
-                mbody ~= "* Unset chat photo";
-                break;
-            case "chat_invite_user":
-                if (m["action_mid"].integer > 0) {
-                  if (m["action_mid"].integer == m["from_id"].integer)
-                      mbody ~= "* has returned";
-                  else
-                      mbody ~= "* Invited user: " ~
-                       nc.getName(to!int(m["action_mid"].integer)).strName;
-                } else {
-                    mbody ~= "* Invited user: " ~ m["action_email"].str;
-                }
-                break;
-            case "chat_kick_user":
-                if (m["action_mid"].integer > 0) {
-                  if (m["action_mid"].integer == m["from_id"].integer)
-                      mbody ~= "* has left";
-                  else
-                      mbody ~= "* Kicked user: " ~
-                       nc.getName(to!int(m["action_mid"].integer)).strName;
-                } else {
-                    mbody ~= "* Kicked user: " ~ m["action_email"].str;
-                }
-                break;
-            default: break;
+                case "chat_create":
+                    mbody ~= "* Created chat with topic " ~ m["action_text"].str;
+                    break;
+                case "chat_title_update":
+                    mbody ~= "* New topic: " ~ m["action_text"].str;
+                    break;
+                case "chat_photo_update":
+                    mbody ~= "* New chat photo: " ~ m["photo_200"].str;
+                    break;
+                case "chat_photo_remove":
+                    mbody ~= "* Unset chat photo";
+                    break;
+                case "chat_invite_user":
+                    if (m["action_mid"].integer > 0) {
+                        if (m["action_mid"].integer == m["from_id"].integer)
+                            mbody ~= getLocal("c_inviteself");
+                        else
+                            mbody ~= getLocal("c_invite") ~ nc.getName(to!int(m["action_mid"].integer)).strName;
+                    }
+                    else {
+                        mbody ~= getLocal("c_invite") ~ m["action_email"].str;
+                    }
+                    break;
+                case "chat_kick_user":
+                    if (m["action_mid"].integer > 0) {
+                        if (m["action_mid"].integer == m["from_id"].integer)
+                            mbody ~= getLocal("c_kickself");
+                        else
+                            mbody ~= getLocal("c_kick") ~ nc.getName(to!int(m["action_mid"].integer)).strName;
+                    } 
+                    else {
+                        mbody ~= getLocal("c_kick") ~ m["action_email"].str;
+                    }
+                    break;
+                default: break;
             }
         }
         return mbody;

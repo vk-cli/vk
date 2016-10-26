@@ -74,6 +74,18 @@ void localize() {
   local["m_exit"]                = lang("Exit",
                                         "Выход");
   
+  local["c_kick"]                = lang("kicked out ",
+                                        "исключил из беседы пользователя ");
+
+  local["c_invite"]              = lang("invited ",
+                                        "пригласил пользователя ");
+
+  local["c_kickself"]            = lang("left the conversation",
+                                        "покинул беседу");
+
+  local["c_inviteself"]          = lang("returned to the conversation",
+                                        "вернулся в беседу");
+  
   local["main_color"]            = lang("Main color = ",
                                         "Основной цвет = ");
   
