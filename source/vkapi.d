@@ -710,16 +710,16 @@ class VkApi {
         if ("action" in m) {
             switch (m["action"].str) {
                 case "chat_create":
-                    mbody ~= "* Created chat with topic " ~ m["action_text"].str;
+                    mbody ~= getLocal("c_create") ~ m["action_text"].str;
                     break;
                 case "chat_title_update":
-                    mbody ~= "* New topic: " ~ m["action_text"].str;
+                    mbody ~= getLocal("c_title") ~ m["action_text"].str;
                     break;
                 case "chat_photo_update":
-                    mbody ~= "* New chat photo: " ~ m["photo_200"].str;
+                    mbody ~= getLocal("c_setphoto"); 
                     break;
                 case "chat_photo_remove":
-                    mbody ~= "* Unset chat photo";
+                    mbody ~= getLocal("c_removephoto");
                     break;
                 case "chat_invite_user":
                     if (m["action_mid"].integer > 0) {

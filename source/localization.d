@@ -85,6 +85,18 @@ void localize() {
 
   local["c_inviteself"]          = lang("returned to the conversation",
                                         "вернулся в беседу");
+
+  local["c_create"]              = lang("created chat ",
+                                        "создал чат ");
+
+  local["c_title"]               = lang("changed chat title to ",
+                                        "изменил название беседы на ");
+
+  local["c_setphoto"]            = lang("updated chat photo", 
+                                        "обновил фотографию беседы");
+
+  local["c_removephoto"]         = lang("removed chat photo", 
+                                        "удалил фотографию беседы");
   
   local["main_color"]            = lang("Main color = ",
                                         "Основной цвет = ");
