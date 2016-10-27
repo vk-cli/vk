@@ -74,6 +74,30 @@ void localize() {
   local["m_exit"]                = lang("Exit",
                                         "Выход");
   
+  local["c_kick"]                = lang("kicked out ",
+                                        "исключил из беседы пользователя ");
+
+  local["c_invite"]              = lang("invited ",
+                                        "пригласил пользователя ");
+
+  local["c_kickself"]            = lang("left the conversation",
+                                        "покинул беседу");
+
+  local["c_inviteself"]          = lang("returned to the conversation",
+                                        "вернулся в беседу");
+
+  local["c_create"]              = lang("created chat ",
+                                        "создал чат ");
+
+  local["c_title"]               = lang("changed chat title to ",
+                                        "изменил название беседы на ");
+
+  local["c_setphoto"]            = lang("updated chat photo", 
+                                        "обновил фотографию беседы");
+
+  local["c_removephoto"]         = lang("removed chat photo", 
+                                        "удалил фотографию беседы");
+  
   local["main_color"]            = lang("Main color = ",
                                         "Основной цвет = ");
   
