@@ -11,7 +11,7 @@ A console (ncurses) client for vk.com written in D
 ## ArchLinux
 
 ```
-yaourt -S vk-cli
+yaourt -S vk-cli || vk-cli-git
 vk
 ```
 
