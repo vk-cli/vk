@@ -10,8 +10,8 @@ A console (ncurses) client for vk.com written in D
 
 ## ArchLinux
 
-```
-yaourt -S vk-cli || vk-cli-git
+```sh
+yaourt -S vk-cli # or vk-cli-git
 vk
 ```
 
