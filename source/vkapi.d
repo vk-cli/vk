@@ -2289,10 +2289,10 @@ class ClMessage : ClObject!vkMessage {
         if(inp.body_lines.length != 0) {
             bool unrfl = inp.unread;
             wstring[] wrapped;
-            inp.body_lines.map!(q => q.to!wstring.wordwrap(ww)).each!(q => wrapped ~= q);
+            inp.body_lines.map!(q => q.toUTF16wrepl.wordwrap(ww)).each!(q => wrapped ~= q);
             foreach(l; wrapped) {
                 vkMessageLine msg = {
-                    text: l.to!string,
+                    text: l.toUTF8wrepl,
                     unread: unrfl
                 };
                 rt ~= msg;
@@ -2321,10 +2321,10 @@ class ClMessage : ClObject!vkMessage {
             };
             rt ~= name;
             wstring[] wrapped;
-            fm.body_lines.map!(q => q.to!wstring.wordwrap(lcww)).each!(q => wrapped ~= q);
+            fm.body_lines.map!(q => q.toUTF16wrepl.wordwrap(lcww)).each!(q => wrapped ~= q);
             foreach(l; wrapped) {
                 vkMessageLine msg = {
-                    text: l.to!string,
+                    text: l.toUTF8wrepl,
                     isFwd: true, fwdDepth: depth
                 };
                 rt ~= msg;
