@@ -676,7 +676,8 @@ class VkApi {
                     case "audio":
                         JSONValue o = att["audio"].object;
                         mbody ~= o["artist"].str ~ " - " ~ o["title"].str ~ 
-                            " (" ~ to!string(o["duration"].integer / 60) ~ ":" ~ to!string(o["duration"].integer % 60) ~ ")";
+                            format(" (%02d:%02d)", o["duration"].integer / 60, o["duration"].integer % 60);
+                        mbody ~= o["url"].str.split("?extra")[0];
                         break;
                     case "doc":
                         JSONValue o = att["doc"].object;
