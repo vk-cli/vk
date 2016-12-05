@@ -3,9 +3,9 @@ A console (ncurses) client for vk.com written in D
 
 # About audio
 Due to some recent events, all music functions in client may become unavailable.
-Vk will disable audio api in december 2016, so we are can't do anything with it.
-(https://vk.com/dev/audio_api)
-There is a little chance for our client to get access to audio api, but it's too early to talk about it at the moment
+Vk will disable their audio api in december 2016, so we are can't do anything with it.
+There is a little chance to get access to audio api for our client, but it's too early to talk about it at the moment.
+Check https://vk.com/dev/audio_api for more information.
 
 # Screenshots
 
