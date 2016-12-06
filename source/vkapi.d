@@ -709,39 +709,40 @@ class VkApi {
         }
 
         if ("action" in m) {
+            string action_user = nc.getName(to!int(m["user_id"].integer)).strName;
             switch (m["action"].str) {
                 case "chat_create":
-                    mbody ~= getLocal("c_create") ~ m["action_text"].str;
+                    mbody ~= action_user ~ " " ~ getLocal("c_create") ~ "\"" ~ m["action_text"].str ~ "\"";
                     break;
                 case "chat_title_update":
-                    mbody ~= getLocal("c_title") ~ m["action_text"].str;
+                    mbody ~= action_user ~ " " ~ getLocal("c_title") ~ "\"" ~ m["action_text"].str ~ "\"";
                     break;
                 case "chat_photo_update":
-                    mbody ~= getLocal("c_setphoto"); 
+                    mbody ~= action_user ~ " " ~ getLocal("c_setphoto");
                     break;
                 case "chat_photo_remove":
-                    mbody ~= getLocal("c_removephoto");
+                    mbody ~= action_user ~ " " ~ getLocal("c_removephoto");
                     break;
                 case "chat_invite_user":
                     if (m["action_mid"].integer > 0) {
                         if (m["action_mid"].integer == m["from_id"].integer)
-                            mbody ~= getLocal("c_inviteself");
+                            mbody ~= action_user ~ " " ~ getLocal("c_inviteself");
                         else
-                            mbody ~= getLocal("c_invite") ~ nc.getName(to!int(m["action_mid"].integer)).strName;
+                            mbody ~= action_user ~ " " ~ getLocal("c_invite") ~ nc.getName(to!int(m["action_mid"].integer)).strName;
                     }
                     else {
-                        mbody ~= getLocal("c_invite") ~ m["action_email"].str;
+                        mbody ~= action_user ~ " " ~ getLocal("c_invite") ~ m["action_email"].str;
                     }
                     break;
                 case "chat_kick_user":
                     if (m["action_mid"].integer > 0) {
                         if (m["action_mid"].integer == m["from_id"].integer)
-                            mbody ~= getLocal("c_kickself");
+                            mbody ~= action_user ~ " " ~ getLocal("c_kickself");
                         else
-                            mbody ~= getLocal("c_kick") ~ nc.getName(to!int(m["action_mid"].integer)).strName;
+                            mbody ~= action_user ~ " " ~ getLocal("c_kick") ~ nc.getName(to!int(m["action_mid"].integer)).strName;
                     } 
                     else {
-                        mbody ~= getLocal("c_kick") ~ m["action_email"].str;
+                        mbody ~= action_user ~ " " ~ getLocal("c_kick") ~ m["action_email"].str;
                     }
                     break;
                 default: break;
