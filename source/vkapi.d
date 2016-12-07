@@ -658,6 +658,7 @@ class VkApi {
         inp.map!(q => q.fwd).filter!(q => q.length != 0).each!(q => resolveFwdRecv(q));
     }
 
+    string action_prefix = " > ";
     private string[] getmbody(JSONValue m) {
         string[] mbody = m["body"].str.split("\n");
         if("attachments" in m) {
@@ -709,7 +710,7 @@ class VkApi {
         }
 
         if ("action" in m) {
-            string action_user = nc.getName(to!int(m["user_id"].integer)).strName;
+            string action_user = action_prefix ~ nc.getName(m["user_id"].integer.to!int).strName;
             switch (m["action"].str) {
                 case "chat_create":
                     mbody ~= action_user ~ " " ~ getLocal("c_create") ~ "\"" ~ m["action_text"].str ~ "\"";
