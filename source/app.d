@@ -1241,8 +1241,8 @@ void main(string[] args) {
         }
       }
     }
-  if (!correct) writeln("wrong arguments");
-  exit(0);
+    if (!correct) writeln("wrong arguments");
+    exit(0);
   }
 
   //test;
