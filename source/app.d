@@ -1,5 +1,5 @@
 import deimos.ncurses.ncurses;
-import std.stdio, std.conv, std.string, std.array, std.algorithm;
+import std.stdio, std.conv, std.string, std.array, std.algorithm, std.getopt;
 import core.sys.posix.stdlib, core.time, core.stdc.locale; 
 import ui, controller, vkapi, logic, cfg, utils, localization, vkversion;
 
@@ -80,12 +80,22 @@ bool isCurrentViewUpdated() {
 }
 
 void main(string[] args) {
-  foreach(e; args) {
-    if (e == "-v" || e == "-version") {
-      ("vk-cli " ~ currentVersion).writeln;
-      exit(0);
+  try {
+    bool showVersion = false;
+    getopt(args, std.getopt.config.caseSensitive, "v|version", &showVersion);
+
+    if (showVersion) {
+      ("vk-cli" ~ currentVersion).writeln;
+      0.exit;
     }
+  } catch (GetOptException ex) {
+    ex.msg.writeln;
+    1.exit;
+  } catch (ConvException) {
+    "Probably you use long option with one dash, e.g. -version instead --version".writeln;
+    1.exit;
   }
+
   init;
   scope(failure) endwin;
 
