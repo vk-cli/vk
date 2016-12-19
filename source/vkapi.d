@@ -350,8 +350,27 @@ class VkApi {
 
     vkAccountInit executeAccountInit() {
         string[string] params;
+
+        params["code"] = 
+`var me = API.users.get();
+var c = API.account.getCounters("messages");
+if(c.messages == null) {
+    c.messages = 0;
+}
+
+var sc = [];
+sc.dialogs = API.messages.getDialogs().count;
+sc.friends = API.friends.get().count;
+sc.audio = API.audio.get().count;
+
+if(sc.audio == null) {
+    sc.audio = 0;
+}
+
+return {"me": me[0], "counters": c, "sc": sc};`;
+
         vkgetparams gp = {notifynf: false};
-        auto resp = vkget("execute.accountInit", params, false, gp);
+        auto resp = vkget("execute", params, false, gp);
         vkAccountInit rt = {
             id:resp["me"]["id"].integer.to!int,
             first_name:resp["me"]["first_name"].str,
@@ -450,7 +469,17 @@ class VkApi {
     }
 
     vkDialog[] messagesGetDialogs(int count , int offset, out int serverCount) {
-        auto exresp = vkget("execute.vkGetDialogs", [ "count": count.to!string, "offset": offset.to!string ]);
+        string[string] params;
+
+        params["code"] = 
+`var m = API.messages.getDialogs({"count": Args.count, "offset": Args.offset});
+var uids = m.items@.message@.user_id;
+var onl = API.users.get({"user_ids": uids, "fields": "online"});
+return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
+
+        params["count"] = count.to!string;
+        params["offset"] = offset.to!string;
+        auto exresp = vkget("execute", params);
         auto resp = exresp["conv"];
         auto dcount = resp["count"].integer.to!int;
         dbm("dialogs count now: " ~ dcount.to!string);

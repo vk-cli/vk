@@ -24,7 +24,7 @@ import std.string, std.stdio, std.process,
        std.conv, std.array, std.encoding,
        std.range, std.algorithm, std.concurrency,
        std.datetime, std.utf, std.regex, std.random,
-       std.math;
+       std.math, std.json;
 import vkapi, cfg, localization, utils, namecache, musicplayer, vkversion;
 
 // INIT VARS
@@ -311,7 +311,47 @@ void print(int i) {
   i.to!string.toStringz.addstr;
 }
 
+string makeLink(string login, string passwd) {
+  auto secret = "hHbZxrka2uZ6jB1inYsH"; //android
+  auto cid = "2274003";
+  return "https://oauth.vk.com/token?grant_type=password" ~ 
+        "&client_id=" ~ cid ~
+        "&client_secret=" ~ secret ~
+        "&username=" ~ login ~
+        "&password=" ~ passwd;
+}
+
 VkMan get_token(ref string[string] storage) {
+  print("Username (email or phone): ");
+  char uname;
+  echo; getstr(&uname); noecho;
+  string strusr = (cast(char*)&uname).to!string;
+
+  print("Password (will not be echoed): ");
+  char paswd;
+  echo; noecho; getstr(&paswd); echo; noecho;
+  string strpwd = (cast(char*)&paswd).to!string;
+
+  print("\nLogging in..");
+
+  string url = makeLink(strusr, strpwd);
+  auto got = AsyncMan.httpget(url, dur!"seconds"(10), 10);
+
+  JSONValue resp = got.parseJSON;
+  if("error" in resp) {
+    endwin;
+    writeln("\nError while auth: " ~ got);
+    Exit();
+  }
+
+  string token = resp["access_token"].str;
+  storage["token"] = token;
+  storage["auth_v2"] = "true";
+
+  return new VkMan(token);
+}
+
+VkMan get_old_token(ref string[string] storage) {
   char
     token,
     start_browser;
@@ -320,7 +360,8 @@ VkMan get_token(ref string[string] storage) {
   getstr(&start_browser);
   noecho;
   auto strstart_browser = (cast(char*)&start_browser).to!string;
-  string token_link = "https://oauth.vk.com/authorize?client_id=5110243&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
+  string token_link = "https://oauth.vk.com/authorize?client_id=nope&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
+  
   "\n".print;
   "e_token_info".getLocal.print;
   "\n".print;
@@ -1234,7 +1275,7 @@ void main(string[] args) {
   storage.parse;
 
   try
-    if("token" !in storage) {
+    if("token" !in storage || "auth_v2" !in storage) {
       api = storage.get_token;
       storage.save;
     }
