@@ -79,13 +79,16 @@ bool isCurrentViewUpdated() {
   }
 }
 
+void showVersion() {
+  writeln("vk-cli" ~ currentVersion);
+  0.exit;
+}
+
 void main(string[] args) {
   try {
-    bool showVersion = false;
-    getopt(args, std.getopt.config.caseSensitive, "v|version", &showVersion);
-
-    if (showVersion) {
-      ("vk-cli" ~ currentVersion).writeln;
+    auto vk_cli = getopt(args, std.getopt.config.caseSensitive, "v|version", "Show application version and exit.", &showVersion);
+    if (vk_cli.helpWanted) {
+      defaultGetoptPrinter("vk - a console vk.com client written in D\nPossible options:", vk_cli.options);
       0.exit;
     }
   } catch (GetOptException ex) {
