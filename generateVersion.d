@@ -21,7 +21,7 @@ import std.process, std.stdio, std.string, std.algorithm,
        std.file, std.regex, std.conv;
 
 void main() {
-  const versionNum = "0.7.4";
+  const versionNum = "0.7.5";
   const releaseFlag = false;
   string
     lastCommitHash,
