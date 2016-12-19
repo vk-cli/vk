@@ -351,49 +351,6 @@ VkMan get_token(ref string[string] storage) {
   return new VkMan(token);
 }
 
-VkMan get_old_token(ref string[string] storage) {
-  char
-    token,
-    start_browser;
-  "e_start_browser".getLocal.print;
-  echo;
-  getstr(&start_browser);
-  noecho;
-  auto strstart_browser = (cast(char*)&start_browser).to!string;
-  string token_link = "https://oauth.vk.com/authorize?client_id=nope&scope=friends,wall,messages,audio,offline&redirect_uri=blank.html&display=popup&response_type=token";
-  
-  "\n".print;
-  "e_token_info".getLocal.print;
-  "\n".print;
-  if (strstart_browser == "N" || strstart_browser == "n"){
-    "e_token_link".getLocal.print;
-    "\n\n".print;
-    token_link.print;
-    "\n\n".print;
-  } else {
-    spawnShell(`xdg-open "`~token_link~`" &>/dev/null`);
-  }
-  "e_input_token".getLocal.print;
-  echo;
-  getstr(&token);
-  noecho;
-  auto strtoken = (cast(char*)&token).to!string;
-  auto ctoken = regex(r"^\s*[0-9a-f]+\s*$");
-  if (matchFirst(strtoken, ctoken).empty) {
-    auto rtoken = regex(r"(?:.*access_token=)([0-9a-f]+)(?:&)");
-    auto cap = matchFirst(strtoken, rtoken);
-    if(cap.length != 2) {
-      endwin;
-      writeln(getLocal("e_wrong_token"));
-      Exit;
-    }
-    strtoken = cap[1];
-  }
-  strtoken.print;
-  storage["token"] = strtoken;
-  return new VkMan(strtoken);
-}
-
 void color() {
   if (!has_colors) {
     endwin;
@@ -1256,12 +1213,32 @@ void clear() {
   wmove(stdscr, 0, 0);
 }
 
+void help() {
+  writeln(
+    // these help can be generated from actions (array -> hashmap)
+    "-h, --help      This help page" ~ "\n" ~
+    "-v, --version   Show client version"
+  );
+}
+
 void main(string[] args) {
-  foreach(e; args) {
-    if (e == "-v" || e == "-version") {
-      writefln("vk-cli %s", currentVersion);
-      exit(0);
+  string[] actions = ["version", "help"];
+  bool correct = false;
+
+  if (args.length != 1) {
+    foreach(arg; args) {
+      foreach(act; actions) {
+        if (arg == "-" ~ act[0] || arg == "--" ~ act) {
+          correct = true;
+          final switch (act) {
+            case "version": writefln("vk-cli %s", currentVersion); break;
+            case "help": help(); break;
+          }
+        }
+      }
     }
+  if (!correct) writeln("wrong arguments");
+  exit(0);
   }
 
   //test;
