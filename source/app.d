@@ -322,6 +322,9 @@ string makeLink(string login, string passwd) {
 }
 
 VkMan get_token(ref string[string] storage) {
+
+  // === this method is full of magic, do not touch ===
+
   print("Username (email or phone): ");
   char uname;
   echo; getstr(&uname); noecho;
