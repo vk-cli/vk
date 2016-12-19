@@ -6,6 +6,9 @@ A console (ncurses) client for vk.com written in D
 ![alt tag](http://cs630123.vk.me/v630123942/25fc7/YOqfnerj4bE.jpg)
 ![alt tag](http://cs630123.vk.me/v630123942/25fd7/hcgITGtqEd0.jpg)
 
+# Donate
+If you want to support us, here you are - https://money.yandex.ru/to/410014355699643
+
 # Install
 
 ## ArchLinux
