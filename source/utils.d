@@ -360,10 +360,10 @@ int gcSuspendSignal;
 int gcResumeSignal;
 
 void updateGcSignals() {
-    gcSuspendSignal = SIGRTMIN;
-    gcResumeSignal = SIGRTMIN+1;
-
     version(linux) {
+      gcSuspendSignal = SIGRTMIN;
+      gcResumeSignal = SIGRTMIN+1;
+      
       thread_term();
       thread_setGCSignals(gcSuspendSignal, gcResumeSignal);
       thread_init();
