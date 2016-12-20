@@ -48,7 +48,7 @@ then `Build`
 ```
 git clone https://github.com/HaCk3Dq/vk
 cd vk
-git checkout 0.7.2
+git checkout 0.7.5
 dub
 ```
 builds `vk` binary for your platform.
