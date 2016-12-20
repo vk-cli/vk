@@ -366,7 +366,7 @@ class mpv: Thread {
 
   private void setup() {
     req(observePropertyCmd(posPropertyId, "playback-time").toString());
-    req(observePropertyCmd(idlePropertyId, "end-file").toString());
+    //req(observePropertyCmd(idlePropertyId, "end-file").toString());
     endChecker = new Thread(&checkEnd);
     endChecker.start();
   }
