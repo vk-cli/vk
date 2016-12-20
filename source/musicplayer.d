@@ -253,6 +253,7 @@ class mpv: Thread {
 
 
   private void req(string cmd) {
+    dbm("mpv <- " ~ cmd);
     if(!isInit) {
       dbm("mpv - req: noinit");
       return;
@@ -305,6 +306,7 @@ class mpv: Thread {
 
   private void mpvhandle(string rc) {
     try {
+      dbm("mpv: " ~ rc);
       auto m = parseJSON(rc);
       if(m.type != JSON_TYPE.OBJECT) return;
       if(
