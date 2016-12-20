@@ -294,7 +294,6 @@ void update(ref string[string] storage) {
 void init() {
   updateGcSignals();
   setPosixSignals();
-  usedSignalsNotify;
   setlocale(LC_CTYPE,"");
   win.lastBuffer = Buffers.none;
   setEnvLanguage;

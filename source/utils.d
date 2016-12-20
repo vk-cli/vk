@@ -363,13 +363,12 @@ void updateGcSignals() {
     gcSuspendSignal = SIGRTMIN;
     gcResumeSignal = SIGRTMIN+1;
 
-    thread_term();
-    thread_setGCSignals(gcSuspendSignal, gcResumeSignal);
-    thread_init();
-}
-
-void usedSignalsNotify() {
-    dbm("GC signals: " ~ gcSuspendSignal.to!string ~ " " ~ gcResumeSignal.to!string);
+    version(linux) {
+      thread_term();
+      thread_setGCSignals(gcSuspendSignal, gcResumeSignal);
+      thread_init();
+      dbm("GC signals: " ~ gcSuspendSignal.to!string ~ " " ~ gcResumeSignal.to!string);
+    }
 }
 
 
