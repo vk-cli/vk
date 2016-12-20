@@ -351,7 +351,7 @@ class mpv: Thread {
   private JSONValue checkEndCmd() {
     JSONValue c = parseJSON("{ \"command\": [], \"request_id\": 0 }");
     c["command"].array ~= JSONValue("get_property");
-    c["command"].array ~= JSONValue("idle");
+    c["command"].array ~= JSONValue("idle-active");
     c["request_id"].integer = endRequestId;
     return c;
   }
