@@ -36,6 +36,7 @@ __gshared {
     string dbmlog = "";
     string vkcliTmpDir = "/tmp/vkcli-tmp";
     string vkcliLogDir = "/tmp/vkcli-log";
+    string vkcliTmpMsgFile = "/tmp/vkcli-tmp/messagetext";
     string dbgfname = "vklog";
     string dbglatest = "-latest";
     string mpvsck = "vkmpv-socket-";
@@ -504,4 +505,10 @@ S replicatestr(S)(S str, ulong n) {
 }
 
 
-
+string getMessageFromTmpFile() {
+    string text = "";
+    if (std.file.exists(vkcliTmpMsgFile))
+	  text = cast(string)std.file.read(vkcliTmpMsgFile);
+    std.file.write(vkcliTmpMsgFile, "");
+    return text;
+}

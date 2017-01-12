@@ -134,6 +134,8 @@ const int
   k_rus_a    = 132,
   k_rus_s    = 139,
   k_rus_d    = 178,
+  k_shift_d  = 68,
+  k_shift_rus_d  = 146,
   k_k        = 107,
   k_j        = 106,
   k_h        = 104,
@@ -141,7 +143,9 @@ const int
   k_rus_h    = 128,
   k_rus_j    = 190,
   k_rus_k    = 187,
-  k_rus_l    = 180;
+  k_rus_l    = 180,
+  k_shift_l  = 76,
+  k_shift_rus_l  = 148;
 
 const int[]
   // key groups
@@ -151,6 +155,7 @@ const int[]
   kg_down    = [k_down, k_s, k_j, k_rus_s, k_rus_j],
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter],
+  kg_shift_right = [k_shift_d, k_shift_rus_d, k_shift_l, k_shift_rus_l],
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
                 k_home, k_tab, k_ctrl_bckspc],
@@ -831,6 +836,16 @@ void chatEvents() {
   else if (canFind(kg_right, win.key)) {
     curs_set(1);
     win.isMessageWriting = true;
+  }
+  else if (canFind(kg_shift_right, win.key)) {
+      dbm("Reading from file.\n");
+      // TODO! Call vim to save text in vkcliTmpMsgFile.
+      // string edcmd = "vim " ~ vkcliTmpMsgFile;
+      // dbm("Editor: " ~ edcmd);
+      // wait(spawnProcess(edcmd));
+      string text = getMessageFromTmpFile();
+      if (!text.empty)
+	  api.asyncSendMessage(win.chatID, text);
   }
   else if (canFind(kg_refresh, win.key)) api.toggleChatForceUpdate(win.chatID);
   if (win.scrollOffset < 0) win.scrollOffset = 0;
