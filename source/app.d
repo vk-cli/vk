@@ -128,6 +128,8 @@ const int
   k_bckspc   = 127,
   k_w        = 119,
   k_s        = 115,
+  k_shift_s  = 83,
+  k_shift_rus_s = 171,
   k_a        = 97,
   k_d        = 100,
   k_rus_w    = 134,
@@ -156,6 +158,7 @@ const int[]
   kg_left    = [k_left, k_a, k_h, k_rus_a, k_rus_h],
   kg_right   = [k_right, k_d, k_l, k_rus_d, k_rus_l, k_enter],
   kg_shift_right = [k_shift_d, k_shift_rus_d, k_shift_l, k_shift_rus_l],
+  kg_shift_s = [k_shift_s, k_shift_rus_s],
   kg_ignore  = [k_right, k_left, k_up, k_down, k_bckspc, k_esc,
                 k_pageup, k_pagedown, k_end, k_ins, k_del,
                 k_home, k_tab, k_ctrl_bckspc],
@@ -840,12 +843,12 @@ void chatEvents() {
   else if (canFind(kg_shift_right, win.key)) {
       dbm("Reading from file.\n");
       // TODO! Call vim to save text in vkcliTmpMsgFile.
-      // string edcmd = "vim " ~ vkcliTmpMsgFile;
-      // dbm("Editor: " ~ edcmd);
-      // wait(spawnProcess(edcmd));
       string text = getMessageFromTmpFile();
       if (!text.empty)
 	  api.asyncSendMessage(win.chatID, text);
+  }
+  else if (canFind(kg_shift_s, win.key)) {
+      api.markMessagesAsRead(win.chatID);
   }
   else if (canFind(kg_refresh, win.key)) api.toggleChatForceUpdate(win.chatID);
   if (win.scrollOffset < 0) win.scrollOffset = 0;

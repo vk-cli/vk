@@ -879,6 +879,14 @@ return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
         auto resp = vkget("messages.send", params, false, gp);
         return resp.integer.to!int;
     }
+
+    int messagesMarkAsRead(int pid, int smid = 0) {
+        auto params = ["peer_id": pid.to!string ];
+	if(smid != 0) params["start_message_id"] = smid.to!string;
+
+	auto resp = vkget("messages.markAsRead", params);
+	return resp.integer.to!int;
+    }
 }
 
 class AsyncOrder : Thread {
@@ -1721,6 +1729,10 @@ class VkMan {
         a.orderedAsync(a.O_SENDMSG, rid, () => sendMessageImpl(rid, peer, msg));
     }
 
+    void markMessagesAsRead(int pid, int smid = 0) {
+	api.messagesMarkAsRead(pid, smid);
+    }
+    
     void setTypingStatus(int peer) {
         auto thrid = a.S_TYPING ~ peer.to!string;
         a.singleAsync(thrid, () {
