@@ -848,7 +848,7 @@ void chatEvents() {
 	  api.asyncSendMessage(win.chatID, text);
   }
   else if (canFind(kg_shift_s, win.key)) {
-      api.markMessagesAsRead(win.chatID);
+    api.asyncMarkMessagesAsRead(win.chatID);
   }
   else if (canFind(kg_refresh, win.key)) api.toggleChatForceUpdate(win.chatID);
   if (win.scrollOffset < 0) win.scrollOffset = 0;
