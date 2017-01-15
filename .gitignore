@@ -10,6 +10,7 @@ out
 *.iml
 dbg
 dub.selections.json
+dub.userprefs
 source/vkversion.d
 vk.sublime-project
 vk.sublime-workspace

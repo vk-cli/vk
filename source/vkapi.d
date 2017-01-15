@@ -882,10 +882,10 @@ return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
 
     int messagesMarkAsRead(int pid, int smid = 0) {
         auto params = ["peer_id": pid.to!string ];
-	if(smid != 0) params["start_message_id"] = smid.to!string;
+        if(smid != 0) params["start_message_id"] = smid.to!string;
 
-	auto resp = vkget("messages.markAsRead", params);
-	return resp.integer.to!int;
+        auto resp = vkget("messages.markAsRead", params);
+        return resp.integer.to!int;
     }
 }
 
@@ -1026,6 +1026,7 @@ class AsyncMan {
         S_SELF_RESOLVE = "s_self_resolve",
         S_ONLINE_STATUS = "s_online_status",
         S_TYPING = "s_typing_",
+        S_READ = "s_readm",
         O_LOADBLOCK = "o_loadblock",
         O_SENDMSG = "o_sendm";
 
@@ -1729,8 +1730,8 @@ class VkMan {
         a.orderedAsync(a.O_SENDMSG, rid, () => sendMessageImpl(rid, peer, msg));
     }
 
-    void markMessagesAsRead(int pid, int smid = 0) {
-	api.messagesMarkAsRead(pid, smid);
+    void asyncMarkMessagesAsRead(int pid, int smid = 0) {
+        a.singleAsync(a.S_READ, () => api.messagesMarkAsRead(pid, smid));
     }
     
     void setTypingStatus(int peer) {
