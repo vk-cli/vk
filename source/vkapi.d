@@ -880,12 +880,11 @@ return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
         return resp.integer.to!int;
     }
 
-    int messagesMarkAsRead(int pid, int smid = 0) {
+    void messagesMarkAsRead(int pid, int smid = 0) {
         auto params = ["peer_id": pid.to!string ];
         if(smid != 0) params["start_message_id"] = smid.to!string;
 
         auto resp = vkget("messages.markAsRead", params);
-        return resp.integer.to!int;
     }
 }
 
