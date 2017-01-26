@@ -1,0 +1,11 @@
+[package]
+name = "vk"
+version = "0.1.0"
+authors = ["Hack3d", "substance-of"]
+
+[dependencies]
+futures = "0.1"
+tokio-core = "0.1.4"
+json = "0.11.5"
+hyper = { git = "https://github.com/hyperium/hyper" }
+RobotS = { git = "https://github.com/gamazeps/RobotS" }

@@ -14,3 +14,8 @@ dub.userprefs
 source/vkversion.d
 vk.sublime-project
 vk.sublime-workspace
+target
+Cargo.lock
+target
+Cargo.lock
+target
