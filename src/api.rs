@@ -26,7 +26,7 @@ struct Api {
 }
 
 impl Api {
-  pub fn new(io: Core, uid: i32, token: &str) -> Api {
+  pub fn new(io: &Core, uid: i32, token: &str) -> Api {
     let handle = io.handle();
     Api {
       uid: uid,
