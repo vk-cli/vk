@@ -5,7 +5,9 @@ authors = ["Hack3d", "substance-of"]
 
 [dependencies]
 futures = "0.1"
+curl = "0.4.4"
+futures-cpupool = "0.1.0"
 tokio-core = "0.1.4"
 json = "0.11.5"
-hyper = { git = "https://github.com/hyperium/hyper" }
+#hyper = { git = "https://github.com/hyperium/hyper" }
 RobotS = { git = "https://github.com/gamazeps/RobotS" }
