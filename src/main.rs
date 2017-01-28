@@ -8,9 +8,12 @@ extern crate json;
 
 mod api;
 mod testapp;
+mod ui;
 use testapp::*;
+use ui::*;
 
 fn main() {
-  testmain();
+  // testmain();
+  render();
 }
 
