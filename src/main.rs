@@ -20,7 +20,7 @@ use musicplayer::MusicPlayer;
 use log::LogLevelFilter;
 
 use std::sync::{Arc, Mutex};
-use std::thread::{self, JoinHandle};
+use std::thread;
 use std::env;
 
 #[macro_use]
@@ -46,17 +46,17 @@ use ui::*;
 const PORT: u32 = 4000;
 
 
-fn start_server(mp: &Arc<Mutex<MusicPlayer>>) -> JoinHandle<()> {
+fn start_server(mp: &Arc<Mutex<MusicPlayer>>) {
     let mp = mp.clone();
-    let child = thread::spawn(move || ControllerServer::new(mp).start(PORT));
-    child
+    let _ = thread::spawn(move || ControllerServer::new(mp).start(PORT));
 }
 
 
-fn start_gui(mp: &Arc<Mutex<MusicPlayer>>) -> JoinHandle<()> {
-    let mp = mp.clone();
-    let child = thread::spawn(move || render(mp));
-    child
+fn start_gui(mp: &Arc<Mutex<MusicPlayer>>) {
+    // let mp = mp.clone();
+    // let child = thread::spawn(move || render(mp));
+    // child.join();
+    render(mp.clone());
 }
 
 
@@ -85,7 +85,7 @@ fn main() {
     if args.len() == 1 {
         info!("Starting server...");
         start_server(&mp);
-        start_gui(&mp).join();
+        start_gui(&mp);
     } else if (args.len() == 3) & (args[1] == "cmd") {
         println!("Pinging server...");
         ping_server(&args[2]);
