@@ -67,21 +67,21 @@ fn get_music_player() -> Arc<Mutex<MusicPlayer>> {
 }
 
 fn main() {
-    let _ = log::set_logger(|max_log_level| {
-        max_log_level.set(LogLevelFilter::Info);
-        Box::new(utils::Log)
-    });
-    let args: Vec<_> = env::args().collect();
-    let mp = get_music_player();
-    if args.len() == 1 {
-        info!("Starting server...");
-        start_server(&mp);
-        render(mp.clone());
-    } else if (args.len() == 3) & (args[1] == "cmd") {
-        println!("Pinging server...");
-        ping_server(&args[2]);
-    } else {
-        print_usage();
-    }
+  let _ = log::set_logger(|max_log_level| {
+    max_log_level.set(LogLevelFilter::Info);
+    Box::new(utils::Log)
+  });
+  let args: Vec<_> = env::args().collect();
+  let mp = get_music_player();
+  if args.len() == 1 {
+    info!("Starting server...");
+    start_server(&mp);
+    render(mp.clone());
+  } else if (args.len() == 3) & (args[1] == "cmd") {
+    println!("Pinging server...");
+    ping_server(&args[2]);
+  } else {
+    print_usage();
+  }
 }
 
