@@ -5,6 +5,8 @@ use musicplayer::MusicPlayer;
 
 struct Window {
   key: u32,
+  y: i32,
+  x: i32,
   title: String,
 }
 
@@ -13,7 +15,13 @@ impl Window {
     Window {
       key: 0,
       title: "test title".to_string(),
+      x: 0,
+      y: 0,
     }
+  }
+
+  fn set_size(& mut self) {
+    getmaxyx(stdscr(), &mut self.y, &mut self.x);
   }
 
   fn get_key(& mut self) {
@@ -46,12 +54,15 @@ fn init() {
   noecho();
 }
 
-pub fn screen(mp: Arc<Mutex<MusicPlayer>>) {
+pub fn screen(musicplayer: Arc<Mutex<MusicPlayer>>) {
   init();
   let mut win = Window::new();
 
   printw("Enter any character (q to exit):\n");
   while win.key != 113 {
+    win.set_size();
+    printw(format!("Size is - {}x{}\n", win.x, win.y).as_ref());
+
     win.get_key();
     win.print_keycode();
     printw(" is ");
