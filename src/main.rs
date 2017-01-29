@@ -69,7 +69,7 @@ fn main() {
   let musicplayer = Arc::new(Mutex::new(MusicPlayer::new()));
   if args.len() == 1 {
     start_server(&musicplayer);
-    render(musicplayer.clone());
+    screen(musicplayer.clone());
   } else if (args.len() == 3) & (args[1] == "cmd") {
     sendMsg(&args[2]);
   } else {
