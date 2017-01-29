@@ -1,10 +1,7 @@
-use musicplayer::MusicPlayer;
-
 use std::sync::{Arc, Mutex};
-
 use std::char;
 use ncurses::*;
-
+use musicplayer::MusicPlayer;
 
 pub fn render(mp: Arc<Mutex<MusicPlayer>>) {
   setlocale(LcCategory::all, "en_US.UTF-8");

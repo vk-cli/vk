@@ -1,7 +1,4 @@
-//! musicplayer.rs
-
 use log;
-
 use std::sync::{Arc, Mutex};
 
 struct Track {

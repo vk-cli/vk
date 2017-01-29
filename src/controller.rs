@@ -1,7 +1,6 @@
 //! controller.rs
 //!
-//! Server listening on a port and executing commands for the vkontakte music
-//! player.
+//! Server listening on a port and executing commands for the vk music player
 
 use musicplayer::MusicPlayer;
 

@@ -1,5 +1,3 @@
-//! utils.rs
-
 use log::{self, LogRecord, LogLevel, LogMetadata};
 
 
