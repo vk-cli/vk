@@ -4,6 +4,7 @@ extern crate futures;
 extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate curl;
+extern crate ncurses;
 
 #[macro_use]
 extern crate log;
@@ -30,7 +31,9 @@ mod errors {
   error_chain! { }
 
   impl From<::std::io::Error> for Error {
-    fn from(e: ::std::io::Error) -> Error { e.to_string().into() }
+    fn from(e: ::std::io::Error) -> Error {
+      e.to_string().into()
+    }
   }
 }
 
@@ -38,9 +41,9 @@ mod cfg;
 mod api;
 mod testapp;
 mod ui;
+
 use testapp::*;
 use ui::*;
-
 
 
 const PORT: u32 = 4000;
@@ -51,29 +54,17 @@ fn start_server(mp: &Arc<Mutex<MusicPlayer>>) {
     let _ = thread::spawn(move || ControllerServer::new(mp).start(PORT));
 }
 
-
-fn start_gui(mp: &Arc<Mutex<MusicPlayer>>) {
-    // let mp = mp.clone();
-    // let child = thread::spawn(move || render(mp));
-    // child.join();
-    render(mp.clone());
-}
-
-
 fn ping_server(msg: &str) {
-    controller::ping_serv(PORT, msg);
+  controller::ping_serv(PORT, msg);
 }
-
 
 fn print_usage() {
-    println!("Usage: asdf [ping]");
+  println!("Usage: asdf [ping]");
 }
-
 
 fn get_music_player() -> Arc<Mutex<MusicPlayer>> {
-    Arc::new(Mutex::new(MusicPlayer::new()))
+  Arc::new(Mutex::new(MusicPlayer::new()))
 }
-
 
 fn main() {
     let _ = log::set_logger(|max_log_level| {
@@ -85,7 +76,7 @@ fn main() {
     if args.len() == 1 {
         info!("Starting server...");
         start_server(&mp);
-        start_gui(&mp);
+        render(mp.clone());
     } else if (args.len() == 3) & (args[1] == "cmd") {
         println!("Pinging server...");
         ping_server(&args[2]);
