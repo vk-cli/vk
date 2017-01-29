@@ -1,11 +1,9 @@
-extern crate ncurses;
-
 use musicplayer::MusicPlayer;
 
 use std::sync::{Arc, Mutex};
 
 use std::char;
-use self::ncurses::*;
+use ncurses::*;
 
 pub fn render(mp: Arc<Mutex<MusicPlayer>>) {
   let locale_conf = LcCategory::all;
