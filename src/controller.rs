@@ -18,11 +18,9 @@ pub struct ControllerServer {
   mp: Arc<Mutex<MusicPlayer>>,
 }
 
-
 trait CommandHandler {
   fn handle(&self, cmd: String);
 }
-
 
 impl CommandHandler for MusicPlayer {
   fn handle(&self, cmd: String) {

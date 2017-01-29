@@ -4,7 +4,6 @@ use log;
 
 use std::sync::{Arc, Mutex};
 
-
 struct Track {
   artist: String,
   title: String,
@@ -19,7 +18,6 @@ pub struct MusicPlayer {
   artist: String,
   title: String,
 }
-
 
 impl MusicPlayer {
   pub fn new() -> MusicPlayer {
