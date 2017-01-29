@@ -1,9 +1,12 @@
-extern crate ncurses;
+use musicplayer::MusicPlayer;
+
+use std::sync::{Arc, Mutex};
 
 use std::char;
-use self::ncurses::*;
+use ncurses::*;
 
-pub fn render() {
+
+pub fn render(mp: Arc<Mutex<MusicPlayer>>) {
   setlocale(LcCategory::all, "en_US.UTF-8");
   initscr();
   raw();
