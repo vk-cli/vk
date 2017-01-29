@@ -9,5 +9,6 @@ curl = "0.4.4"
 futures-cpupool = "0.1.0"
 tokio-core = "0.1.4"
 json = "0.11.5"
-#hyper = { git = "https://github.com/hyperium/hyper" }
+error-chain = "0.8.1"
 RobotS = { git = "https://github.com/gamazeps/RobotS" }
+#hyper = { git = "https://github.com/hyperium/hyper" }
