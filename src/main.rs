@@ -10,6 +10,8 @@ extern crate ncurses;
 extern crate log;
 #[macro_use]
 extern crate json;
+#[macro_use]
+extern crate quick_error;
 
 use controller::ControllerServer;
 use musicplayer::MusicPlayer;
@@ -20,18 +22,7 @@ use std::env;
 use testapp::*;
 use ui::*;
 
-#[macro_use]
-extern crate error_chain;
-
-mod errors {
-  error_chain! { }
-  impl From<::std::io::Error> for Error {
-    fn from(e: ::std::io::Error) -> Error {
-      e.to_string().into()
-    }
-  }
-}
-
+mod errors;
 mod utils;
 mod controller;
 mod musicplayer;
@@ -65,6 +56,7 @@ fn setLogConfig() {
 
 fn main() {
   setLogConfig();
+  //pretest();
   let args: Vec<_> = env::args().collect();
   let musicplayer = Arc::new(Mutex::new(MusicPlayer::new()));
   if args.len() == 1 {

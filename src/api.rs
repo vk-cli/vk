@@ -7,12 +7,9 @@ use curl::easy::Easy;
 
 use json::{parse, JsonValue};
 
-pub type ApiResponse = BoxFuture<JsonValue, Error>;
+use errors::*;
 
-pub enum Error {
-  RequestError(String),
-  ApiError(i32, String)
-}
+pub type ApiResponse = BoxFuture<JsonValue, ReqError>;
 
 pub struct Api {
   pool: CpuPool,
@@ -34,7 +31,7 @@ impl Api {
   pub fn http_get(&self, url: String) -> ApiResponse {
     // todo use tokio_core w/ hyper instead of curl
     self.pool
-      .spawn_fn(move || {
+      .spawn_fn(move || -> ReqRes<(_, Vec<_>)> {
         let mut h = Easy::new();
         let mut buf = Vec::new();
 
@@ -48,18 +45,15 @@ impl Api {
           tf.perform()?;
         }
 
-        let res: Result<(_, Vec<_>), curl::Error> = Ok((h.response_code()?, buf));
-        res
+        Ok((h.response_code()?, buf))
       })
-      .map_err(|e| Error::RequestError(e.to_string()))
       .and_then(|(code, data)| {
         match code {
           200 => {
             let resp = &String::from_utf8_lossy(&data);
-            parse(resp)
-              .map_err(|e| Error::RequestError(e.to_string()))
+            Ok(parse(resp)?)
           }
-          x => Err(Error::RequestError(format!("code {}", x)))
+          x => Err(ReqError::NetworkError(format!("code {}", x)))
         }
       })
       .boxed()
@@ -83,11 +77,13 @@ impl Api {
       .and_then(|mut val| {
         let resp = val["response"].take();
         let ref err = val["error"];
-        if err.is_null() && !resp.is_null() { Ok(resp) }
-        else {
-          match (err["error_code"].as_i32(), err["error_msg"].as_str()) {
-            (Some(code), Some(msg)) => Err(Error::ApiError(code, msg.to_string())),
-            _ => Err(Error::ApiError(-1, err.dump()))
+        if err.is_null() && !resp.is_null() { Ok(resp) } else {
+          match (err["error_code"].as_i32(),
+            err["error_msg"].as_str()
+              .or(err["error_description"].as_str())
+          ) {
+            (Some(code), Some(msg)) => Err(ReqError::ApiError(code, msg.to_string())),
+            _ => Err(ReqError::ApiError(-1, err.dump()))
           }
         }
       })

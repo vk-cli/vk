@@ -1,8 +1,9 @@
-use api::{Api, Error};
+use std::process::exit;
+use api::Api;
 use futures::Future;
 use cfg::Cfg;
 
-pub fn testmain() {
+pub fn pretest() {
   println!("vk-cli 0.8 test main");
   let cfg = Cfg::new();
   cfg.save(); //formatting test
@@ -12,7 +13,8 @@ pub fn testmain() {
 
   match got.wait() {
     Ok(r) => println!("{}", r.to_string()),
-    Err(Error::RequestError(e)) => println!("req: {}", e),
-    Err(Error::ApiError(code, msg)) => println!("api {}: {}", code, msg)
+    Err(e) => println!("{}", e),
   }
+
+  exit(0)
 }

@@ -7,21 +7,18 @@ use std::io::{Read, Write};
 use std::string::ToString;
 
 use errors::*;
-use error_chain::ChainedError;
 
-fn spawn(p: &Path) -> JsonValue {
+struct SpawnResult(JsonValue, CfgRes<()>);
+
+fn spawn(p: &Path) -> SpawnResult {
   println!("cfg: spawning config");
+  // todo log this ^^
   let cfg = JsonValue::new_object();
-
-  match write(p, &cfg) {
-    Err(e) => println!("cfg: spawn failed - {}", e),
-    _ => ()
-  }
-
-  cfg
+  let f_res = write(p, &cfg);
+  SpawnResult(cfg, f_res)
 }
 
-fn write (p: &Path, cfg: &JsonValue) -> Result<()> {
+fn write (p: &Path, cfg: &JsonValue) -> CfgRes<()> {
   let mut f = File::create(p)?;
   f.write_all(cfg.pretty(2).as_bytes())?;
   f.sync_all()?;
@@ -37,6 +34,22 @@ fn get_path() -> PathBuf {
   }
 }
 
+fn make_path(p: &Path) -> Option<String> {
+  match p.to_str() {
+    Some("") | None => None,
+    Some(x) => Some(x.to_string())
+  }
+}
+
+fn make_cfg(p: &Path) -> Cfg {
+  let SpawnResult(c_conf, e_spawn) = spawn(&p);
+  if let Err(e) = e_spawn {
+    println!("cfg spawn: {}", e)
+  };
+  // todo log file spawn error
+  Cfg { conf: c_conf, path: make_path(&p) }
+}
+
 pub struct Cfg {
   path: Option<String>,
   conf: JsonValue
@@ -45,29 +58,22 @@ pub struct Cfg {
 impl Cfg {
   pub fn new() -> Cfg {
     let p = get_path();
-    let cfgp = match p.to_str() {
-      Some("") | None => None,
-      Some(x) => Some(x.to_string())
-    };
 
     if !p.exists() {
-      Cfg { conf: spawn(p.as_path()), path: cfgp }
+      make_cfg(p.as_path())
     } else {
-      let open = || -> Result<_> {
+      let open = || -> CfgRes<_> {
         let mut raw = String::new();
         File::open(&p)
-          .and_then(|mut f| f.read_to_string(&mut raw))
-          .chain_err(|| "can't open file")?;
-        Ok(
-          parse(&raw)
-            .chain_err(|| "can't parse config")?
-        )
+          .and_then(|mut f| f.read_to_string(&mut raw))?;
+        Ok(parse(&raw)?)
       };
       match open() {
-        Ok(c) => Cfg { conf: c, path: cfgp },
+        Ok(c) => Cfg { conf: c, path: make_path(p.as_path()) },
         Err(e) => {
-          println!("cfg: {}", e.display());
-          Cfg { conf: spawn(p.as_path()), path: cfgp }
+          println!("cfg: {}", e);
+          // todo log this ^^
+          make_cfg(p.as_path())
         }
       }
     }
@@ -82,12 +88,12 @@ impl Cfg {
     self.conf[key] = val.into()
   }
 
-  pub fn save(&self) -> Result<()> {
+  pub fn save(&self) -> CfgRes<()> {
     if let Some(ref p) = self.path {
       write(Path::new(&p), &self.conf)
     }
     else {
-      Err("no config path".into())
+      Err(CfgError::SaveError("no config path"))
     }
   }
 }
