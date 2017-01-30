@@ -1,5 +1,4 @@
-use log::{self, LogRecord, LogLevel, LogMetadata};
-
+use log::{self, LogRecord, LogLevel, LogMetadata, LogLevelFilter};
 
 pub struct Log;
 
@@ -15,3 +14,9 @@ impl log::Log for Log {
     }
 }
 
+pub fn set_log_config() {
+  log::set_logger(|max_log_level| {
+    max_log_level.set(LogLevelFilter::Info);
+    Box::new(Log)
+  });
+}
