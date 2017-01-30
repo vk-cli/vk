@@ -3,28 +3,38 @@ use std::char;
 use ncurses::*;
 use musicplayer::MusicPlayer;
 
+const Q_KEYS     : [u32; 2] = [ 113, 1081 ];
+const UP_KEYS    : [u32; 2] = [ 119, 1094 ];
+const DOWN_KEYS  : [u32; 2] = [ 115, 1099 ];
+const LEFT_KEYS  : [u32; 2] = [ 97, 1092 ];
+const RIGHT_KEYS : [u32; 3] = [ 100, 1074, 10 ];
+
 struct Window {
   key: u32,
-  y: i32,
-  x: i32,
-  title: String,
+  size: (i32, i32),
+  title: &'static str,
 }
 
 impl Window {
   fn new() -> Window {
     Window {
       key: 0,
-      title: "test title".to_string(),
-      x: 0,
-      y: 0,
+      title: "Enter any character (q to exit):\n",
+      size: (0, 0),
     }
   }
 
-  fn set_size(& mut self) {
-    getmaxyx(stdscr(), &mut self.y, &mut self.x);
+  fn set_size(&mut self) -> bool {
+    let mut temp_size = (0, 0);
+    getmaxyx(stdscr(), &mut temp_size.1, &mut temp_size.0);
+    if temp_size != self.size {
+      self.size = temp_size;
+      return true;
+    }
+    false
   }
 
-  fn get_key(& mut self) {
+  fn set_key(&mut self) {
     let ch = get_wch();
     match ch {
       Some(WchResult::KeyCode(c)) => self.key = c as u32,
@@ -52,18 +62,19 @@ fn init() {
   raw();
   keypad(stdscr(), true);
   noecho();
+  cbreak();
 }
 
 pub fn screen(musicplayer: Arc<Mutex<MusicPlayer>>) {
   init();
   let mut win = Window::new();
 
-  printw("Enter any character (q to exit):\n");
-  while win.key != 113 {
+  while !Q_KEYS.contains(&win.key) {
+    // clear();
+    printw(win.title);
     win.set_size();
-    printw(format!("Size is - {}x{}\n", win.x, win.y).as_ref());
+    win.set_key();
 
-    win.get_key();
     win.print_keycode();
     printw(" is ");
     win.print_key();

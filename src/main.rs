@@ -39,7 +39,7 @@ fn start_server(mp: &Arc<Mutex<MusicPlayer>>) {
   let _ = thread::spawn(move || ControllerServer::new(mp).start(PORT));
 }
 
-fn sendMsg(msg: &str) {
+fn send_msg(msg: &str) {
   controller::ping_serv(PORT, msg);
 }
 
@@ -47,7 +47,7 @@ fn help() {
   println!("Usage: vk");
 }
 
-fn setLogConfig() {
+fn set_log_config() {
   log::set_logger(|max_log_level| {
     max_log_level.set(LogLevelFilter::Info);
     Box::new(utils::Log)
@@ -55,7 +55,7 @@ fn setLogConfig() {
 }
 
 fn main() {
-  setLogConfig();
+  set_log_config();
   //pretest();
   let args: Vec<_> = env::args().collect();
   let musicplayer = Arc::new(Mutex::new(MusicPlayer::new()));
@@ -63,7 +63,7 @@ fn main() {
     start_server(&musicplayer);
     screen(musicplayer.clone());
   } else if (args.len() == 3) & (args[1] == "cmd") {
-    sendMsg(&args[2]);
+    send_msg(&args[2]);
   } else {
     help();
   }
