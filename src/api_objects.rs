@@ -9,15 +9,7 @@ pub struct User {
 }
 
 impl User {
-  pub fn new(id: i32, full_name: String, online: bool, last_seen: DateTime<UTC>) -> Self {
-    User {
-      id: id,
-      full_name: full_name,
-      online: online,
-      last_seen: last_seen,
-    }
-  }
-
+  
   // TODO implement From<JsonValue>
   pub fn from_json_value(object: &JsonValue) -> Self {
     let id = object["id"].as_i32().unwrap_or(-1);
@@ -25,6 +17,6 @@ impl User {
     let last_name = object["last_name"].as_str().unwrap_or("nolname");
     let online = object["online"].as_u32().unwrap_or(0) == 1;
     let last_seen = UTC.timestamp(object["last_seen"]["time"].as_i64().unwrap_or(0), 0);
-    Self::new(id, first_name + " " + last_name, online, last_seen)
+    Self { id: id, full_name: first_name + " " + last_name, online: online, last_seen: last_seen }
   }
 }
