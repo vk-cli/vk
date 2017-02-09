@@ -109,7 +109,7 @@ impl Api {
             full_name:
             u["first_name"].as_str().unwrap_or("nofname").to_string() + " " +
               u["last_name"].as_str().unwrap_or("nolname"),
-            online: if u["online"].as_u32().unwrap_or(0) == 1 { true } else { false },
+            online: u["online"].as_u32().unwrap_or(0) == 1,
             last_seen: UTC.timestamp(u["last_seen"]["time"].as_i64().unwrap_or(0), 0)
           })
           .collect::<Vec<_>>()
