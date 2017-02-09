@@ -9,7 +9,15 @@ pub fn pretest() {
   cfg.save(); //formatting test
 
   let api = Api::new(228, cfg.get("token").as_str().unwrap_or(""));
-  let got = api.api_get("status.get", &[]);
+  let got = api
+    .friends_get(5, 0)
+    .map(|f|
+      f
+        .iter()
+        .map(|u| format!("{}: {} ({})", u.id, u.full_name, u.last_seen.format("%Y-%m-%d %H:%M:%S")))
+        .collect::<Vec<_>>()
+        .join("\n")
+    );
 
   match got.wait() {
     Ok(r) => println!("{}", r.to_string()),

@@ -5,6 +5,7 @@ extern crate futures_cpupool;
 extern crate tokio_core;
 extern crate curl;
 extern crate ncurses;
+extern crate chrono;
 
 #[macro_use]
 extern crate log;
@@ -20,6 +21,7 @@ mod musicplayer;
 mod server_utils;
 mod cfg;
 mod api;
+mod api_objects;
 mod testapp;
 mod ui;
 

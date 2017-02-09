@@ -7,9 +7,13 @@ use curl::easy::Easy;
 
 use json::{parse, JsonValue};
 
+use chrono::prelude::*;
+
+use api_objects::*;
 use errors::*;
 
-pub type ApiResponse = BoxFuture<JsonValue, ReqError>;
+pub type MethodResponse<T> = BoxFuture<T, ReqError>;
+pub type ApiResponse = MethodResponse<JsonValue>;
 
 pub struct Api {
   pool: CpuPool,
@@ -79,13 +83,36 @@ impl Api {
         let ref err = val["error"];
         if err.is_null() && !resp.is_null() { Ok(resp) } else {
           match (err["error_code"].as_i32(),
-            err["error_msg"].as_str()
-              .or(err["error_description"].as_str())
+                 err["error_msg"].as_str()
+                   .or(err["error_description"].as_str())
           ) {
             (Some(code), Some(msg)) => Err(ReqError::ApiError(code, msg.to_string())),
             _ => Err(ReqError::ApiError(-1, err.dump()))
           }
         }
+      })
+      .boxed()
+  }
+
+  pub fn friends_get(&self, count: i32, offset: i32) -> MethodResponse<Vec<User>> {
+    self.api_get("friends.get", &[
+      ("count", &count.to_string()[..]),
+      ("offset", &offset.to_string()[..]),
+      ("order", "hints"),
+      ("fields", "online,last_seen")
+    ])
+      .map(|flist| {
+        flist["items"]
+          .members()
+          .map(|u| User {
+            id: u["id"].as_i32().unwrap_or(-1),
+            full_name:
+            u["first_name"].as_str().unwrap_or("nofname").to_string() + " " +
+              u["last_name"].as_str().unwrap_or("nolname"),
+            online: if u["online"].as_u32().unwrap_or(0) == 1 { true } else { false },
+            last_seen: UTC.timestamp(u["last_seen"]["time"].as_i64().unwrap_or(0), 0)
+          })
+          .collect::<Vec<_>>()
       })
       .boxed()
   }
