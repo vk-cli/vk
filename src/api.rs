@@ -101,10 +101,18 @@ impl Api {
       ("order", "hints"),
       ("fields", "online,last_seen")
     ])
-      .map(|friend_list| friend_list["items"]
-        .members()
-        .map(User::from_json_value)
-        .collect::<Vec<_>>())
+      .and_then(|friend_list| Ok(
+        friend_list["items"]
+          .members()
+          .map(User::from_json)
+          .flat_map(|u| {
+            if u.is_err() {
+              //todo log that shit
+            }
+            u.ok()
+          })
+          .collect::<Vec<_>>()
+      ))
       .boxed()
   }
 }

@@ -14,7 +14,13 @@ pub fn pretest() {
     .map(|f|
       f
         .iter()
-        .map(|u| format!("{}: {} ({})", u.id, u.full_name, u.last_seen.format("%Y-%m-%d %H:%M:%S")))
+        .map(|u|
+          format!("{}: {} ({}){}",
+                  u.id,
+                  u.full_name,
+                  u.last_seen.format("%Y-%m-%d %H:%M:%S"),
+                  if u.banned {" (banned)"} else {""})
+        )
         .collect::<Vec<_>>()
         .join("\n")
     );

@@ -21,6 +21,11 @@ quick_error! {
       description(&desc)
       display("[e] api {}: {}", code, desc)
     }
+
+    ParseError(subj: String) {
+      description(&subj)
+      display("[e] parse error: {}", subj)
+    }
   }
 }
 

@@ -1,5 +1,9 @@
 use log::{self, LogRecord, LogLevel, LogMetadata, LogLevelFilter};
 
+pub trait OptionUtils<R, E> {
+  fn uw(self, s: &str) -> Result<R, E>;
+}
+
 pub struct Log;
 
 impl log::Log for Log {
