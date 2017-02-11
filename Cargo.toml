@@ -5,8 +5,8 @@ authors = ["HaCk3D", "substance-of"]
 license = "Apache-2.0"
 
 [dependencies]
-log = "*"
-ncurses="*"
+log = "0.3"
+ncurses="5.85"
 chrono = "0.3"
 futures = "0.1"
 futures-cpupool = "0.1"
