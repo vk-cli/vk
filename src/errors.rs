@@ -7,24 +7,24 @@ quick_error! {
   pub enum ReqError {
     NetworkError(desc: String) {
       description(&desc)
-      display("[e] nw: {}", desc)
+      display("nw: {}", desc)
     }
 
     RequestError(desc: String) {
       from(e: curl::Error) -> (format!("curl - {}", e))
       from(e: json::Error) -> (format!("json - {}", e))
       description(&desc)
-      display("[e] request: {}", desc)
+      display("request: {}", desc)
     }
 
     ApiError(code: i32, desc: String) {
       description(&desc)
-      display("[e] api {}: {}", code, desc)
+      display("api {}: {}", code, desc)
     }
 
     ParseError(subj: String) {
       description(&subj)
-      display("[e] parse error: {}", subj)
+      display("parse error: {}", subj)
     }
   }
 }
@@ -36,12 +36,12 @@ quick_error! {
       from(e: json::Error) -> (format!("json - {}", e))
       from(e: std::io::Error) -> (format!("io - {}", e))
       description(&desc)
-      display("[e] cfg open: {}", desc)
+      display("cfg open: {}", desc)
     }
 
     SaveError(desc: &'static str) {
       description(desc)
-      display("[e] cfg save: {}", desc)
+      display("cfg save: {}", desc)
     }
   }
 }

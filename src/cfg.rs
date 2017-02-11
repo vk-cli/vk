@@ -7,12 +7,12 @@ use std::io::{Read, Write};
 use std::string::ToString;
 
 use errors::*;
+use log::*;
 
 struct SpawnResult(JsonValue, CfgRes<()>);
 
 fn spawn(p: &Path) -> SpawnResult {
-  println!("cfg: spawning config");
-  // todo log this ^^
+  info!("cfg: spawning config");
   let cfg = JsonValue::new_object();
   let f_res = write(p, &cfg);
   SpawnResult(cfg, f_res)
@@ -44,9 +44,8 @@ fn make_path(p: &Path) -> Option<String> {
 fn make_cfg(p: &Path) -> Cfg {
   let SpawnResult(c_conf, e_spawn) = spawn(&p);
   if let Err(e) = e_spawn {
-    println!("cfg spawn: {}", e)
+    error!("cfg spawn: {}", e)
   };
-  // todo log file spawn error
   Cfg { conf: c_conf, path: make_path(&p) }
 }
 
@@ -71,8 +70,7 @@ impl Cfg {
       match open() {
         Ok(c) => Cfg { conf: c, path: make_path(p.as_path()) },
         Err(e) => {
-          println!("cfg: {}", e);
-          // todo log this ^^
+          error!("cfg: {}", e);
           make_cfg(p.as_path())
         }
       }

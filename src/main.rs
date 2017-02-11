@@ -6,6 +6,7 @@ extern crate tokio_core;
 extern crate curl;
 extern crate ncurses;
 extern crate chrono;
+extern crate fern;
 
 #[macro_use]
 extern crate log;
@@ -37,7 +38,7 @@ use ui::*;
 
 fn main() {
   set_log_config();
-  //pretest();
+  pretest();
 
   let args: Vec<_> = env::args().collect();
   let musicplayer = Arc::new(Mutex::new(MusicPlayer::new())); // todo move init

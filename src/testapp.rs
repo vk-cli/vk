@@ -2,9 +2,11 @@ use std::process::exit;
 use api::Api;
 use futures::Future;
 use cfg::Cfg;
+use log::*;
 
 pub fn pretest() {
   println!("vk-cli 0.8 test main");
+
   let cfg = Cfg::new();
   cfg.save(); //formatting test
 

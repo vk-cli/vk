@@ -10,6 +10,7 @@ impl<T> OptionUtils<T, ReqError> for Option<T> {
   }
 }
 
+#[derive(Debug)]
 pub struct User {
   pub id: i32,
   pub full_name: String,
@@ -19,7 +20,6 @@ pub struct User {
 }
 
 impl User {
-  // TODO implement From<JsonValue>
   pub fn from_json(o: &JsonValue) -> ReqRes<Self> {
     let id = o["id"].as_i32().uw("user - no id")?;
     let first_name = o["first_name"].as_str().uw("user - no fname")?.to_string();

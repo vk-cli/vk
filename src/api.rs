@@ -104,12 +104,13 @@ impl Api {
       .and_then(|friend_list| Ok(
         friend_list["items"]
           .members()
-          .map(User::from_json)
-          .flat_map(|u| {
-            if u.is_err() {
-              //todo log that shit
+          .flat_map(|f| {
+            let u = User::from_json(f);
+            if u.is_ok() { u.ok() } else {
+              error!("can't parse friend: {}", u.unwrap_err());
+              debug!("failed json: \n{}", f.pretty(2));
+              None
             }
-            u.ok()
           })
           .collect::<Vec<_>>()
       ))
