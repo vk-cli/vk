@@ -29,7 +29,7 @@ pub fn pretest() {
 
   match got.wait() {
     Ok(r) => println!("{}", r.to_string()),
-    Err(e) => println!("{}", e),
+    Err(e) => error!("{}", e),
   }
 
   exit(0)
