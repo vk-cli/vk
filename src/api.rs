@@ -89,6 +89,8 @@ impl Api {
       .collect::<Vec<_>>()
       .join("");
 
+    debug!("request: {}", logurl);
+
     let url = format!("{}&access_token={}", logurl, self.token);
     self.http_get(url)
       .and_then(|mut val| {

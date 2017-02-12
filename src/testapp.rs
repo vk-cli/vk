@@ -1,4 +1,5 @@
 use std::process::exit;
+use std::sync::Arc;
 use api::Api;
 use futures::Future;
 use cfg::Cfg;

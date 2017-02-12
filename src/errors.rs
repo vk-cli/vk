@@ -46,5 +46,15 @@ quick_error! {
   }
 }
 
+quick_error! {
+  #[derive(Debug)]
+  pub enum WorkerError {
+    Common(wname: String, desc: String) {
+      display("worker {}: {}", wname, desc)
+    }
+  }
+}
+
 pub type CfgRes<T> = Result<T, CfgError>;
 pub type ReqRes<T> = Result<T, ReqError>;
+pub type WorkerRes<T> = Result<T, WorkerError>;

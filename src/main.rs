@@ -1,12 +1,15 @@
 #![recursion_limit = "1024"]
+#![feature(box_patterns, box_syntax)]
 
 extern crate futures;
 extern crate futures_cpupool;
 extern crate tokio_core;
+extern crate tokio_timer;
 extern crate curl;
 extern crate ncurses;
 extern crate chrono;
 extern crate fern;
+extern crate robots;
 
 #[macro_use]
 extern crate log;
@@ -23,6 +26,7 @@ mod server_utils;
 mod cfg;
 mod api;
 mod api_objects;
+mod workers;
 mod testapp;
 mod ui;
 

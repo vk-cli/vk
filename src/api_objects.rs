@@ -14,7 +14,7 @@ pub trait ApiObject<T> {
   fn from_json(object: &JsonValue) -> ReqRes<T>;
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct User {
   pub id: i32,
   pub full_name: String,
