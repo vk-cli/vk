@@ -12,15 +12,16 @@ pub trait ResultUtils<R> {
 }
 
 pub fn set_log_config() {
+  let logfilter = || log::LogLevelFilter::Trace; // Trace < Debug < Info < Warn < Error
   let logcfg = fern::DispatchConfig {
     format: Box::new(
       |msg: &str, level: &log::LogLevel, _location: &log::LogLocation|
       format!("[{}][{}] {}", Local::now().format("%H:%M:%S"), level, msg)
     ),
     output: vec![fern::OutputConfig::stdout()],
-    level: log::LogLevelFilter::Trace
+    level: logfilter()
   };
-  if let Err(e) = fern::init_global_logger(logcfg, log::LogLevelFilter::Trace) {
+  if let Err(e) = fern::init_global_logger(logcfg, logfilter()) {
     panic!("can't initialize logger: {}", e);
   }
 }
