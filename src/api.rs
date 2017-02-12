@@ -1,3 +1,5 @@
+use std::fmt::{Debug, Display};
+
 use futures::Future;
 use futures::future::BoxFuture;
 use futures_cpupool::CpuPool;
@@ -9,11 +11,22 @@ use json::{parse, JsonValue};
 
 use chrono::prelude::*;
 
+use utils::ResultUtils;
 use api_objects::*;
 use errors::*;
 
 pub type MethodResponse<T> = BoxFuture<T, ReqError>;
 pub type ApiResponse = MethodResponse<JsonValue>;
+
+impl<R: Debug, E: Display> ResultUtils<R> for Result<R, E> {
+  fn parse_check(self, o: &JsonValue, m: &'static str) -> Option<R> {
+    if self.is_ok() { self.ok() } else {
+      error!("{}: {}", m, self.unwrap_err());
+      debug!("failed json: \n{}", o.pretty(2));
+      None
+    }
+  }
+}
 
 pub struct Api {
   pool: CpuPool,
@@ -106,11 +119,7 @@ impl Api {
           .members()
           .flat_map(|f| {
             let u = User::from_json(f);
-            if u.is_ok() { u.ok() } else {
-              error!("can't parse friend: {}", u.unwrap_err());
-              debug!("failed json: \n{}", f.pretty(2));
-              None
-            }
+            u.parse_check(f, "can't parse friend")
           })
           .collect::<Vec<_>>()
       ))

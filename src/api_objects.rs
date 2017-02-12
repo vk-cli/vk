@@ -10,6 +10,10 @@ impl<T> OptionUtils<T, ReqError> for Option<T> {
   }
 }
 
+pub trait ApiObject<T> {
+  fn from_json(object: &JsonValue) -> ReqRes<T>;
+}
+
 #[derive(Debug)]
 pub struct User {
   pub id: i32,
@@ -19,8 +23,8 @@ pub struct User {
   pub last_seen: DateTime<UTC>
 }
 
-impl User {
-  pub fn from_json(o: &JsonValue) -> ReqRes<Self> {
+impl ApiObject<User> for User {
+  fn from_json(o: &JsonValue) -> ReqRes<Self> {
     let id = o["id"].as_i32().uw("user - no id")?;
     let first_name = o["first_name"].as_str().uw("user - no fname")?.to_string();
     let last_name = o["last_name"].as_str().uw("user - no lname")?;
