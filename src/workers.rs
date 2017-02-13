@@ -9,12 +9,21 @@ use futures::Future;
 use futures::future::BoxFuture;
 use robots::actors::*;
 
+use workers::GetChunkAnswer::*;
+
 type Pos = i32;
 
 pub enum M<C> {
   GetChunkAtPos(Pos),
   PChunkReceived(Pos, Vec<C>),
   PWorkTimedOut(Pos)
+}
+
+#[derive(Clone)]
+pub enum GetChunkAnswer<T> {
+  HasChunk(T),
+  NoChunk,
+  CacheFull
 }
 
 enum Work {
@@ -60,8 +69,10 @@ impl Actor for FriendsWorker {
           let reqrange = (pos + self.chunk_size) as usize;
           let upos = pos as usize;
 
-          let answ = if reqrange < c.cache.len() {
-            Some(c.cache[upos..reqrange].to_vec())
+          let answ = if c.cache_full {
+            CacheFull
+          } else if reqrange < c.cache.len() {
+            HasChunk(c.cache[upos..reqrange].to_vec())
           } else {
             match c.work {
               Work::Idle if upos <= c.cache.len() => {
@@ -70,9 +81,9 @@ impl Actor for FriendsWorker {
                   .friends_get(self.chunk_size, pos);
                 c.work = Work::DownloadingAtPos(pos);
                 debug!("friends wrk: task started at pos {}", pos);
-                None
+                NoChunk
               },
-              _ => None
+              _ => NoChunk
             }
           };
           context.complete(context.sender(), answ)
@@ -95,12 +106,17 @@ impl Actor for FriendsWorker {
           match c.work {
             Work::DownloadingAtPos(p)
             if pos == p && upos <= c.cache.len() => {
-              let mut ln = c.cache.len();
-              while upos < ln {
-                c.cache.remove(ln - 1);
-                ln = c.cache.len();
+              if chunk.len() == 0 {
+                info!("friends wrk: cache full (received empty chunk)");
+                c.cache_full = true;
+              } else {
+                let mut ln = c.cache.len();
+                while upos < ln {
+                  c.cache.remove(ln - 1);
+                  ln = c.cache.len();
+                }
+                c.cache.extend_from_slice(&chunk[..]);
               }
-              c.cache.extend_from_slice(&chunk[..]);
               debug!("friends wrk: chunk received to pos {}({})", pos, chunk.len());
               c.work = Work::Idle;
             },
@@ -109,8 +125,6 @@ impl Actor for FriendsWorker {
               \npos: {}, lcache: {}", pos, c.cache.len())
           }
         },
-        //todo fullcheck
-        //todo move out struct to common mutex
         //todo finalize fget
 
         _ => ()
