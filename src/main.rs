@@ -27,6 +27,7 @@ mod cfg;
 mod api;
 mod api_objects;
 mod workers;
+mod worker_utils;
 mod testapp;
 mod ui;
 

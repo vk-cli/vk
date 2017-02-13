@@ -2,6 +2,9 @@ use std;
 use curl;
 use json;
 
+use std::fmt::Display;
+use workers::Pos;
+
 quick_error! {
   #[derive(Debug)]
   pub enum ReqError {
@@ -52,7 +55,21 @@ quick_error! {
     Common(wname: String, desc: String) {
       display("worker {}: {}", wname, desc)
     }
+    WorkError(cause: String) {
+      display("work failed: {}", cause)
+    }
+    WorkTimedOut {
+      display("work timed out")
+    }
   }
+}
+
+pub fn work_error<E: Display>(cause: E) -> WorkerError {
+  WorkerError::WorkError(format!("{}", cause))
+}
+
+pub fn work_timeout() -> WorkerError {
+  WorkerError::WorkTimedOut
 }
 
 pub type CfgRes<T> = Result<T, CfgError>;

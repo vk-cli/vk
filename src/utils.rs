@@ -4,6 +4,8 @@ use json::JsonValue;
 use fern;
 use std::fs;
 
+pub type DummyResult = Result<(), ()>;
+
 pub trait OptionUtils<R, E> {
   fn uw(self, s: &str) -> Result<R, E>;
 }

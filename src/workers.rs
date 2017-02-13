@@ -1,18 +1,23 @@
 use std::sync::{Arc, Mutex};
 use std::collections::{VecDeque};
+use std::time::Duration;
 use errors::*;
 use log::*;
+use utils::DummyResult;
 use api::Api;
 use api_objects::*;
+use worker_utils::*;
 
 use futures::Future;
 use futures::future::BoxFuture;
+use tokio_timer::Timer;
 use robots::actors::*;
 
 use workers::GetChunkAnswer::*;
 
-type Pos = i32;
+pub type Pos = i32;
 
+#[derive(Clone)]
 pub enum M<C> {
   GetChunkAtPos(Pos),
   PChunkReceived(Pos, Vec<C>),
@@ -76,9 +81,12 @@ impl Actor for FriendsWorker {
           } else {
             match c.work {
               Work::Idle if upos <= c.cache.len() => {
-                self.api
+                let apiwork = self.api
                   .as_ref()
-                  .friends_get(self.chunk_size, pos);
+                  .friends_get(self.chunk_size, pos)
+                  .boxed();
+
+                fork(apiwork, Duration::from_secs(4000), &context, pos, "friends wrk");
                 c.work = Work::DownloadingAtPos(pos);
                 debug!("friends wrk: task started at pos {}", pos);
                 NoChunk
@@ -125,10 +133,11 @@ impl Actor for FriendsWorker {
               \npos: {}, lcache: {}", pos, c.cache.len())
           }
         },
-        //todo finalize fget
 
         _ => ()
       }
+    } else {
+      error!("friends wrk: can't acquire lck / downcast message");
     }
   }
 }
