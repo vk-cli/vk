@@ -27,7 +27,7 @@ pub fn fork<T, E>(f: BoxFuture<Vec<T>, E>, timeout: Duration, context: &ActorCel
         Ok(r) => Some(M::PChunkReceived(pos, r)),
         Err(WorkerError::WorkTimedOut) => Some(M::PWorkTimedOut(pos)),
         Err(e) => {
-          error!("{}: {}", error_prefix, e);
+          error!("{} {}", error_prefix, e);
           None
         }
       };

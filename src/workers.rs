@@ -3,7 +3,7 @@ use std::collections::{VecDeque};
 use std::time::Duration;
 use errors::*;
 use log::*;
-use utils::DummyResult;
+use utils::*;
 use api::Api;
 use api_objects::*;
 use worker_utils::*;
@@ -66,6 +66,7 @@ impl FriendsWorker {
 
 impl Actor for FriendsWorker {
   fn receive(&self, msg: Box<Any>, context: ActorCell) {
+    const PREF: Rstr = "friends:";
     type T = User;
     if let (Ok(msg), Ok(mut c))
     = (Box::<Any>::downcast::<M<T>>(msg), self.main.lock()) {
@@ -86,9 +87,9 @@ impl Actor for FriendsWorker {
                   .friends_get(self.chunk_size, pos)
                   .boxed();
 
-                fork(apiwork, Duration::from_secs(4000), &context, pos, "friends wrk");
+                fork(apiwork, Duration::from_secs(4000), &context, pos, &PREF);
                 c.work = Work::DownloadingAtPos(pos);
-                debug!("friends wrk: task started at pos {}", pos);
+                debug!("{} task started at pos {}", PREF, pos);
                 NoChunk
               },
               _ => NoChunk
@@ -100,12 +101,12 @@ impl Actor for FriendsWorker {
         box M::PWorkTimedOut(wp) => {
           match c.work {
             Work::DownloadingAtPos(p) if wp == p => {
-              warn!("friends wrk: task timed out at pos {}", p);
+              warn!("{} task timed out at pos {}", PREF, p);
               c.work = Work::Idle
             },
             _ =>
-              warn!("friends wrk: late timeout \
-              with pos: {}", wp)
+              warn!("{} late timeout \
+              with pos: {}", PREF, wp)
           }
         },
 
@@ -115,7 +116,7 @@ impl Actor for FriendsWorker {
             Work::DownloadingAtPos(p)
             if pos == p && upos <= c.cache.len() => {
               if chunk.len() == 0 {
-                info!("friends wrk: cache full (received empty chunk)");
+                info!("{} cache full (received empty chunk)", PREF);
                 c.cache_full = true;
               } else {
                 let mut ln = c.cache.len();
@@ -125,19 +126,19 @@ impl Actor for FriendsWorker {
                 }
                 c.cache.extend_from_slice(&chunk[..]);
               }
-              debug!("friends wrk: chunk received to pos {}({})", pos, chunk.len());
+              debug!("{} chunk received to pos {}({})", PREF, pos, chunk.len());
               c.work = Work::Idle;
             },
             _ =>
-              warn!("friends wrk: incorrect chunk \
-              \npos: {}, lcache: {}", pos, c.cache.len())
+              warn!("{} incorrect chunk \
+              \npos: {}, lcache: {}", PREF, pos, c.cache.len())
           }
         },
 
         _ => ()
       }
     } else {
-      error!("friends wrk: can't acquire lck / downcast message");
+      error!("{} can't acquire lck / downcast message", PREF);
     }
   }
 }
