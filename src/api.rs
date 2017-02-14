@@ -7,6 +7,8 @@ use futures_cpupool::CpuPool;
 use curl;
 use curl::easy::Easy;
 
+use utils::*;
+
 use json::{parse, JsonValue};
 
 use chrono::prelude::*;
@@ -38,7 +40,7 @@ pub struct Api {
 impl Api {
   pub fn new(uid: i32, token: &str) -> Api {
     Api {
-      pool: CpuPool::new(6),
+      pool: CpuPool::new(parallelism() as usize),
       uid: uid,
       token: token.to_string(),
       version: "5.62".to_string()

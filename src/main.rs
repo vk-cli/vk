@@ -28,6 +28,7 @@ mod api;
 mod api_objects;
 mod workers;
 mod worker_utils;
+mod client;
 mod testapp;
 mod ui;
 

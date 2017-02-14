@@ -10,8 +10,14 @@ use robots::actors::*;
 use workers::*;
 use workers::GetChunkAnswer::*;
 
-pub fn fork<T, E>(f: BoxFuture<Vec<T>, E>, timeout: Duration, context: &ActorCell, pos: Pos, error_prefix: &'static str)
+pub fn fork<T, E, F>(f: BoxFuture<Vec<T>, E>,
+                  recv: F,
+                  timeout: Duration,
+                  context: &ActorCell,
+                  pos: Pos,
+                  error_prefix: &'static str)
   where T: Clone + Send + Sync + 'static,
+        F: Fn(Pos, Vec<T>) -> M,
         E: Display {
 
   let context = context.clone();
@@ -26,7 +32,7 @@ pub fn fork<T, E>(f: BoxFuture<Vec<T>, E>, timeout: Duration, context: &ActorCel
     .map_err(|(err, _)| err)
     .then(|res| -> DummyResult {
       let pass = match res {
-        Ok(r) => Some(M::PChunkReceived(pos, r)),
+        Ok(r) => Some(recv(pos, r)),
         Err(WorkerError::WorkTimedOut) => Some(M::PWorkTimedOut(pos)),
         Err(e) => {
           error!("{} {}", error_prefix, e);

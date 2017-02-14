@@ -18,9 +18,9 @@ use workers::GetChunkAnswer::*;
 pub type Pos = i32;
 
 #[derive(Clone)]
-pub enum M<C> {
+pub enum M {
   GetChunkAtPos(Pos),
-  PChunkReceived(Pos, Vec<C>),
+  PChunkReceivedUser(Pos, Vec<User>),
   PWorkTimedOut(Pos)
 }
 
@@ -31,17 +31,17 @@ pub enum GetChunkAnswer<T> {
   CacheFull
 }
 
-struct FriendsWorker {
+pub struct FriendsWorker {
   chunk_size: i32,
   api: Arc<Api>,
   main: Mutex<Linear<User>>,
 }
 
 impl FriendsWorker {
-  fn new(api: &Arc<Api>) -> Self {
+  pub fn new(api: Arc<Api>) -> Self {
     FriendsWorker {
       chunk_size: 100,
-      api: api.clone(),
+      api: api,
       main: Mutex::new(
         Linear {
           work: Work::Idle,
@@ -56,8 +56,7 @@ impl FriendsWorker {
 
 impl Actor for FriendsWorker {
   fn receive(&self, msg: Box<Any>, context: ActorCell) {
-    type T = User;
-    if let (Ok(msg), Ok(mut c)) = (Box::<Any>::downcast::<M<T>>(msg), self.main.lock()) {
+    if let (Ok(msg), Ok(mut c)) = (Box::<Any>::downcast::<M>(msg), self.main.lock()) {
       let pref = c.logpref;
       match msg {
         box M::GetChunkAtPos(pos) => {
@@ -67,7 +66,7 @@ impl Actor for FriendsWorker {
               .as_ref()
               .friends_get(cs, pos)
               .boxed();
-            fork(apiwork, Duration::from_secs(4000), &context, pos, &pref);
+            fork(apiwork, M::PChunkReceivedUser, Duration::from_millis(4000), &context, pos, &pref);
           };
           let answ = c.get_chunk(pos, cs, get);
           context.complete(context.sender(), answ)
@@ -85,9 +84,11 @@ impl Actor for FriendsWorker {
           }
         },
 
-        box M::PChunkReceived(pos, chunk) => {
+        box M::PChunkReceivedUser(pos, chunk) => {
           c.recv_chunk(pos, chunk);
-        }
+        },
+
+        _ => warn!("{} bad msg", pref)
       }
     } else {
       error!("friends: can't acquire lck / downcast message");

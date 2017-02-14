@@ -4,6 +4,7 @@ use api::Api;
 use futures::Future;
 use cfg::Cfg;
 use log::*;
+use client::Client;
 
 pub fn pretest() {
   println!("vk-cli 0.8 test main");
@@ -12,7 +13,7 @@ pub fn pretest() {
   cfg.save(); //formatting test
 
   let api = Api::new(228, cfg.get("token").as_str().unwrap_or(""));
-  let got = api
+  /*let got = api
     .friends_get(5, 0)
     .map(|f|
       f
@@ -31,7 +32,10 @@ pub fn pretest() {
   match got.wait() {
     Ok(r) => println!("{}", r.to_string()),
     Err(e) => error!("{}", e),
-  }
+  }*/
+
+  let cl = Client::new(api);
+  cl.hehehtests();
 
   exit(0)
 }
