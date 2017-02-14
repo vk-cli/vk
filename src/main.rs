@@ -8,7 +8,7 @@ extern crate tokio_timer;
 extern crate curl;
 extern crate ncurses;
 extern crate chrono;
-extern crate fern;
+extern crate slog_stdlog;
 extern crate robots;
 
 #[macro_use]

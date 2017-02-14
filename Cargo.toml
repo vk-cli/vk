@@ -6,7 +6,7 @@ license = "Apache-2.0"
 
 [dependencies]
 log = "0.3"
-fern = "0.3"
+slog-stdlog = "1.1"
 ncurses="5.85"
 chrono = "0.3"
 futures = "0.1"
