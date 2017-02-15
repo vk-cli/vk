@@ -1,3 +1,5 @@
+use futures::Future;
+use futures_cpupool::{CpuPool, CpuFuture};
 use chrono::prelude::*;
 use json::JsonValue;
 use slog;
@@ -12,7 +14,8 @@ pub type Rstr = &'static str;
 
 enum Global {
   Has {
-    rootlog: Logger
+    rootlog: Logger,
+    pool: CpuPool
   },
   None
 }
@@ -24,6 +27,7 @@ lazy_static! {
 }
 
 pub const WHERE: &'static str = "where";
+pub const NOGLOBAL: &'static str = "global isn't initialized";
 
 pub trait OptionUtils<R, E> {
   fn uw(self, s: &str) -> Result<R, E>;
@@ -36,13 +40,15 @@ pub trait ResultUtils<R> {
 pub fn parallelism() -> u32 { 4 } // guaranteed to be random ofc
 
 pub fn set_global() {
+  let pool = CpuPool::new(parallelism() as usize);
   let drain = slog_term::streamer().compact().build().fuse();
   let root = slog::Logger::root(drain, o!());
 
   GLOBAL.set(
     Arc::new(
       Global::Has {
-        rootlog: root
+        rootlog: root,
+        pool: pool
       }
     )
   );
@@ -51,6 +57,16 @@ pub fn set_global() {
 pub fn get_logger() -> Logger {
   match *GLOBAL.get().as_ref() {
     Global::Has { ref rootlog, .. } => rootlog.clone(),
-    _ => panic!("global isn't initialized")
+    _ => panic!(NOGLOBAL)
+  }
+}
+
+pub fn spawn_on_pool<U>(f: U) -> CpuFuture<U::Item, U::Error>
+  where U: Future + Send + 'static,
+        U::Item: Send + 'static,
+        U::Error: Send + 'static {
+  match *GLOBAL.get().as_ref() {
+    Global::Has { ref pool, .. } => pool.spawn(f),
+    _ => panic!(NOGLOBAL)
   }
 }

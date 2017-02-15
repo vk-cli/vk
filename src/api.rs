@@ -1,8 +1,7 @@
 use std::fmt::{Debug, Display};
 
 use futures::Future;
-use futures::future::BoxFuture;
-use futures_cpupool::CpuPool;
+use futures::future::{BoxFuture, lazy};
 
 use curl;
 use curl::easy::Easy;
@@ -30,7 +29,6 @@ impl<R: Debug, E: Display> ResultUtils<R> for Result<R, E> {
 }
 
 pub struct Api {
-  pool: CpuPool,
   uid: i32,
   token: String,
   version: String,
@@ -40,7 +38,6 @@ pub struct Api {
 impl Api {
   pub fn new(uid: i32, token: &str) -> Api {
     Api {
-      pool: CpuPool::new(parallelism() as usize),
       uid: uid,
       token: token.to_string(),
       version: "5.62".to_string(),
@@ -50,23 +47,24 @@ impl Api {
 
   pub fn http_get(&self, url: String) -> ApiResponse {
     // todo use tokio_core w/ hyper instead of curl
-    self.pool
-      .spawn_fn(move || -> ReqRes<(_, Vec<_>)> {
-        let mut h = Easy::new();
-        let mut buf = Vec::new();
 
-        h.url(&url)?;
-        {
-          let mut tf = h.transfer();
-          tf.write_function(|c| {
-            buf.extend_from_slice(c);
-            Ok(c.len())
-          })?;
-          tf.perform()?;
-        }
+    lazy(move || -> ReqRes<(_, Vec<_>)> {
+      //info!(get_logger(), "http get");
+      let mut h = Easy::new();
+      let mut buf = Vec::new();
 
-        Ok((h.response_code()?, buf))
-      })
+      h.url(&url)?;
+      {
+        let mut tf = h.transfer();
+        tf.write_function(|c| {
+          buf.extend_from_slice(c);
+          Ok(c.len())
+        })?;
+        tf.perform()?;
+      }
+
+      Ok((h.response_code()?, buf))
+    })
       .and_then(|(code, data)| {
         match code {
           200 => {

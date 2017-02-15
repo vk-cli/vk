@@ -1,5 +1,3 @@
-use errors::*;
-use utils::DummyResult;
 use std::time::Duration;
 use std::fmt::Display;
 use futures::Future;
@@ -7,6 +5,9 @@ use futures::future::BoxFuture;
 use tokio_timer::Timer;
 use robots::actors::*;
 use slog::Logger;
+
+use errors::*;
+use utils::*;
 
 use workers::*;
 use workers::GetChunkAnswer::*;
@@ -18,20 +19,20 @@ pub fn fork<T, E, F>(f: BoxFuture<Vec<T>, E>,
                   pos: Pos,
                   log: Logger)
   where T: Clone + Send + Sync + 'static,
-        F: Fn(Pos, Vec<T>) -> M,
-        E: Display {
+        F: Fn(Pos, Vec<T>) -> M + Sync + Send + 'static,
+        E: Display + 'static {
 
   let context = context.clone();
   let pass_to = context.actor_ref().clone();
   let work = f.map_err(|e| work_error(e));
 
-  Timer::default()
+  let f = Timer::default()
     .sleep(timeout) //todo link with request timeout + timeout ladder
     .then(|_| Err(work_timeout()))
     .select(work)
     .map(|(res, _)| res)
     .map_err(|(err, _)| err)
-    .then(|res| -> DummyResult {
+    .then(move |res| -> DummyResult {
       let pass = match res {
         Ok(r) => Some(recv(pos, r)),
         Err(WorkerError::WorkTimedOut) => Some(M::PWorkTimedOut(pos)),
@@ -45,6 +46,7 @@ pub fn fork<T, E, F>(f: BoxFuture<Vec<T>, E>,
       );
       Ok(())
     });
+  spawn_on_pool(f);
 }
 
 pub enum Work {
