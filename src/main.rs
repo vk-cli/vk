@@ -8,15 +8,19 @@ extern crate tokio_timer;
 extern crate curl;
 extern crate ncurses;
 extern crate chrono;
-extern crate slog_stdlog;
 extern crate robots;
+extern crate crossbeam;
 
 #[macro_use]
-extern crate log;
+extern crate slog;
+extern crate slog_term;
+
 #[macro_use]
 extern crate json;
 #[macro_use]
 extern crate quick_error;
+#[macro_use]
+extern crate lazy_static;
 
 mod errors;
 mod utils;
@@ -43,7 +47,7 @@ use ui::*;
 
 
 fn main() {
-  set_log_config();
+  set_global();
   pretest();
 
   let args: Vec<_> = env::args().collect();

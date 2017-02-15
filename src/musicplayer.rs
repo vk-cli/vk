@@ -1,5 +1,6 @@
-use log;
 use std::sync::{Arc, Mutex};
+use slog::Logger;
+use utils::*;
 
 struct Track {
   artist: String,
@@ -14,6 +15,7 @@ struct Track {
 pub struct MusicPlayer {
   artist: String,
   title: String,
+  pub log: Logger
 }
 
 impl MusicPlayer {
@@ -23,42 +25,43 @@ impl MusicPlayer {
     MusicPlayer {
       artist: artist,
       title: title,
+      log: get_logger().new(o!(WHERE => "mp"))
     }
   }
 
   pub fn start_player(&self) {
-    info!("Starting player...");
+    info!(self.log, "Starting player...");
   }
 
   pub fn start(&self) {
-    info!("MP: Start");
+    info!(self.log, "MP: Start");
   }
 
   pub fn stop(&self) {
-    info!("MP: Stop");
+    info!(self.log, "MP: Stop");
   }
 
   pub fn resume(&self) {
-    info!("MP: Resume");
+    info!(self.log, "MP: Resume");
   }
 
   pub fn pause(&self) {
-    info!("MP: Pause");
+    info!(self.log, "MP: Pause");
   }
 
   pub fn next(&self) {
-    info!("MP: Next");
+    info!(self.log, "MP: Next");
   }
 
   pub fn prev(&self) {
-    info!("MP: Prev");
+    info!(self.log, "MP: Prev");
   }
 
   pub fn shuffle(&self) {
-    info!("MP: Shuffle");
+    info!(self.log, "MP: Shuffle");
   }
 
   pub fn repeat(&self) {
-    info!("MP: Repeat");
+    info!(self.log, "MP: Repeat");
   }
 }

@@ -6,6 +6,7 @@ use futures::Future;
 use futures::future::BoxFuture;
 use tokio_timer::Timer;
 use robots::actors::*;
+use slog::Logger;
 
 use workers::*;
 use workers::GetChunkAnswer::*;
@@ -15,7 +16,7 @@ pub fn fork<T, E, F>(f: BoxFuture<Vec<T>, E>,
                   timeout: Duration,
                   context: &ActorCell,
                   pos: Pos,
-                  error_prefix: &'static str)
+                  log: Logger)
   where T: Clone + Send + Sync + 'static,
         F: Fn(Pos, Vec<T>) -> M,
         E: Display {
@@ -35,7 +36,7 @@ pub fn fork<T, E, F>(f: BoxFuture<Vec<T>, E>,
         Ok(r) => Some(recv(pos, r)),
         Err(WorkerError::WorkTimedOut) => Some(M::PWorkTimedOut(pos)),
         Err(e) => {
-          error!("{} {}", error_prefix, e);
+          error!(log, "{}", e);
           None
         }
       };
@@ -55,7 +56,7 @@ pub struct Linear<T> {
   pub work: Work,
   pub cache: Vec<T>,
   pub cache_full: bool,
-  pub logpref: &'static str
+  pub log: Logger
 }
 
 impl<T: Clone> Linear<T> {
@@ -74,7 +75,7 @@ impl<T: Clone> Linear<T> {
         Work::Idle if upos <= self.cache.len() => {
           f();
           self.work = Work::DownloadingAtPos(pos);
-          debug!("{} task started at pos {}", self.logpref, pos);
+          debug!(self.log, "task started at pos {}", pos);
           NoChunk
         },
         _ => NoChunk
@@ -84,12 +85,11 @@ impl<T: Clone> Linear<T> {
 
   pub fn recv_chunk(&mut self, pos: Pos, chunk: Vec<T>) {
     let upos = pos as usize;
-    let pref = self.logpref;
     match self.work {
       Work::DownloadingAtPos(p)
       if pos == p && upos <= self.cache.len() => {
         if chunk.len() == 0 {
-          info!("{} cache full (received empty chunk)", pref);
+          info!(self.log, "cache full (received empty chunk)");
           self.cache_full = true;
         } else {
           let mut ln = self.cache.len();
@@ -99,12 +99,12 @@ impl<T: Clone> Linear<T> {
           }
           self.cache.extend_from_slice(&chunk[..]);
         }
-        debug!("{} chunk received to pos {}({})", pref, pos, chunk.len());
+        debug!(self.log, "chunk received to pos {}({})", pos, chunk.len());
         self.work = Work::Idle;
       },
       _ =>
-        warn!("{} incorrect chunk \
-              \npos: {}, lcache: {}", pref, pos, self.cache.len())
+        warn!(self.log, "incorrect chunk \
+              \npos: {}, lcache: {}", pos, self.cache.len())
     }
   }
 }

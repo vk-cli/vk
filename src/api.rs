@@ -7,13 +7,12 @@ use futures_cpupool::CpuPool;
 use curl;
 use curl::easy::Easy;
 
-use utils::*;
-
 use json::{parse, JsonValue};
 
 use chrono::prelude::*;
 
-use utils::ResultUtils;
+use slog::Logger;
+use utils::*;
 use api_objects::*;
 use errors::*;
 
@@ -21,10 +20,10 @@ pub type MethodResponse<T> = BoxFuture<T, ReqError>;
 pub type ApiResponse = MethodResponse<JsonValue>;
 
 impl<R: Debug, E: Display> ResultUtils<R> for Result<R, E> {
-  fn parse_check(self, o: &JsonValue, m: &'static str) -> Option<R> {
+  fn parse_check(self, o: &JsonValue, log: Logger, m: &'static str) -> Option<R> {
     if self.is_ok() { self.ok() } else {
-      error!("{}: {}", m, self.unwrap_err());
-      debug!("failed json: \n{}", o.pretty(2));
+      error!(log, "{}: {}", m, self.unwrap_err());
+      debug!(log, "failed json: \n{}", o.pretty(2));
       None
     }
   }
@@ -34,7 +33,8 @@ pub struct Api {
   pool: CpuPool,
   uid: i32,
   token: String,
-  version: String
+  version: String,
+  log: Logger
 }
 
 impl Api {
@@ -43,7 +43,8 @@ impl Api {
       pool: CpuPool::new(parallelism() as usize),
       uid: uid,
       token: token.to_string(),
-      version: "5.62".to_string()
+      version: "5.62".to_string(),
+      log: get_logger().new(o!(WHERE => "api"))
     }
   }
 
@@ -91,7 +92,7 @@ impl Api {
       .collect::<Vec<_>>()
       .join("");
 
-    debug!("request: {}", logurl);
+    debug!(self.log, "request: {}", logurl);
 
     let url = format!("{}&access_token={}", logurl, self.token);
     self.http_get(url)
@@ -112,18 +113,19 @@ impl Api {
   }
 
   pub fn friends_get(&self, count: i32, offset: i32) -> MethodResponse<Vec<User>> {
+    let log = self.log.clone();
     self.api_get("friends.get", &[
       ("count", &count.to_string()[..]),
       ("offset", &offset.to_string()[..]),
       ("order", "hints"),
       ("fields", "online,last_seen")
     ])
-      .and_then(|friend_list| Ok(
+      .and_then(move |friend_list| Ok(
         friend_list["items"]
           .members()
           .flat_map(|f| {
             let u = User::from_json(f);
-            u.parse_check(f, "can't parse friend")
+            u.parse_check(f, log.clone(), "can't parse friend") //todo check fuckin 2x clone
           })
           .collect::<Vec<_>>()
       ))

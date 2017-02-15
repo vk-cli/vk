@@ -10,12 +10,15 @@ use std::net::{TcpListener, TcpStream};
 use std::thread;
 use std::sync::{Arc, Mutex};
 
-use log;
-
+use slog::Logger;
+use utils::*;
 
 pub struct ControllerServer {
   mp: Arc<Mutex<MusicPlayer>>,
+  log: Logger
 }
+
+// todo check replace logs to prints
 
 trait CommandHandler {
   fn handle(&self, cmd: String);
@@ -23,7 +26,7 @@ trait CommandHandler {
 
 impl CommandHandler for MusicPlayer {
   fn handle(&self, cmd: String) {
-    info!("Controller got a command: {}", cmd);
+    info!(self.log, "Controller got a command: {}", cmd);
     match &*cmd {
       "start" => self.start(),
       "stop" => self.stop(),
@@ -33,14 +36,17 @@ impl CommandHandler for MusicPlayer {
       "prev" => self.prev(),
       "shuffle" => self.shuffle(),
       "repeat" => self.repeat(),
-      _ => { error!("Uncnown command: {}", cmd); },
+      _ => error!(self.log, "Unknown command: {}", cmd)
     }
   }
 }
 
 impl ControllerServer {
   pub fn new(mp: Arc<Mutex<MusicPlayer>>) -> ControllerServer {
-    ControllerServer { mp: mp }
+    ControllerServer {
+      mp: mp,
+      log: get_logger().new(o!(WHERE => "controller"))
+    }
   }
 
   fn _get_client_cmd(mut stream: TcpStream) -> String {
@@ -54,7 +60,7 @@ impl ControllerServer {
     let listener = match TcpListener::bind(&*host) {
       Ok(listener) => listener,
       Err(_) => {
-        error!("Unable to start the music controller server: \
+        error!(self.log, "Unable to start the music controller server: \
                         127.0.0.1:{}.", port);
         return
       },
@@ -63,19 +69,20 @@ impl ControllerServer {
       match stream {
         Ok(stream) => {
           let mp = self.mp.clone();
+          let log = self.log.clone();
           thread::spawn(move || {
             let cmd = ControllerServer::_get_client_cmd(stream);
             match mp.lock() {
               Ok(mp) => mp.handle(cmd),
               Err(_) => {
-                error!("Couldn't lock MusicPlayer while \
+                error!(log, "Couldn't lock MusicPlayer while \
                                         handling server message.");
               }
             };
           });
         },
         Err(_) => {
-          error!("Error occured while handling incomming connection \
+          error!(self.log, "Error occured while handling incomming connection \
                             in the music controller server.");
         }
       }
@@ -93,7 +100,7 @@ pub fn ping_serv(port: u32, cmd: &str) {
       let _ = stream.write(msg.as_slice());
     },
     Err(e) => {
-      error!("Unable to connect to the server 127.0.0.1:{}.\n\
+      println!("Unable to connect to the server 127.0.0.1:{}.\n\
                     Make sure the server application is run on this port.",
       port);
     }

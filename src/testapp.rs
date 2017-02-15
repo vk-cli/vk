@@ -3,7 +3,7 @@ use std::sync::Arc;
 use api::Api;
 use futures::Future;
 use cfg::Cfg;
-use log::*;
+use slog::Logger;
 use client::Client;
 
 pub fn pretest() {

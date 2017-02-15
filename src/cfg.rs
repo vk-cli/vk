@@ -1,4 +1,5 @@
 use json::{parse, JsonValue};
+use slog::Logger;
 use std::ops::Deref;
 use std::env::home_dir;
 use std::path::{Path, PathBuf};
@@ -7,12 +8,12 @@ use std::io::{Read, Write};
 use std::string::ToString;
 
 use errors::*;
-use log::*;
+use utils::*;
 
 struct SpawnResult(JsonValue, CfgRes<()>);
 
-fn spawn(p: &Path) -> SpawnResult {
-  info!("cfg: spawning config");
+fn spawn(p: &Path, log: &Logger) -> SpawnResult {
+  info!(log, "spawning config");
   let cfg = JsonValue::new_object();
   let f_res = write(p, &cfg);
   SpawnResult(cfg, f_res)
@@ -41,25 +42,27 @@ fn make_path(p: &Path) -> Option<String> {
   }
 }
 
-fn make_cfg(p: &Path) -> Cfg {
-  let SpawnResult(c_conf, e_spawn) = spawn(&p);
+fn make_cfg(p: &Path, log: &Logger) -> Cfg {
+  let SpawnResult(c_conf, e_spawn) = spawn(&p, log);
   if let Err(e) = e_spawn {
-    error!("cfg spawn: {}", e)
+    error!(log, "spawn: {}", e)
   };
-  Cfg { conf: c_conf, path: make_path(&p) }
+  Cfg { log: log.clone(), conf: c_conf, path: make_path(&p) }
 }
 
 pub struct Cfg {
   path: Option<String>,
-  conf: JsonValue
+  conf: JsonValue,
+  log: Logger
 }
 
 impl Cfg {
   pub fn new() -> Cfg {
     let p = get_path();
+    let log = get_logger().new(o!(WHERE => "cfg"));
 
     if !p.exists() {
-      make_cfg(p.as_path())
+      make_cfg(p.as_path(), &log)
     } else {
       let open = || -> CfgRes<_> {
         let mut raw = String::new();
@@ -68,10 +71,10 @@ impl Cfg {
         Ok(parse(&raw)?)
       };
       match open() {
-        Ok(c) => Cfg { conf: c, path: make_path(p.as_path()) },
+        Ok(c) => Cfg { log: log, conf: c, path: make_path(p.as_path()) },
         Err(e) => {
-          error!("cfg: {}", e);
-          make_cfg(p.as_path())
+          error!(log, "{}", e);
+          make_cfg(p.as_path(), &log)
         }
       }
     }
