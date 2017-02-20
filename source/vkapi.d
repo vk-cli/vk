@@ -2391,8 +2391,15 @@ class ClMessage : ClObject!vkMessage {
 }
 
 // ===== Exceptions =====
+abstract class VkException : Exception
+{
+    private this(string m, string f, size_t l, Throwable n) @safe pure nothrow
+    {
+        super(m, f, l, n);
+    }
+}
 
-class BackendException : Exception {
+class BackendException : VkException {
     public {
         @safe pure nothrow this(string message,
                                 string file =__FILE__,
@@ -2403,7 +2410,7 @@ class BackendException : Exception {
     }
 }
 
-class NetworkException : Exception {
+class NetworkException : VkException {
     public {
         @safe pure nothrow this(string loc,
                                 string message = "Connection lost",
@@ -2417,7 +2424,7 @@ class NetworkException : Exception {
 }
 
 
-class ApiErrorException : Exception {
+class ApiErrorException : VkException {
     public {
         int errorCode;
         @safe pure nothrow this(string message,
@@ -2431,7 +2438,7 @@ class ApiErrorException : Exception {
     }
 }
 
-class InternalException : Exception {
+class InternalException : VkException {
     public {
 
         static const int E_NETWORKFAIL = 4;
