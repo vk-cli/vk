@@ -333,14 +333,14 @@ VkMan get_token(ref string[string] storage) {
   // === this method is full of magic, do not touch ===
 
   print("Username (email or phone): ");
-  char uname;
-  echo; getstr(&uname); noecho;
-  string strusr = (cast(char*)&uname).to!string;
+  char* uname;
+  echo; getstr(uname); noecho;
+  string strusr = uname.to!string;
 
   print("Password (will not be echoed): ");
-  char paswd;
-  echo; noecho; getstr(&paswd); echo; noecho;
-  string strpwd = (cast(char*)&paswd).to!string;
+  char* paswd;
+  echo; noecho; getstr(paswd); echo; noecho;
+  string strpwd = paswd.to!string;
 
   print("\nLogging in..");
 
@@ -1285,7 +1285,7 @@ void main(string[] args) {
   mplayer.startPlayer(api);
   try
     api.setLongpollWait(storage["longpoll_wait"].to!int);
-  catch
+  catch(Exception)
     dbm("failed set longpoll_wait from config");
   api.showConvNotifications(win.showConvNotifications);
   api.sendOnline(win.sendOnline);
