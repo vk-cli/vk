@@ -333,14 +333,14 @@ VkMan get_token(ref string[string] storage) {
   // === this method is full of magic, do not touch ===
 
   print("Username (email or phone): ");
-  char* uname;
-  echo; getstr(uname); noecho;
-  string strusr = uname.to!string;
+  char[50] uname = 0x00;
+  echo; getnstr(uname.ptr, uname.length.to!int); noecho;
+  string strusr = uname.ptr.to!string;
 
   print("Password (will not be echoed): ");
-  char* paswd;
-  echo; noecho; getstr(paswd); echo; noecho;
-  string strpwd = paswd.to!string;
+  char[50] paswd = 0x00;
+  echo; noecho; getnstr(paswd.ptr, paswd.length.to!int); echo; noecho;
+  string strpwd = paswd.ptr.to!string;
 
   print("\nLogging in..");
 
