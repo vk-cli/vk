@@ -351,12 +351,12 @@ VkMan get_token(ref string[string] storage) {
   JSONValue resp = got.parseJSON;
   if("validation_type" in resp && (resp["validation_type"].str=="2fa_sms" || resp["validation_type"].str=="2fa_app")){
     if(resp["validation_type"].str=="2fa_sms")
-      print("SMS Code("~ resp["phone_mask"].str ~"): ");
+      print("SMS Code ("~ resp["phone_mask"].str ~"): ");
     else if(resp["validation_type"].str=="2fa_app")
       print("App Code: ");
-    char code;
-    echo; getstr(&code); noecho;
-    string strcode = (cast(char*)&code).to!string;
+    char[20] code = 0x00;
+    echo; getnstr(code.ptr, code.length.to!int); noecho;
+    string strcode = code.ptr.to!string;
 
     url = makeLink(strusr, strpwd)~"&code="~strcode;
     got = AsyncMan.httpget(url, dur!"seconds"(10), 10);
