@@ -325,7 +325,8 @@ string makeLink(string login, string passwd) {
         "&client_id=" ~ cid ~
         "&client_secret=" ~ secret ~
         "&username=" ~ login ~
-        "&password=" ~ passwd;
+        "&password=" ~ passwd ~
+        "&2fa_supported=1";
 }
 
 VkMan get_token(ref string[string] storage) {
@@ -333,14 +334,14 @@ VkMan get_token(ref string[string] storage) {
   // === this method is full of magic, do not touch ===
 
   print("Username (email or phone): ");
-  char uname;
-  echo; getstr(&uname); noecho;
-  string strusr = (cast(char*)&uname).to!string;
+  char[50] uname = 0x00;
+  echo; getnstr(uname.ptr, uname.length.to!int); noecho;
+  string strusr = uname.ptr.to!string;
 
   print("Password (will not be echoed): ");
-  char paswd;
-  echo; noecho; getstr(&paswd); echo; noecho;
-  string strpwd = (cast(char*)&paswd).to!string;
+  char[50] paswd = 0x00;
+  echo; noecho; getnstr(paswd.ptr, paswd.length.to!int); echo; noecho;
+  string strpwd = paswd.ptr.to!string;
 
   print("\nLogging in..");
 
@@ -348,6 +349,19 @@ VkMan get_token(ref string[string] storage) {
   auto got = AsyncMan.httpget(url, dur!"seconds"(10), 10);
 
   JSONValue resp = got.parseJSON;
+  if("validation_type" in resp && (resp["validation_type"].str=="2fa_sms" || resp["validation_type"].str=="2fa_app")){
+    if(resp["validation_type"].str=="2fa_sms")
+      print("SMS Code("~ resp["phone_mask"].str ~"): ");
+    else if(resp["validation_type"].str=="2fa_app")
+      print("App Code: ");
+    char code;
+    echo; getstr(&code); noecho;
+    string strcode = (cast(char*)&code).to!string;
+
+    url = makeLink(strusr, strpwd)~"&code="~strcode;
+    got = AsyncMan.httpget(url, dur!"seconds"(10), 10);
+    resp = got.parseJSON;
+  }
   if("error" in resp) {
     endwin;
     writeln("\nError while auth: " ~ got);
@@ -1285,7 +1299,7 @@ void main(string[] args) {
   mplayer.startPlayer(api);
   try
     api.setLongpollWait(storage["longpoll_wait"].to!int);
-  catch
+  catch(Exception)
     dbm("failed set longpoll_wait from config");
   api.showConvNotifications(win.showConvNotifications);
   api.sendOnline(win.sendOnline);
