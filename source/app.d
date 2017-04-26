@@ -758,7 +758,13 @@ void controller() {
 
 void msgBufferEvents() {
   if (win.key == k_esc || win.key == k_enter) {
-    if (win.key == k_enter && win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
+    if (win.key == k_enter){
+	   if(win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
+	   if(win.msgBuffer.utfLength == 0){
+		 api.asyncMarkMessagesAsRead(win.chatID);
+                 api.toggleForceUpdate(blockType.dialogs);
+	   }
+    }
     win.msgBuffer = "";
     win.cursor.x = win.cursor.y = 0;
     curs_set(0);
