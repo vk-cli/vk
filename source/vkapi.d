@@ -35,7 +35,7 @@ const int mailStartId = convStartId*-1;
 const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
-const int typingTimeout = 1;
+const int typingTimeout = 2;
 
 const uint defaultBlock = 100;
 const int chatBlock = 100;
@@ -171,7 +171,7 @@ struct vkNextLp {
 
 // === API state and meta =====
 
-long lasttypetime = 0;
+long[int] lasttypetimes; 
 
 struct apiState {
     bool lp80got = true;
@@ -1739,13 +1739,16 @@ class VkMan {
         auto thrid = a.S_TYPING ~ peer.to!string;
 
 	long ctypetime = Clock.currTime().toUnixTime();	
-	if(ctypetime - lasttypetime >= cast(long)typingTimeout){ 
-        	lasttypetime = ctypetime;
+
+	if((peer in lasttypetimes) is null) lasttypetimes[peer] = 0;
+
+	if(ctypetime - lasttypetimes[peer] >= cast(long)typingTimeout){ 
+        	lasttypetimes[peer] = ctypetime;
 		a.singleAsync(thrid, () {
 		dbm("typing status set at " ~ to!string(ctypetime));
             	api.setActivityStatusImpl(peer, "typing");
             	//Thread.sleep(dur!"seconds"(typingTimeout)); //Commented out due to random freezes
-        	});
+		});
 	}
     }
 
