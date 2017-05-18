@@ -1,0 +1,9 @@
+{
+    "includePath": {
+    },
+    "name": null,
+    "description": null,
+    "projects": {
+        "vk": "dub.json"
+    }
+}

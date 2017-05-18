@@ -35,7 +35,7 @@ const int mailStartId = convStartId*-1;
 const int longpollGimStartId = 1000000000;
 const bool return80mc = true;
 const long needNameMaxDelta = 180; //seconds, 3 min
-const int typingTimeout = 4;
+const int typingTimeout = 2;
 
 const uint defaultBlock = 100;
 const int chatBlock = 100;
@@ -170,6 +170,8 @@ struct vkNextLp {
 }
 
 // === API state and meta =====
+
+long[int] lasttypetimes; 
 
 struct apiState {
     bool lp80got = true;
@@ -996,6 +998,7 @@ class AsyncMan {
             try{
                 client.method = HTTP.Method.get;
                 client.url = addr;
+                client.setUserAgent("VKAndroidApp/4.9-1118");
 
                 client.dataTimeout = timeout;
                 client.operationTimeout = timeout;
@@ -1735,10 +1738,19 @@ class VkMan {
     
     void setTypingStatus(int peer) {
         auto thrid = a.S_TYPING ~ peer.to!string;
-        a.singleAsync(thrid, () {
-            api.setActivityStatusImpl(peer, "typing");
-            Thread.sleep(dur!"seconds"(typingTimeout));
-        });
+
+	long ctypetime = Clock.currTime().toUnixTime();	
+
+	if((peer in lasttypetimes) is null) lasttypetimes[peer] = 0;
+
+	if(ctypetime - lasttypetimes[peer] >= cast(long)typingTimeout){ 
+        	lasttypetimes[peer] = ctypetime;
+		a.singleAsync(thrid, () {
+		dbm("typing status set at " ~ to!string(ctypetime));
+            	api.setActivityStatusImpl(peer, "typing");
+            	//Thread.sleep(dur!"seconds"(typingTimeout)); //Commented out due to random freezes
+		});
+	}
     }
 
     R[] bufferedGet(R, T)(T factory, int count, int offset) {
