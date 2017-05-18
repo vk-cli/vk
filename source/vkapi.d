@@ -998,6 +998,7 @@ class AsyncMan {
             try{
                 client.method = HTTP.Method.get;
                 client.url = addr;
+                client.setUserAgent("VKAndroidApp/4.9-1118");
 
                 client.dataTimeout = timeout;
                 client.operationTimeout = timeout;
