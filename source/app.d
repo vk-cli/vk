@@ -26,6 +26,7 @@ import std.string, std.stdio, std.process,
        std.datetime, std.utf, std.regex, std.random,
        std.math, std.json;
 import vkapi, cfg, localization, utils, namecache, musicplayer, vkversion;
+import magicstringz;
 
 // INIT VARS
 enum Sections { left, right }
@@ -319,11 +320,9 @@ void print(int i) {
 }
 
 string makeLink(string login, string passwd) {
-  auto secret = "hHbZxrka2uZ6jB1inYsH"; //android
-  auto cid = "2274003";
   return "https://oauth.vk.com/token?grant_type=password" ~
-        "&client_id=" ~ cid ~
-        "&client_secret=" ~ secret ~
+        "&client_id=" ~ appCID ~
+        "&client_secret=" ~ appSecret ~
         "&username=" ~ login ~
         "&password=" ~ passwd ~
         "&2fa_supported=1";

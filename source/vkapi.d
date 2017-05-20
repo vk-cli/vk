@@ -25,6 +25,7 @@ import std.net.curl, std.uri, std.json;
 import std.range, std.algorithm;
 import std.parallelism, std.concurrency, core.thread, core.sync.mutex;
 import utils, namecache, localization;
+import magicstringz;
 
 
 
@@ -998,7 +999,7 @@ class AsyncMan {
             try {
                 client.method = HTTP.Method.get;
                 client.url = addr;
-                client.setUserAgent("VKAndroidApp/4.9-1118");
+                client.setUserAgent(appUserAgent);
 
                 client.dataTimeout = timeout;
                 client.operationTimeout = timeout;
