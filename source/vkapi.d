@@ -171,7 +171,7 @@ struct vkNextLp {
 
 // === API state and meta =====
 
-long[int] lasttypetimes; 
+long[int] lasttypetimes;
 
 struct apiState {
     bool lp80got = true;
@@ -353,7 +353,7 @@ class VkApi {
     vkAccountInit executeAccountInit() {
         string[string] params;
 
-        params["code"] = 
+        params["code"] =
 `var me = API.users.get();
 var c = API.account.getCounters("messages");
 if(c.messages == null) {
@@ -473,7 +473,7 @@ return {"me": me[0], "counters": c, "sc": sc};`;
     vkDialog[] messagesGetDialogs(int count , int offset, out int serverCount) {
         string[string] params;
 
-        params["code"] = 
+        params["code"] =
 `var m = API.messages.getDialogs({"count": Args.count, "offset": Args.offset});
 var uids = m.items@.message@.user_id;
 var onl = API.users.get({"user_ids": uids, "fields": "online"});
@@ -707,7 +707,7 @@ return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
                         break;
                     case "audio":
                         JSONValue o = att["audio"].object;
-                        mbody ~= o["artist"].str ~ " - " ~ o["title"].str ~ 
+                        mbody ~= o["artist"].str ~ " - " ~ o["title"].str ~
                             format(" (%02d:%02d)", o["duration"].integer / 60, o["duration"].integer % 60);
                         mbody ~= o["url"].str.split("?extra")[0];
                         break;
@@ -772,7 +772,7 @@ return {"conv": m, "ou": onl@.id, "os": onl@.online};`;
                             mbody ~= action_user ~ " " ~ getLocal("c_kickself");
                         else
                             mbody ~= action_user ~ " " ~ getLocal("c_kick") ~ nc.getName(to!int(m["action_mid"].integer)).strName;
-                    } 
+                    }
                     else {
                         mbody ~= action_user ~ " " ~ getLocal("c_kick") ~ m["action_email"].str;
                     }
@@ -994,8 +994,8 @@ class AsyncMan {
         int tries = 0;
         bool ok = false;
 
-        while(!ok){
-            try{
+        while (!ok) {
+            try {
                 client.method = HTTP.Method.get;
                 client.url = addr;
                 client.setUserAgent("VKAndroidApp/4.9-1118");
@@ -1735,22 +1735,20 @@ class VkMan {
     void asyncMarkMessagesAsRead(int pid, int smid = 0) {
         a.singleAsync(a.S_READ, () => api.messagesMarkAsRead(pid, smid));
     }
-    
+
     void setTypingStatus(int peer) {
         auto thrid = a.S_TYPING ~ peer.to!string;
+        long ctypetime = Clock.currTime().toUnixTime();
+        if((peer in lasttypetimes) is null) lasttypetimes[peer] = 0;
 
-	long ctypetime = Clock.currTime().toUnixTime();	
-
-	if((peer in lasttypetimes) is null) lasttypetimes[peer] = 0;
-
-	if(ctypetime - lasttypetimes[peer] >= cast(long)typingTimeout){ 
-        	lasttypetimes[peer] = ctypetime;
-		a.singleAsync(thrid, () {
-		dbm("typing status set at " ~ to!string(ctypetime));
-            	api.setActivityStatusImpl(peer, "typing");
-            	//Thread.sleep(dur!"seconds"(typingTimeout)); //Commented out due to random freezes
-		});
-	}
+        if (ctypetime - lasttypetimes[peer] >= cast(long)typingTimeout) {
+          lasttypetimes[peer] = ctypetime;
+          a.singleAsync(thrid, () {
+            dbm("typing status set at " ~ to!string(ctypetime));
+            api.setActivityStatusImpl(peer, "typing");
+            //Thread.sleep(dur!"seconds"(typingTimeout)); //Commented out due to random freezes
+          });
+        }
     }
 
     R[] bufferedGet(R, T)(T factory, int count, int offset) {

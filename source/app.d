@@ -81,7 +81,7 @@ vkAudio[] getShuffledMusic(int count, int offset) {
       randomShuffle(win.shuffledMusic);
       win.shuffled = true;
       win.savedShuffledLen = win.shuffledMusic.length.to!int;
-    } else 
+    } else
       return win.shuffledMusic[offset..offset+count];
   }
   return api.getBufferedMusic(count, offset);
@@ -321,7 +321,7 @@ void print(int i) {
 string makeLink(string login, string passwd) {
   auto secret = "hHbZxrka2uZ6jB1inYsH"; //android
   auto cid = "2274003";
-  return "https://oauth.vk.com/token?grant_type=password" ~ 
+  return "https://oauth.vk.com/token?grant_type=password" ~
         "&client_id=" ~ cid ~
         "&client_secret=" ~ secret ~
         "&username=" ~ login ~
@@ -758,12 +758,9 @@ void controller() {
 
 void msgBufferEvents() {
   if (win.key == k_esc || win.key == k_enter) {
-    if (win.key == k_enter){
-	   if(win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
-	   if(win.msgBuffer.utfLength == 0){
-		 api.asyncMarkMessagesAsRead(win.chatID);
-                 api.toggleForceUpdate(blockType.dialogs);
-	   }
+    if (win.key == k_enter) {
+	    if (win.msgBuffer.utfLength != 0) api.asyncSendMessage(win.chatID, win.msgBuffer);
+      else api.asyncMarkMessagesAsRead(win.chatID);
     }
     win.msgBuffer = "";
     win.cursor.x = win.cursor.y = 0;
@@ -1102,8 +1099,8 @@ ListElement[] GetDialogs() {
 
   win.activeBuffer = Buffers.dialogs;
   auto dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset);
-  
-  if (api.dialogsFactory.getBlockObject(win.scrollOffset) !is null && dialogs.length != LINES-2 && activeBufferMaxLen > LINES-2) 
+
+  if (api.dialogsFactory.getBlockObject(win.scrollOffset) !is null && dialogs.length != LINES-2 && activeBufferMaxLen > LINES-2)
     dialogs = api.getBufferedDialogs(LINES-2, win.scrollOffset-(LINES-2-dialogs.length).to!int);
 
   foreach(e; dialogs) {
@@ -1130,10 +1127,10 @@ ListElement[] GetFriends() {
   win.activeBuffer = Buffers.friends;
   auto friends = api.getBufferedFriends(LINES-2, win.scrollOffset);
 
-  if (api.friendsFactory.getBlockObject(win.scrollOffset) !is null && friends.length != LINES-2 && activeBufferMaxLen > LINES-2) 
+  if (api.friendsFactory.getBlockObject(win.scrollOffset) !is null && friends.length != LINES-2 && activeBufferMaxLen > LINES-2)
     friends = api.getBufferedFriends(LINES-2, win.scrollOffset-(LINES-2-friends.length).to!int);
-  
-  foreach(e; friends) 
+
+  foreach(e; friends)
     list ~= ListElement(e.first_name ~ " " ~ e.last_name, e.last_seen_str, &chat, &GetChat, e.online, e.id);
   return list;
 }
