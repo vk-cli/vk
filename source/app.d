@@ -300,17 +300,6 @@ void update(ref string[string] storage) {
   storage.save;
 }
 
-void init() {
-  updateGcSignals();
-  setPosixSignals();
-  setlocale(LC_CTYPE,"");
-  win.lastBuffer = Buffers.none;
-  setEnvLanguage;
-  localize;
-  relocale;
-  initscr;
-}
-
 void print(string s) {
   s.toStringz.addstr;
 }
@@ -328,41 +317,45 @@ string makeLink(string login, string passwd) {
         "&2fa_supported=1";
 }
 
+string getPassword() {
+  version (linux) {
+    import core.sys.linux.unistd;
+    return getpass("Password (will not be echoed): ").to!string;
+  }
+  else {
+    writeln("[ WARNING: password will be echoed in console ]");
+    write("Password: ");
+    return readln().chomp;
+  }
+}
+
 VkMan get_token(ref string[string] storage) {
 
-  // === this method is full of magic, do not touch ===
+  auto tm = dur!"seconds"(10);
 
-  print("Username (email or phone): ");
-  char[50] uname = 0x00;
-  echo; getnstr(uname.ptr, uname.length.to!int); noecho;
-  string strusr = uname.ptr.to!string;
+  write("Username (email or phone): ");
+  string strusr = readln().chomp;
 
-  print("Password (will not be echoed): ");
-  char[50] paswd = 0x00;
-  echo; noecho; getnstr(paswd.ptr, paswd.length.to!int); echo; noecho;
-  string strpwd = paswd.ptr.to!string;
+  string strpwd = getPassword();
 
-  print("\nLogging in..");
+  writeln("\nLogging in..");
 
   string url = makeLink(strusr, strpwd);
-  auto got = AsyncMan.httpget(url, dur!"seconds"(10), 10);
+  auto got = AsyncMan.httpget(url, tm, 10);
 
   JSONValue resp = got.parseJSON;
   if("validation_type" in resp && (resp["validation_type"].str=="2fa_sms" || resp["validation_type"].str=="2fa_app")){
     if(resp["validation_type"].str=="2fa_sms")
-      print("SMS Code ("~ resp["phone_mask"].str ~"): ");
+      write("SMS Code ("~ resp["phone_mask"].str ~"): ");
     else if(resp["validation_type"].str=="2fa_app")
-      print("App Code: ");
-    char[20] code = 0x00;
-    echo; getnstr(code.ptr, code.length.to!int); noecho;
-    string strcode = code.ptr.to!string;
+      write("App Code: ");
+    string strcode = readln().chomp;
 
     url = makeLink(strusr, strpwd)~"&code="~strcode;
-    got = AsyncMan.httpget(url, dur!"seconds"(10), 10);
+    got = AsyncMan.httpget(url, tm, 10);
     resp = got.parseJSON;
   }
   if("error" in resp) {
-    endwin;
     writeln("\nError while auth: " ~ got);
     Exit();
   }
@@ -1258,6 +1251,16 @@ void help() {
   );
 }
 
+void init() {
+  updateGcSignals();
+  setPosixSignals();
+  setlocale(LC_CTYPE,"");
+  win.lastBuffer = Buffers.none;
+  setEnvLanguage;
+  localize;
+  relocale;
+}
+
 void main(string[] args) {
   string[] actions = ["version", "help"];
   bool correct = false;
@@ -1279,14 +1282,10 @@ void main(string[] args) {
   }
 
   //test;
-  initdbm;
-  init;
-  color;
-  curs_set(0);
-  noecho;
-
-  storage = load;
-  storage.parse;
+  initdbm();
+  init();
+  storage = load();
+  storage.parse();
 
   try
     if("token" !in storage || "auth_v2" !in storage) {
@@ -1296,6 +1295,11 @@ void main(string[] args) {
     else api = new VkMan(storage["token"]);
   catch
     (BackendException e) Exit(e.msg);
+
+  initscr();
+  color();
+  curs_set(0);
+  noecho;
 
   mplayer = new MusicPlayer;
   mplayer.startPlayer(api);
