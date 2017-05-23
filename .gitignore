@@ -14,3 +14,7 @@ dub.userprefs
 source/vkversion.d
 vk.sublime-project
 vk.sublime-workspace
+debuildtmp
+debs
+*.7z
+
