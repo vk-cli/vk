@@ -503,7 +503,11 @@ void bodyToBuffer() {
   if (win.activeBuffer != Buffers.chat) {
     foreach(i, e; win.buffer) {
       if (e.name.utfLength.to!int + win.menuOffset+1 > COLS)
+      try {
         win.buffer[i].name = e.name.to!wstring[0..COLS-win.menuOffset-1].to!string;
+        }
+      catch(Throwable) {
+      }
       else
         win.buffer[i].name ~= " ".replicatestr(COLS - e.name.utfLength - win.menuOffset-1);
     }
@@ -1101,7 +1105,11 @@ ListElement[] GetDialogs() {
     if (e.outbox) newMsg = "  ";
     lastMsg = e.lastMessage.replace("\n", " ");
     if (lastMsg.utfLength > COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-3-e.unreadCount.to!string.length)
-      lastMsg = lastMsg.toUTF16wrepl[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].toUTF8wrepl;
+      try {
+        lastMsg = lastMsg.toUTF16wrepl[0..COLS-win.menuOffset-newMsg.utfLength-e.name.utfLength-8-e.unreadCount.to!string.length].toUTF8wrepl;
+      }
+      catch(Throwable) {
+      }
     if (e.unread) {
       if (e.outbox) unreadText ~= getChar("outbox");
       else if (e.unreadCount > 0) unreadText ~= e.unreadCount.to!string ~ getChar("inbox");
