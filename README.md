@@ -46,13 +46,14 @@ then `Build`
 ## Build
 
 ```
-git clone https://github.com/HaCk3Dq/vk
+git clone https://github.com/vk-cli/vk
 cd vk
-git checkout 0.7.5
-dub
+git checkout VER
+dub build
 ```
+(where `VER` is version number)
 builds `vk` binary for your platform.
-
+You can find number of latest version here: https://github.com/vk-cli/vk/releases
 ## Dependencies
 
 + ncurses >= 5.7
