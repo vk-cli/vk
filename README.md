@@ -51,9 +51,12 @@ cd vk
 git checkout VER
 dub build
 ```
-(where `VER` is version number)
+(where `VER` is the version number)
+
 builds `vk` binary for your platform.
+
 You can find number of latest version here: https://github.com/vk-cli/vk/releases
+
 ## Dependencies
 
 + ncurses >= 5.7
