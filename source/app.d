@@ -252,7 +252,7 @@ struct Win {
     isMessageWriting, showTyping, selectFlag,
     showConvNotifications, sendOnline,
     unicodeChars = true, shuffled, seekPercentFlag,
-    shuffleLoadingIsOver;
+    shuffleLoadingIsOver, isInternalError;
 }
 
 void relocale() {
@@ -452,11 +452,18 @@ void statusbar() {
   notifyManager;
   win.counter = api.messagesCounter;
   if (win.counter == -1) {
+    win.isInternalError = true;
     counterStr = getChar("cross");
-    "no_connection".getLocal.SetStatusbar;
+    if (!api.api.isTokenValid()) {
+      "e_wrong_token".getLocal.SetStatusbar;
+    }
+    else {
+      "no_connection".getLocal.SetStatusbar;
+    }
   }
   else {
-    if (win.statusbarText == "no_connection".getLocal) SetStatusbar;
+    if (win.isInternalError) SetStatusbar;
+    win.isInternalError = false;
     counterStr = " " ~ win.counter.to!string ~ getChar("mail");
     if (api.isLoading) counterStr ~= getChar("refresh");
   }
@@ -1255,6 +1262,7 @@ void help() {
     // these help can be generated from actions (array -> hashmap)
     "-h, --help      This help page" ~ "\n" ~
     "-v, --version   Show client version" ~ "\n" ~
+    "-r --reauth     Receive new auth token" ~ "\n" ~
     "Logs are here:  /tmp/vkcli-log/"
   );
 }
@@ -1270,8 +1278,8 @@ void init() {
 }
 
 void main(string[] args) {
-  string[] actions = ["version", "help"];
-  bool correct = false;
+  string[] actions = ["version", "help", "reauth"];
+  bool correct = false, reauth = false;
 
   if (args.length != 1) {
     foreach(arg; args) {
@@ -1279,14 +1287,14 @@ void main(string[] args) {
         if (arg == "-" ~ act[0] || arg == "--" ~ act) {
           correct = true;
           final switch (act) {
-            case "version": writefln("vk-cli %s", currentVersion); break;
-            case "help": help(); break;
+            case "version": writefln("vk-cli %s", currentVersion); exit(0); break;
+            case "help": help(); exit(0); break;
+            case "reauth": reauth = true; break;
           }
         }
       }
     }
     if (!correct) writeln("wrong arguments");
-    exit(0);
   }
 
   //test;
@@ -1296,7 +1304,7 @@ void main(string[] args) {
   storage.parse();
 
   try
-    if("token" !in storage || "auth_v2" !in storage) {
+    if(reauth == true || "token" !in storage || "auth_v2" !in storage) {
       api = storage.get_token;
       storage.save;
     }

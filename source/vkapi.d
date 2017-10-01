@@ -249,7 +249,8 @@ class VkApi {
     private const string vkurl = "https://api.vk.com/method/";
     const string vkver = "5.50";
     private string vktoken;
-    bool isTokenValid;
+    private bool isTokenValid_;
+    private bool isInitAttemptFinished_;
 
     vkUser me;
     vkAccountInit initdata;
@@ -258,8 +259,18 @@ class VkApi {
     nfnotifyfn connectionProblems;
 
     this(string token, nfnotifyfn nfnotify) {
+        isTokenValid_ = false;
+        isInitAttemptFinished_ = false;
         vktoken = token;
         connectionProblems = nfnotify;
+    }
+    
+    bool isTokenValid() {
+        return isTokenValid_;
+    }
+    
+    bool isInitAttemptFinished() {
+        return isInitAttemptFinished_;
     }
 
     void addMeNC() {
@@ -267,7 +278,7 @@ class VkApi {
     }
 
     void resolveMe() {
-        isTokenValid = checkToken(vktoken);
+        isTokenValid_ = checkToken(vktoken);
     }
 
     private bool checkToken(string token) {
@@ -1082,9 +1093,9 @@ class Longpoll : Thread {
     }
 
     void startSync() {
-        if(!api.isTokenValid) {
+        if(!api.isInitAttemptFinished()) {
             dbm("longpoll is waiting for api init...");
-            while(!api.isTokenValid) {
+            while(!api.isInitAttemptFinished()) {
                 Thread.sleep(dur!"msecs"(300));
             }
         }
@@ -1464,7 +1475,7 @@ class VkMan {
     }
 
     private void accountInit() {
-        api.isTokenValid = false;
+        api.isTokenValid_ = false;
         ps.countermsg = -1;
         dbm("asyncLongpoll called");
         asyncLongpoll();
@@ -1476,7 +1487,7 @@ class VkMan {
 
     private void selfResolve(){
         api.resolveMe();
-        if(!api.isTokenValid) {
+        if(!api.isTokenValid_) {
             //todo warn about token
             return;
         }
