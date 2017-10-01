@@ -252,7 +252,7 @@ struct Win {
     isMessageWriting, showTyping, selectFlag,
     showConvNotifications, sendOnline,
     unicodeChars = true, shuffled, seekPercentFlag,
-    shuffleLoadingIsOver;
+    shuffleLoadingIsOver, isInternalError;
 }
 
 void relocale() {
@@ -452,11 +452,18 @@ void statusbar() {
   notifyManager;
   win.counter = api.messagesCounter;
   if (win.counter == -1) {
+    win.isInternalError = true;
     counterStr = getChar("cross");
-    "no_connection".getLocal.SetStatusbar;
+    if (!api.api.isTokenValid()) {
+      "e_wrong_token".getLocal.SetStatusbar;
+    }
+    else {
+      "no_connection".getLocal.SetStatusbar;
+    }
   }
   else {
-    if (win.statusbarText == "no_connection".getLocal) SetStatusbar;
+    if (win.isInternalError) SetStatusbar;
+    win.isInternalError = false;
     counterStr = " " ~ win.counter.to!string ~ getChar("mail");
     if (api.isLoading) counterStr ~= getChar("refresh");
   }
