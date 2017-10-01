@@ -1262,6 +1262,7 @@ void help() {
     // these help can be generated from actions (array -> hashmap)
     "-h, --help      This help page" ~ "\n" ~
     "-v, --version   Show client version" ~ "\n" ~
+    "-r --reauth     Receive new auth token" ~ "\n" ~
     "Logs are here:  /tmp/vkcli-log/"
   );
 }
