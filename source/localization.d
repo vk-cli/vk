@@ -53,8 +53,8 @@ void localize() {
   local["e_input_token"]         = lang("Insert your link here: ",
                                         "Вставьте адрес из браузера сюда:  ");
   
-  local["e_wrong_token"]         = lang("Wrong token, try again\n",
-                                        "Неверный access token, попробуйте еще раз");
+  local["e_wrong_token"]         = lang("Wrong token, try again with -r",
+                                        "Неверный access token, попробуйте еще раз с ключом -r");
   
   local["m_friends"]             = lang("Friends",
                                         "Друзья");
