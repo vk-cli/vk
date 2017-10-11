@@ -43,14 +43,12 @@ __gshared {
     string mpvsocketName;
     string logName;
     string logPath;
-    string logLatPath;
     Mutex dbgmutex;
 }
 
 private void appendDbg(string app) {
     synchronized(dbgmutex) {
         append(logPath, app);
-        append(logLatPath, app);
     }
 }
 
@@ -76,7 +74,6 @@ void initdbm() {
     dbgmutex = new Mutex();
     logName = dbgfname ~ "_" ~ ctime.toTmpDateString();
     logPath = vkcliLogDir ~ "/" ~ logName;
-    logLatPath = vkcliLogDir ~ "/" ~ dbgfname ~ dbglatest;
     mpvsocketName = mpvsck ~ genStr(8);
 
     if(!exists(vkcliTmpDir)) mkdir(vkcliTmpDir);
@@ -88,10 +85,6 @@ void initdbm() {
         dbgff = File(logPath, "w");
         dbgff.write(logIntro);
         dbgff.close();
-
-        dbglat = File(logLatPath, "w");
-        dbglat.write(logIntro);
-        dbglat.close();
     }
 }
 
