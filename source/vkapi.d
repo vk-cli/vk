@@ -259,7 +259,7 @@ class VkApi {
     nfnotifyfn connectionProblems;
 
     this(string token, nfnotifyfn nfnotify) {
-        isTokenValid_ = false;
+        isTokenValid_ = true;
         isInitAttemptFinished_ = false;
         vktoken = token;
         connectionProblems = nfnotify;
@@ -287,7 +287,10 @@ class VkApi {
             me = vkUser(initdata.first_name, initdata.last_name, initdata.id);
         } catch (ApiErrorException e) {
             dbm("ApiErrorException: " ~ e.msg);
-            return false;
+            if (e.errorCode == 5) {
+                dbm("ApiError: Wrong token");
+                return false;
+            }
         }
         return true;
     }
@@ -1475,7 +1478,6 @@ class VkMan {
     }
 
     private void accountInit() {
-        api.isTokenValid_ = false;
         ps.countermsg = -1;
         dbm("asyncLongpoll called");
         asyncLongpoll();
@@ -1488,7 +1490,7 @@ class VkMan {
     private void selfResolve(){
         api.resolveMe();
         if(!api.isTokenValid_) {
-            //todo warn about token
+            toggleUpdate();
             return;
         }
 

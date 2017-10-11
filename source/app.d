@@ -454,11 +454,11 @@ void statusbar() {
   if (win.counter == -1) {
     win.isInternalError = true;
     counterStr = getChar("cross");
-    if (!api.api.isTokenValid()) {
-      "e_wrong_token".getLocal.SetStatusbar;
+    if (api.api.isTokenValid()) {
+      "no_connection".getLocal.SetStatusbar;
     }
     else {
-      "no_connection".getLocal.SetStatusbar;
+      "e_wrong_token".getLocal.SetStatusbar;
     }
   }
   else {
