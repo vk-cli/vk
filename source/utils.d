@@ -354,8 +354,10 @@ void writeCurrentTrack(int sig) {
 }
 
 void setPosixSignals() {
-    sigset(SIGSEGV, a => unwantedExit(a));
-    sigset(SIGUSR1, a => writeCurrentTrack(a));
+    version(posix) {
+        sigset(SIGSEGV, a => unwantedExit(a));
+        sigset(SIGUSR1, a => writeCurrentTrack(a));
+    }
 }
 
 int gcSuspendSignal;
