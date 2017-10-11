@@ -20,19 +20,20 @@ limitations under the License.
 module utils;
 
 import std.stdio, std.array, std.range, std.string, std.file, std.random;
-import core.thread, core.sync.mutex, core.exception;
-import core.sys.posix.signal;
 import std.datetime, std.conv, std.algorithm, std.utf, std.typecons;
+import std.process, core.thread, core.sync.mutex, core.exception;
+import core.sys.posix.signal;
 import localization, app, vkversion, musicplayer;
 
 const bool
+    loggingEnabled = true,
     debugMessagesEnabled = false,
-    dbmfe = true,
     showTokenInLog = false;
 
 __gshared {
     File dbgff;
     File dbglat;
+    bool dbmfe = loggingEnabled;
     string dbmlog = "";
     string vkcliTmpDir = "/tmp/vkcli-tmp";
     string vkcliLogDir = "/tmp/vkcli-log";
@@ -85,6 +86,13 @@ void initdbm() {
         dbgff = File(logPath, "w");
         dbgff.write(logIntro);
         dbgff.close();
+
+        auto chmodResult = executeShell("chmod 600 " ~ logPath);
+        if(chmodResult.status != 0) {
+            writeln("chmod exit code: " ~ chmodResult.status.to!string);
+            writeln("failed to set permissions on log file - logging disabled");
+            dbmfe = false;
+        }
     }
 }
 
