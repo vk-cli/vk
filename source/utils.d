@@ -83,16 +83,16 @@ void initdbm() {
     if(dbmfe) {
         string logIntro = "vk-cli " ~ currentVersion ~ " log\n" ~ ctime.toSimpleString() ~ "\n";
 
+        auto touchResult = executeShell("umask 0177\ntouch " ~ logPath);
+        if(touchResult.status != 0) {
+            auto ecode = touchResult.status.to!string;
+            writeln("touch failed (" ~ ecode ~ ") - logging disabled");
+            dbmfe = false;
+        }
+
         dbgff = File(logPath, "w");
         dbgff.write(logIntro);
         dbgff.close();
-
-        auto chmodResult = executeShell("chmod 600 " ~ logPath);
-        if(chmodResult.status != 0) {
-            writeln("chmod exit code: " ~ chmodResult.status.to!string);
-            writeln("failed to set permissions on log file - logging disabled");
-            dbmfe = false;
-        }
     }
 }
 

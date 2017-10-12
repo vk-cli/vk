@@ -1167,12 +1167,12 @@ class Longpoll : Thread {
                         man.forceUpdateAll();
                     }
                     else if (next.failed == 4) {
-                        dbm("unknown longpoll versoion\nTHEY'RE PURGED V0?");
+                        dbm("unknown longpoll versoion  THEY'RE PURGED V0?");
                         throw new ApiErrorException("invalid longpoll version", -1);
                     }
                     else {
                         dbm("'key' expired or something");
-                        dbm("requestiong new lonpoll server");
+                        dbm("requesting new lonpoll server");
                         ok = false;
                     }
                 }
