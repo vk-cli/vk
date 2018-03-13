@@ -30,8 +30,15 @@ then `Build`
 
 OR
 
-install deb package from releases page `sudo dpkg -i vk-cli.deb` 
+install deb package from releases page `sudo dpkg -i vk-cli.deb`
 
+## Gentoo
+
+```sh
+layman -fa glicOne
+sudo emerge net-im/vk # for vk-9999 you need install dub, dmd and dlang-tools from dlang overlay
+vk-cli
+```
 ## MacOS
 
 ```
