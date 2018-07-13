@@ -1,13 +1,18 @@
 # vk
 A console (ncurses) client for vk.com written in D
 
+# Project is abandoned
+
+vk-cli is mostly abandoned due to lack of time, very poor state of codebase (which definitely needs to be rewritten from scratch) and mainly - due to vk politics which becomes worse from day to day, starting from music, online and ending with advertisements in newsfeed. So we (devs) won't continue to support this project.
+
+If you're looking for a way to not use actual vk.com but want to save ability to get content from there, there's some projects from us such as [vktotg](https://github.com/HaCk3Dq/vktotg) tool which helps to reupload music from your page to private channel in telegram, and planned news aggregator, which will anonymously (without your access_token) gather news from public pages you interested in, and forward it to the destination you prefer (telegram bot, e-mail, etc)
+
+But if you just want CLI client for vk - we can't help with it anymore :)
+
 # Screenshots
 
 ![alt tag](http://cs630123.vk.me/v630123942/25fc7/YOqfnerj4bE.jpg)
 ![alt tag](http://cs630123.vk.me/v630123942/25fd7/hcgITGtqEd0.jpg)
-
-# Donate
-If you want to support us, here you are - https://money.yandex.ru/to/410014355699643
 
 # Install
 
